@@ -5,25 +5,48 @@ Frontend tích hợp theo contract chính thức của repo
 
 ## Phiên bản được ghim
 
+- Consumer contract hiện tại cho health và lịch sử: BE [`main` tại `c314fa8`](https://github.com/kiendt2312/cipher_workbench-be/blob/c314fa87bb87ad42ea10cd4fd96889ca176bfe26/repo_docs/frontend-integration.md),
+  mục A và 16–17. `GET /api/health` trả cả `database` lẫn `history`; chỉ đọc lịch sử
+  máy chủ nếu `database: "ok"` **và** `history: "enabled"`.
+- Nhánh [`feature/add-postgres-persistence` tại `9b75d576`](https://github.com/kiendt2312/cipher_workbench-be/blob/9b75d576f201f9df3c219fdc4f8f70834bd807ff/repo_docs/frontend-integration.md)
+  là mốc triển khai PostgreSQL ban đầu, **chưa có** cờ `history` trong health.
 - Consumer guide và Backend implementation: [`fb459dd`](https://github.com/kiendt2312/cipher_workbench-be/blob/fb459ddcf35c622250b836f75fb14702b2eb0cf4/repo_docs/frontend-integration.md)
   (`fb459ddcf35c622250b836f75fb14702b2eb0cf4`, cập nhật Playfair ngày 28/09/2026).
-- Nguồn có thẩm quyền: OpenSpec `openspec/changes/add-columnar-transposition-cipher/` và
-  `openspec/changes/add-affine-cipher/` đang active, cùng hai completed changes
-  `caesar-cipher-week1-mvp/` và `add-playfair-vigenere-ciphers/` trong repo Backend. BE `main` đã
-  chứa Columnar tại commit được ghim.
+- Nguồn có thẩm quyền: [OpenSpec hiện hành](https://github.com/kiendt2312/cipher_workbench-be/tree/c314fa87bb87ad42ea10cd4fd96889ca176bfe26/openspec/specs)
+  của Backend; `openspec/changes/archive/` chỉ giữ lịch sử quyết định. BE đã có đủ năm cipher.
 
 Nếu tài liệu FE khác OpenSpec Backend, OpenSpec Backend được ưu tiên và tài liệu FE phải sửa.
-Container BE trên máy deploy có thể vẫn chạy image cũ `c0a1927`; phải rebuild/recreate từ checkout
-mới trước khi dùng runtime đó để nghiệm thu contract Playfair mới.
+Checkout BE được Compose build sử dụng phải đúng revision đã ghim; đổi nhãn image hoặc
+`BACKEND_REVISION` không tự cập nhật code trong container.
 
 ## Runtime boundary
 
 - Backend thật chạy tại `http://localhost:8000`.
 - FE gọi URL tương đối `/api/...`; Vite proxy `/api` về Backend khi phát triển.
 - Production là same-origin; không yêu cầu CORS.
-- `/docs` và `/openapi.json` dùng để đối chiếu schema; `GET /health` không thuộc contract.
+- `/docs` và `/openapi.json` dùng để đối chiếu schema. BE có `GET /api/health`;
+  không có `GET /health` và không phục vụ UI tĩnh tại `/`.
 
-## Handoff cho bên Backend: đồng bộ runtime Columnar
+## Lịch sử PostgreSQL
+
+- BE tự ghi metadata cho từng request cipher vào PostgreSQL khi có `DATABASE_URL`, kể cả lỗi;
+  ghi thất bại không thay đổi response cipher. FE không gọi API ghi lịch sử.
+- `GET /api/history` trả `items` và `nextCursor`, lọc bằng `cipher`/`operation`, phân trang
+  bằng cursor opaque. `GET /api/health` báo DB `ok`, `disabled` hoặc `unavailable`, cùng
+  cờ lịch sử `enabled`/`disabled`. Cờ lịch sử mặc định tắt; khi tắt `/api/history` trả 404
+  trước cả bước kiểm tra query. Nếu cấu hình đổi giữa phiên, FE xử lý 404 và bỏ dữ liệu cũ.
+- Không lưu input, result, key, file hoặc tên file. Lịch sử chung toàn instance, không có auth,
+  detail hay delete; giữ tối đa 30 ngày theo cấu hình mặc định. Không bật API đọc lịch sử trên
+  môi trường public. FE gọi file preview và download hai lần nên có hai bản ghi.
+- Với file UTF-8 có BOM, `inputLength` và `outputLength` của metadata đều tính cả BOM ở cả
+  preview và download; FE hiển thị số byte BE trả, không tự tính lại. BE `c314fa8` sửa cách
+  ghi metadata này, không đổi 15 route cipher hay schema Alembic `0001`.
+- Lịch sử trên trình duyệt (nếu bổ sung sau) khác lịch sử server: nó chứa cả input, key và
+  result; phải có công tắc lưu/xóa, giới hạn 50 mục và cảnh báo riêng tư. FE hiện chưa lưu loại này.
+- Chi tiết scope và nguồn: [POSTGRES_FE_ROADMAP.md](POSTGRES_FE_ROADMAP.md) và
+  [POSTGRES_BE_BRANCH_FINDINGS.md](POSTGRES_BE_BRANCH_FINDINGS.md).
+
+## Handoff lịch sử cho bên Backend: đồng bộ runtime Columnar (24/09/2026)
 
 Đây là việc **đồng bộ checkout và tiến trình BE đang chạy**, không phải yêu cầu thay đổi thuật toán
 hoặc mở contract mới. Tại lần kiểm tra ngày 24/09/2026, BE `main` trên GitHub đã ở

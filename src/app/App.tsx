@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AffineWorkspace } from "../features/affine/components/AffineWorkspace";
 import { useAffineCipher } from "../features/affine/hooks/useAffineCipher";
 import { affineApi } from "../features/affine/services/affineApi";
@@ -11,6 +11,8 @@ import { PlayfairWorkspace } from "../features/playfair/components/PlayfairWorks
 import { usePlayfairCipher } from "../features/playfair/hooks/usePlayfairCipher";
 import { VigenereWorkspace } from "../features/vigenere/components/VigenereWorkspace";
 import { useVigenereCipher } from "../features/vigenere/hooks/useVigenereCipher";
+import { HistoryWorkspace } from "../features/history/components/HistoryWorkspace";
+import { canShowServerHistory, getHealthStatus } from "../features/history/services/historyApi";
 import { CipherAlgorithmSelector } from "../shared/components/CipherAlgorithmSelector";
 import { AppHeader } from "../shared/components/AppHeader";
 import { cipherAlgorithms } from "../shared/config/cipherAlgorithms";
@@ -23,6 +25,8 @@ export function App() {
   const affine = useAffineCipher(affineApi);
   const columnar = useColumnarCipher(columnarApi);
   const [algorithm, setAlgorithm] = useState<CipherAlgorithm>("caesar");
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyAvailable, setHistoryAvailable] = useState(false);
   const isLoading =
     cipher.isLoading ||
     vigenere.isLoading ||
@@ -30,7 +34,20 @@ export function App() {
     affine.isBusy ||
     columnar.isBusy;
 
+  useEffect(() => {
+    const controller = new AbortController();
+    void getHealthStatus(controller.signal)
+      .then((health) => {
+        if (!controller.signal.aborted) setHistoryAvailable(canShowServerHistory(health));
+      })
+      .catch(() => {
+        // History is optional; a failed health check must not block cipher workspaces.
+      });
+    return () => controller.abort();
+  }, []);
+
   function resetWorkspace() {
+    setShowHistory(false);
     setAlgorithm("caesar");
     cipher.resetAll();
     vigenere.resetAll();
@@ -73,22 +90,48 @@ export function App() {
           </p>
         </header>
         <div className="workspace">
-          <CipherAlgorithmSelector
-            value={algorithm}
-            disabled={isLoading}
-            onChange={changeAlgorithm}
-          />
-          {cipherAlgorithms.map(({ value: panelAlgorithm }) => (
-            <div
-              id={`algorithm-panel-${panelAlgorithm}`}
-              key={panelAlgorithm}
-              role="tabpanel"
-              aria-labelledby={`algorithm-tab-${panelAlgorithm}`}
-              hidden={algorithm !== panelAlgorithm}
-            >
-              {algorithm === panelAlgorithm ? workspaces[panelAlgorithm] : null}
+          {historyAvailable && (
+            <div className="view-switch" role="group" aria-label="Khu vực làm việc">
+              <button
+                type="button"
+                className={!showHistory ? "view-switch__active" : ""}
+                aria-pressed={!showHistory}
+                onClick={() => setShowHistory(false)}
+              >
+                Công cụ
+              </button>
+              <button
+                type="button"
+                className={showHistory ? "view-switch__active" : ""}
+                aria-pressed={showHistory}
+                onClick={() => setShowHistory(true)}
+              >
+                Lịch sử thao tác
+              </button>
             </div>
-          ))}
+          )}
+          {showHistory && historyAvailable ? (
+            <HistoryWorkspace />
+          ) : (
+            <>
+              <CipherAlgorithmSelector
+                value={algorithm}
+                disabled={isLoading}
+                onChange={changeAlgorithm}
+              />
+              {cipherAlgorithms.map(({ value: panelAlgorithm }) => (
+                <div
+                  id={`algorithm-panel-${panelAlgorithm}`}
+                  key={panelAlgorithm}
+                  role="tabpanel"
+                  aria-labelledby={`algorithm-tab-${panelAlgorithm}`}
+                  hidden={algorithm !== panelAlgorithm}
+                >
+                  {algorithm === panelAlgorithm ? workspaces[panelAlgorithm] : null}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </main>
     </>

@@ -1,9 +1,31 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getHealthStatus } from "../features/history/services/historyApi";
 import { App } from "./App";
 
+vi.mock("../features/history/services/historyApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../features/history/services/historyApi")>()),
+  getHealthStatus: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.mocked(getHealthStatus).mockResolvedValue({ database: "ok", history: "disabled" });
+});
+
 describe("Cipher Workbench", () => {
+  it("hides server history unless both health flags allow it", async () => {
+    const health = vi.mocked(getHealthStatus);
+    const { unmount } = render(<App />);
+    await waitFor(() => expect(health).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Lịch sử thao tác" })).not.toBeInTheDocument();
+    unmount();
+
+    health.mockResolvedValue({ database: "ok", history: "enabled" });
+    render(<App />);
+    expect(await screen.findByRole("button", { name: "Lịch sử thao tác" })).toBeVisible();
+  });
+
   it.each([
     ["Caesar", "Khóa Caesar"],
     ["Vigenère", "Khóa Vigenère"],

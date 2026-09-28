@@ -8,6 +8,12 @@ trap 'rm -rf "$validation_dir"' EXIT
 curl --fail --show-error --silent "$base_url/" > /dev/null
 curl --fail --show-error --silent "$base_url/openapi.json" > /dev/null
 
+health_result=$(curl --fail --show-error --silent "$base_url/api/health")
+case "$health_result" in
+  *'"database":"ok"'*) ;;
+  *) echo "PostgreSQL chưa sẵn sàng: $health_result" >&2; exit 1 ;;
+esac
+
 text_result=$(
   curl --fail --show-error --silent \
     -X POST "$base_url/api/caesar/encrypt" \
@@ -76,5 +82,23 @@ if ! grep -qi '^content-disposition: attachment; filename="bao.cao.v2.encrypted.
   echo "File download có Content-Disposition không hợp lệ." >&2
   exit 1
 fi
+
+case "$health_result" in
+  *'"history":"enabled"'*)
+    history_result=$(curl --fail --show-error --silent "$base_url/api/history?limit=5")
+    case "$history_result" in
+      *'"items":['*'"cipher":"caesar"'*) ;;
+      *) echo "Lịch sử không có thao tác Caesar vừa chạy: $history_result" >&2; exit 1 ;;
+    esac
+    ;;
+  *'"history":"disabled"'*)
+    history_status=$(curl --show-error --silent --output "$validation_dir/history" --write-out '%{http_code}' "$base_url/api/history?limit=5")
+    if [ "$history_status" != 404 ]; then
+      echo "Lịch sử đã tắt nhưng API trả HTTP $history_status." >&2
+      exit 1
+    fi
+    ;;
+  *) echo "Health thiếu trạng thái quyền đọc lịch sử: $health_result" >&2; exit 1 ;;
+esac
 
 echo "Smoke test thành công: $base_url"

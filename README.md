@@ -26,6 +26,8 @@ giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã h
 - Hiển thị phân tích hoặc bảng ánh xạ phù hợp với từng thuật toán.
 - Giao diện responsive, hỗ trợ bàn phím, screen reader và light/dark theme có ghi nhớ.
 - Giữ Backend làm nguồn dữ liệu có thẩm quyền cho mọi kết quả runtime.
+- Xem lịch sử metadata của các request cipher khi PostgreSQL và quyền đọc lịch sử đều được bật
+  ở Backend; không lưu input hoặc khóa trong lịch sử của trình duyệt.
 
 ## Kiến trúc kết nối
 
@@ -38,7 +40,7 @@ Browser -> Vite :5173 -> /api proxy -> FastAPI Backend :8000
 Khi chạy bằng Docker Compose:
 
 ```text
-Browser -> Frontend/Nginx :8080 -> Backend :8000 (chỉ trong Docker network)
+Browser -> Frontend/Nginx :8080 -> Backend :8000 -> PostgreSQL :5432
 ```
 
 Frontend chỉ gọi các URL tương đối `/api/...`. Vì vậy code runtime không ghi cứng địa chỉ Backend và
@@ -47,7 +49,7 @@ không cần cấu hình CORS trong mô hình triển khai same-origin.
 ## Yêu cầu môi trường
 
 - Node.js và npm.
-- Backend chính thức: [`kiendt2312/caesar-cipher-be`](https://github.com/kiendt2312/caesar-cipher-be).
+- Backend chính thức: [`kiendt2312/cipher_workbench-be`](https://github.com/kiendt2312/cipher_workbench-be).
 - Docker khi chạy browser E2E với Backend tích hợp hoặc chạy production stack cục bộ.
 
 Theo cấu hình mặc định, repo Backend nằm cùng cấp với repo này:
@@ -75,7 +77,14 @@ schema đang chạy tại:
 chỉ có Affine sẽ trả `404` cho `/api/columnar/*`. Repo Backend sibling trên máy cần được cập nhật
 riêng trước khi chạy stack cục bộ.
 
-Lưu ý: `GET /health` không thuộc contract hiện tại.
+Để nghiệm thu lịch sử máy chủ theo contract mới nhất đã đối chiếu, dùng BE revision `c314fa8`, PostgreSQL,
+migration Alembic và `HISTORY_API_ENABLED=true` **chỉ ở môi trường dev/nội bộ**. FE chỉ gọi
+`/api/history` khi `/api/health` báo đồng thời `database: "ok"` và `history: "enabled"`;
+BE cũ thiếu trường `history` sẽ không tải dữ liệu lịch sử. Không bật API lịch sử trên
+Funnel/public vì endpoint này chưa có xác thực. Nếu BE Compose chạy trên host `8080`, khởi động
+FE bằng `BACKEND_DEV_URL=http://localhost:8080 npm run dev`. BE không phục vụ UI ở `/`;
+dùng `/docs` để thử API.
+Thẻ **Lịch sử thao tác** chỉ xuất hiện khi health báo đồng thời hai trạng thái cho phép.
 
 ### 2. Cài dependency và chạy Frontend
 
@@ -237,9 +246,10 @@ Khi tài liệu FE khác completed OpenSpec hoặc consumer guide đã ghim củ
 | [`docs/PLAYFAIR_VIGENERE_SPEC.md`](docs/PLAYFAIR_VIGENERE_SPEC.md) | Phạm vi mở rộng Playfair và Vigenère       |
 | [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md)                       | Spec FE của Affine                         |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)                         | Hướng dẫn production deployment            |
+| [`docs/POSTGRES_FE_ROADMAP.md`](docs/POSTGRES_FE_ROADMAP.md)       | Phạm vi lịch sử PostgreSQL của FE          |
 | [`AGENTS.md`](AGENTS.md)                                           | Quy ước làm việc dành cho coding agent     |
 
 ## Giới hạn hiện tại
 
-- Chưa có tài khoản, database hoặc lịch sử thao tác.
+- Lịch sử chỉ có metadata chung toàn instance; chưa có tài khoản hay xem lại nội dung cũ.
 - Chưa hỗ trợ brute-force, tự động tìm khóa hoặc alphabet tùy chỉnh.
