@@ -47,17 +47,22 @@ export interface PlayfairFillerSuggestion {
 
 export function suggestPlayfairPlaintext(text: string): PlayfairFillerSuggestion | null {
   const normalized = normalizePlayfairLetters(text);
-  if (normalized !== text || normalized.length === 0 || normalized.length % 2 !== 0) {
+  if (normalized !== text || normalized.length === 0) {
     return null;
   }
 
-  const possibleFillers = new Set<number>();
-  for (let index = 1; index < normalized.length - 1; index += 2) {
-    const preceding = normalized[index - 1];
-    const expectedFiller = preceding === "X" ? "Q" : "X";
-    if (normalized[index] !== expectedFiller) continue;
+  // The Backend removes one terminal filler after decrypting an even digraph stream.
+  // Reconstruct it only to validate an analysis suggestion, never to change the result.
+  const prepared =
+    normalized.length % 2 === 0 ? normalized : normalized + (normalized.endsWith("X") ? "Q" : "X");
 
-    if (normalized[index + 1] === preceding) {
+  const possibleFillers = new Set<number>();
+  for (let index = 1; index < prepared.length - 1; index += 2) {
+    const preceding = prepared[index - 1];
+    const expectedFiller = preceding === "X" ? "Q" : "X";
+    if (prepared[index] !== expectedFiller) continue;
+
+    if (prepared[index + 1] === preceding) {
       possibleFillers.add(index);
     }
   }
@@ -68,7 +73,7 @@ export function suggestPlayfairPlaintext(text: string): PlayfairFillerSuggestion
     .join("");
 
   // A suggestion must be able to produce the exact decrypted digraph stream again.
-  if (preparePlayfairDigraphs(candidate, "encrypt").join("") !== normalized) return null;
+  if (preparePlayfairDigraphs(candidate, "encrypt").join("") !== prepared) return null;
 
   return { text: candidate, removedCount: possibleFillers.size };
 }

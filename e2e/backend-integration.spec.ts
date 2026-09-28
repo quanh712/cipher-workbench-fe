@@ -147,7 +147,7 @@ test("uses the real Playfair text contract", async ({ page }) => {
   await expect(page.getByText(/HI → BM/)).toBeVisible();
 });
 
-test("suggests only internal Playfair fillers while preserving the Backend plaintext", async ({
+test("suggests only internal Playfair fillers after the Backend trims the terminal filler", async ({
   page,
 }) => {
   await page.goto("/");
@@ -157,13 +157,51 @@ test("suggests only internal Playfair fillers while preserving the Backend plain
   await page.getByRole("textbox", { name: "Khóa Playfair" }).fill("MATMA");
   await page.getByRole("button", { name: "Giải mã" }).click();
 
-  await expect(page.locator("pre.output")).toHaveText("CNTXTX");
+  await expect(page.locator("pre.output")).toHaveText("CNTXT");
   await page.getByRole("tab", { name: "Phân tích" }).click();
-  await expect(page.locator(".playfair-filler-suggestion pre")).toHaveText("CNTTX");
+  await expect(page.locator(".playfair-filler-suggestion pre")).toHaveText("CNTT");
   await expect(page.locator(".playfair-filler-suggestion small")).toContainText(
     "Có thể bỏ 1 ký tự X/Q",
   );
-  await expect(page.locator("pre.output")).toHaveText("CNTXTX");
+  await expect(page.locator("pre.output")).toHaveText("CNTXT");
+});
+
+test("uses the Backend's terminal-filler rule for Playfair text and file decrypt", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("tab", { name: /Playfair/ }).click();
+  await page.getByRole("radio", { name: /Giải mã/ }).click();
+  await page.getByRole("textbox", { name: "Khóa Playfair" }).fill("PLAYFAIR EXAMPLE");
+
+  for (const [ciphertext, expected] of [
+    ["PDGW", "ABX"],
+    ["BMODZBXDNAGE", "HIDETHEGOLD"],
+    ["GWGW", "XQX"],
+  ]) {
+    await page.getByRole("textbox", { name: "Nội dung đầu vào" }).fill(ciphertext);
+    await page.getByRole("button", { name: "Giải mã" }).click();
+    await expect(page.locator("pre.output")).toHaveText(expected);
+  }
+
+  await page.getByRole("button", { name: "File .txt" }).click();
+  await page.getByLabel("Chọn file văn bản").setInputFiles({
+    name: "secret.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("PDGW"),
+  });
+  const previewRequest = page.waitForRequest("**/api/playfair/file");
+  await page.getByRole("button", { name: "Giải mã" }).click();
+  expect((await previewRequest).method()).toBe("POST");
+  await expect(page.locator("pre.output")).toHaveText("ABX");
+
+  const downloadRequest = page.waitForRequest("**/api/playfair/file");
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Tải kết quả" }).click();
+  expect((await downloadRequest).method()).toBe("POST");
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe("secret.decrypted.txt");
+  expect(await readFile(await download.path(), "utf8")).toBe("ABX");
 });
 
 test("uses the real Affine text contract in both directions", async ({ page }) => {

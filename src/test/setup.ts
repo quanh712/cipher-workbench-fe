@@ -64,7 +64,7 @@ function playfair(text: string, key: string, decrypt: boolean) {
   matrix.forEach((row, rowIndex) =>
     row.forEach((letter, columnIndex) => positions.set(letter, [rowIndex, columnIndex])),
   );
-  return preparePlayfairDigraphs(text, decrypt ? "decrypt" : "encrypt")
+  const result = preparePlayfairDigraphs(text, decrypt ? "decrypt" : "encrypt")
     .map((pair) => {
       const [firstRow, firstColumn] = positions.get(pair[0])!;
       const [secondRow, secondColumn] = positions.get(pair[1])!;
@@ -84,6 +84,11 @@ function playfair(text: string, key: string, decrypt: boolean) {
       return matrix[firstRow][secondColumn] + matrix[secondRow][firstColumn];
     })
     .join("");
+
+  if (!decrypt) return result;
+  if (result.endsWith("XQ")) return result.slice(0, -1);
+  if (result.endsWith("X")) return result.slice(0, -1);
+  return result;
 }
 
 function json(body: unknown, status = 200) {

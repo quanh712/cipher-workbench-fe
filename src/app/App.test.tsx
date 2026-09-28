@@ -222,6 +222,57 @@ describe("Cipher Workbench", () => {
     expect(screen.getByText("HIDETHEGOLDINTHETREESTUMP", { exact: true })).toBeInTheDocument();
   });
 
+  it.each([
+    ["PDGW", "ABX"],
+    ["BMODZBXDNAGE", "HIDETHEGOLD"],
+    ["GWGW", "XQX"],
+  ])(
+    "shows the Backend Playfair decrypt result for %s without stripping again",
+    async (ciphertext, expected) => {
+      const user = userEvent.setup();
+      const writeText = vi.spyOn(navigator.clipboard, "writeText");
+      render(<App />);
+
+      await user.click(screen.getByRole("tab", { name: /Playfair/ }));
+      await user.click(screen.getByRole("radio", { name: /Giải mã/ }));
+      await user.type(screen.getByRole("textbox", { name: "Nội dung đầu vào" }), ciphertext);
+      await user.type(screen.getByRole("textbox", { name: "Khóa Playfair" }), "PLAYFAIR EXAMPLE");
+      await user.click(screen.getByRole("button", { name: "Giải mã" }));
+
+      await waitFor(() =>
+        expect(screen.getByRole("tabpanel", { name: "Văn bản" }).textContent).toBe(expected),
+      );
+      const resultPanel = screen.getByRole("tabpanel", { name: "Văn bản" });
+      await user.click(
+        within(resultPanel.closest("section")!).getByRole("button", { name: "Sao chép" }),
+      );
+      expect(writeText).toHaveBeenCalledWith(expected);
+    },
+  );
+
+  it("previews the trimmed Playfair file result from the Backend", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /Playfair/ }));
+    await user.click(screen.getByRole("radio", { name: /Giải mã/ }));
+    await user.click(screen.getByRole("button", { name: "File .txt" }));
+    await user.upload(
+      screen.getByLabelText("Chọn file văn bản"),
+      new File(["PDGW"], "message.txt", { type: "text/plain" }),
+    );
+    await user.type(screen.getByRole("textbox", { name: "Khóa Playfair" }), "PLAYFAIR EXAMPLE");
+    await user.click(screen.getByRole("button", { name: "Giải mã" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("tabpanel", { name: "Văn bản" }).textContent).toBe("ABX"),
+    );
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      "/api/playfair/file",
+      expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
+    );
+  });
+
   it("encrypts and decrypts Affine through the registered workspace", async () => {
     const user = userEvent.setup();
     render(<App />);

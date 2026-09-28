@@ -49,8 +49,8 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
 
       <div className="helper-row">
         <span>
-          Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I, loại định dạng và giữ filler X/Q khi giải
-          mã; xem gợi ý bỏ filler ở tab Phân tích. Kết quả không khôi phục nguyên văn đầu vào.
+          Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I, loại định dạng; khi giải mã giữ filler X
+          giữa chuỗi và bỏ filler cuối; kết quả không khôi phục nguyên văn đầu vào.
         </span>
         <button
           className="button button--secondary"

@@ -104,10 +104,12 @@ gửi request cho đến khi bấm Mã hóa.
 3. Nhập khóa theo yêu cầu của thuật toán rồi gửi xử lý.
 4. Xem phân tích, sao chép kết quả hoặc tải file kết quả.
 
-Với Playfair, quá trình chuẩn hóa có thể làm thay đổi dữ liệu đầu vào; giao diện sẽ cảnh báo và
-không tự ý xóa ký tự đệm `X/Q` khỏi kết quả Backend. Sau khi giải mã, tab **Phân tích** chỉ có thể
-gợi ý bỏ `X/Q` nằm giữa hai chữ giống nhau; `X/Q` cuối chuỗi luôn được giữ. Đây vẫn chỉ là gợi ý
-vì `X/Q` cũng có thể là ký tự gốc; thao tác sao chép và tải xuống dùng kết quả nguyên bản từ Backend.
+Với Playfair, quá trình chuẩn hóa có thể làm thay đổi dữ liệu đầu vào. Khi giải mã, Backend bỏ
+đúng một filler ở cuối kết quả: nếu kết thúc bằng `XQ` thì bỏ `Q`, nếu không mà kết thúc bằng `X`
+thì bỏ `X`; filler ở giữa vẫn được giữ. Vì không thể phân biệt chắc chắn filler với chữ thật,
+kết quả có thể mất một chữ `X` cuối vốn thuộc bản rõ. Tab **Phân tích** chỉ gợi ý bỏ `X/Q` nằm
+giữa hai chữ giống nhau. FE không tự xóa thêm ký tự khỏi kết quả Backend; thao tác sao chép và
+tải xuống dùng nguyên kết quả đó.
 
 ## Các lệnh thường dùng
 

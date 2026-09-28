@@ -41,19 +41,22 @@ Vigenère là vertical slice đầu tiên sau Caesar:
 
 Playfair dùng Backend thật cho text và file. UI luôn giải thích semantics đã chốt:
 
-> Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I, loại định dạng và giữ filler X/Q khi giải mã;
-> kết quả không khôi phục nguyên văn đầu vào.
+> Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I, loại định dạng; khi giải mã giữ filler X
+> giữa chuỗi và bỏ filler cuối; kết quả không khôi phục nguyên văn đầu vào.
 
 Luồng Playfair tuân theo:
 
 - endpoint text/file tương ứng dưới `/api/playfair/...`;
 - key và input normalize ASCII, `J→I`, matrix 5×5 bỏ `J`;
 - encrypt dùng filler `X`, fallback `Q` khi va chạm với `X`;
-- decrypt không pad, không strip filler và từ chối ciphertext lẻ hoặc digraph trùng;
+- decrypt không pad, giữ filler ở giữa chuỗi và bỏ đúng một filler cuối theo quy tắc Backend
+  (`XQ` → bỏ `Q`, nếu không thì `X` → bỏ `X`); từ chối ciphertext lẻ hoặc digraph trùng;
+- vì không phân biệt được filler với chữ thật, plaintext có số chữ chẵn kết thúc bằng `X` có thể
+  mất `X` cuối khi giải mã (`AX` → `A`); FE không tự phục hồi ký tự này;
 - response chỉ có `success,result`; không chờ `matrix`, `digraphs` hoặc `normalizedInput` từ API;
 - analysis matrix/digraph nếu có phải được tính như visualization, không thay result server.
 - khi giải mã, analysis chỉ có thể gợi ý bỏ `X/Q` nằm giữa hai chữ giống nhau nếu tái chuẩn bị bản
-  rõ gợi ý tạo lại đúng chuỗi digraph; không gợi ý bỏ `X/Q` cuối chuỗi. Gợi ý không chắc chắn và
+  rõ gợi ý tạo lại đúng chuỗi digraph; không bỏ thêm ký tự cuối trên FE. Gợi ý không chắc chắn và
   không thay kết quả/copy/download từ BE.
 
 ## 5. File và lỗi dùng chung

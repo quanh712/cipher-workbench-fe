@@ -146,7 +146,7 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
                 </div>
                 <div>
                   <dt>{fillerCount === null ? "Filler khi giải mã" : "Filler được chèn"}</dt>
-                  <dd>{fillerCount === null ? "Giữ nguyên X/Q" : fillerCount}</dd>
+                  <dd>{fillerCount === null ? "Giữ filler giữa, bỏ filler cuối" : fillerCount}</dd>
                 </div>
               </dl>
 
@@ -158,13 +158,14 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
                       <pre>{fillerSuggestion.text}</pre>
                       <small>
                         Có thể bỏ {fillerSuggestion.removedCount} ký tự X/Q nằm giữa hai chữ giống
-                        nhau. X/Q cuối chuỗi luôn được giữ vì có thể là chữ thật; kết quả chính
-                        thức, sao chép và tải xuống vẫn giữ nguyên.
+                        nhau. Backend đã xử lý filler cuối; kết quả chính thức, sao chép và tải
+                        xuống vẫn giữ nguyên response từ server.
                       </small>
                     </>
                   ) : (
                     <small>
-                      Không thấy X/Q nào nằm giữa hai chữ giống nhau; X/Q cuối chuỗi luôn được giữ.
+                      Không thấy X/Q nào nằm giữa hai chữ giống nhau; Backend đã xử lý filler cuối
+                      nếu có.
                     </small>
                   )}
                 </div>
@@ -185,7 +186,8 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
                       .join("   ")}
                   </pre>
                   <small>
-                    Visualization chỉ giải thích phép biến đổi; kết quả chính thức lấy từ Backend.
+                    Visualization chỉ giải thích phép biến đổi; cặp cuối có thể còn một chữ sau khi
+                    Backend bỏ filler. Kết quả chính thức lấy từ Backend.
                   </small>
                 </div>
               </div>

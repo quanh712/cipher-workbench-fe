@@ -1,18 +1,20 @@
 # Backend Contract Reference
 
 Frontend tích hợp theo contract chính thức của repo
-[`kiendt2312/caesar-cipher-be`](https://github.com/kiendt2312/caesar-cipher-be).
+[`kiendt2312/cipher_workbench-be`](https://github.com/kiendt2312/cipher_workbench-be).
 
 ## Phiên bản được ghim
 
-- Consumer guide và Backend implementation: [`c0a1927`](https://github.com/kiendt2312/caesar-cipher-be/blob/c0a1927b397926dbf89d62a4b0270d4ec0fb71d7/repo_docs/frontend-integration.md)
-  (`c0a1927b397926dbf89d62a4b0270d4ec0fb71d7`).
+- Consumer guide và Backend implementation: [`fb459dd`](https://github.com/kiendt2312/cipher_workbench-be/blob/fb459ddcf35c622250b836f75fb14702b2eb0cf4/repo_docs/frontend-integration.md)
+  (`fb459ddcf35c622250b836f75fb14702b2eb0cf4`, cập nhật Playfair ngày 28/09/2026).
 - Nguồn có thẩm quyền: OpenSpec `openspec/changes/add-columnar-transposition-cipher/` và
   `openspec/changes/add-affine-cipher/` đang active, cùng hai completed changes
   `caesar-cipher-week1-mvp/` và `add-playfair-vigenere-ciphers/` trong repo Backend. BE `main` đã
   chứa Columnar tại commit được ghim.
 
 Nếu tài liệu FE khác OpenSpec Backend, OpenSpec Backend được ưu tiên và tài liệu FE phải sửa.
+Container BE trên máy deploy có thể vẫn chạy image cũ `c0a1927`; phải rebuild/recreate từ checkout
+mới trước khi dùng runtime đó để nghiệm thu contract Playfair mới.
 
 ## Runtime boundary
 
@@ -80,7 +82,9 @@ browser integration tests với BE ở commit được ghim, gồm Unicode round
   control value. Backend từ chối field thừa/trùng; thứ tự kiểm tra là `file`, `a`, `b`, `action`,
   `response_mode`.
 - Vigenère key phải khớp `[A-Za-z]+` và không được trim/sửa trước khi gửi.
-- Playfair là luồng normalize có mất dữ liệu; UI phải cảnh báo và không tự xóa filler `X/Q`.
+- Playfair là luồng normalize có mất dữ liệu; Backend bỏ đúng một filler cuối khi decrypt
+  (`XQ` → bỏ `Q`, nếu không thì `X` → bỏ `X`) và giữ filler giữa chuỗi. UI phải hiển thị nguyên
+  response, không tự xóa thêm `X/Q`.
 - Columnar giữ nguyên Unicode code point, kể cả whitespace/CRLF/emoji; không chuẩn hóa hoặc đệm.
   File UTF-8 có BOM đầu vào: preview bỏ BOM logic, attachment giữ BOM. File BOM-only hợp lệ.
 - File giới hạn chính xác 5 MiB; preview dùng `response_mode=content`.
