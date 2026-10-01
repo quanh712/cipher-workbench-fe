@@ -1,5 +1,5 @@
 import { useRef, type KeyboardEvent } from "react";
-import { cipherAlgorithms } from "../config/cipherAlgorithms";
+import { getCipherAlgorithms } from "../config/cipherAlgorithms";
 import type { CipherAlgorithm } from "../types/cipher";
 
 interface CipherAlgorithmSelectorProps {
@@ -14,6 +14,7 @@ export function CipherAlgorithmSelector({
   onChange,
 }: CipherAlgorithmSelectorProps) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const cipherAlgorithms = getCipherAlgorithms();
 
   function selectWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) {
     let nextIndex: number | null = null;

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AffineWorkspace } from "../features/affine/components/AffineWorkspace";
 import { useAffineCipher } from "../features/affine/hooks/useAffineCipher";
 import { affineApi } from "../features/affine/services/affineApi";
@@ -7,6 +7,9 @@ import { useCaesarCipher } from "../features/caesar/hooks/useCaesarCipher";
 import { ColumnarWorkspace } from "../features/columnar/components/ColumnarWorkspace";
 import { useColumnarCipher } from "../features/columnar/hooks/useColumnarCipher";
 import { columnarApi } from "../features/columnar/services/columnarApi";
+import { HillWorkspace } from "../features/hill/components/HillWorkspace";
+import { useHillCipher } from "../features/hill/hooks/useHillCipher";
+import { hillApi } from "../features/hill/services/hillApi";
 import { PlayfairWorkspace } from "../features/playfair/components/PlayfairWorkspace";
 import { usePlayfairCipher } from "../features/playfair/hooks/usePlayfairCipher";
 import { VigenereWorkspace } from "../features/vigenere/components/VigenereWorkspace";
@@ -15,7 +18,7 @@ import { HistoryWorkspace } from "../features/history/components/HistoryWorkspac
 import { canShowServerHistory, getHealthStatus } from "../features/history/services/historyApi";
 import { CipherAlgorithmSelector } from "../shared/components/CipherAlgorithmSelector";
 import { AppHeader } from "../shared/components/AppHeader";
-import { cipherAlgorithms } from "../shared/config/cipherAlgorithms";
+import { getCipherAlgorithms } from "../shared/config/cipherAlgorithms";
 import type { CipherAlgorithm } from "../shared/types/cipher";
 
 export function App() {
@@ -26,13 +29,17 @@ export function App() {
   const columnar = useColumnarCipher(columnarApi);
   const [algorithm, setAlgorithm] = useState<CipherAlgorithm>("caesar");
   const [showHistory, setShowHistory] = useState(false);
+  const hill = useHillCipher(hillApi, algorithm === "hill" && !showHistory);
+  const hillOpened = useRef(false);
+  const cipherAlgorithms = getCipherAlgorithms();
   const [historyAvailable, setHistoryAvailable] = useState(false);
   const isLoading =
     cipher.isLoading ||
     vigenere.isLoading ||
     playfair.isLoading ||
     affine.isBusy ||
-    columnar.isBusy;
+    columnar.isBusy ||
+    hill.isBusy;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,6 +61,8 @@ export function App() {
     playfair.resetAll();
     affine.resetAll();
     columnar.resetAll();
+    hill.resetAll();
+    hillOpened.current = false;
   }
 
   function changeAlgorithm(nextAlgorithm: CipherAlgorithm) {
@@ -65,6 +74,13 @@ export function App() {
     affine.clearResult();
     affine.setNotice(null);
     columnar.clearResult();
+    hill.clearResult();
+    if (nextAlgorithm === "hill" && !hillOpened.current) {
+      const drafts = { caesar: cipher, vigenere, playfair, affine, columnar };
+      const current = algorithm === "hill" ? null : drafts[algorithm];
+      hill.seedText(current?.inputType === "text" ? current.text : "");
+      hillOpened.current = true;
+    }
     setAlgorithm(nextAlgorithm);
   }
 
@@ -74,6 +90,7 @@ export function App() {
     vigenere: <VigenereWorkspace cipher={vigenere} />,
     affine: <AffineWorkspace cipher={affine} />,
     columnar: <ColumnarWorkspace cipher={columnar} />,
+    hill: <HillWorkspace cipher={hill} />,
   };
 
   return (
@@ -85,8 +102,11 @@ export function App() {
             <h1>Cipher Workbench</h1>
           </div>
           <p>
-            Mã hóa và giải mã Caesar, Vigenère, Playfair, Affine hoặc Hệ mã hàng bằng kết quả từ
-            Backend.
+            Mã hóa và giải mã Caesar, Vigenère, Playfair, Affine,
+            {cipherAlgorithms.some(({ value }) => value === "hill")
+              ? " Hệ mã hàng hoặc Hill"
+              : " hoặc Hệ mã hàng"}{" "}
+            bằng kết quả từ Backend.
           </p>
         </header>
         <div className="workspace">

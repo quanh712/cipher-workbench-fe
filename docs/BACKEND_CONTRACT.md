@@ -5,7 +5,10 @@ Frontend tích hợp theo contract chính thức của repo
 
 ## Phiên bản được ghim
 
-- Consumer contract hiện tại cho health và lịch sử: BE [`main` tại `c314fa8`](https://github.com/kiendt2312/cipher_workbench-be/blob/c314fa87bb87ad42ea10cd4fd96889ca176bfe26/repo_docs/frontend-integration.md),
+- Contract Hill: [`4505ef7`](https://github.com/kiendt2312/cipher_workbench-be/blob/4505ef776d51d6657f26552531a9809e436318b9/repo_docs/frontend-integration.md),
+  mục A.7, 4.6, 9.1 và các OpenSpec trong `openspec/changes/add-hill-cipher/specs/`.
+  Xem [HILL_SPEC.md](HILL_SPEC.md) cho payload, response, Unicode và giới hạn 5 MiB.
+- Consumer contract cho health và lịch sử: BE [`main` tại `c314fa8`](https://github.com/kiendt2312/cipher_workbench-be/blob/c314fa87bb87ad42ea10cd4fd96889ca176bfe26/repo_docs/frontend-integration.md),
   mục A và 16–17. `GET /api/health` trả cả `database` lẫn `history`; chỉ đọc lịch sử
   máy chủ nếu `database: "ok"` **và** `history: "enabled"`.
 - Nhánh [`feature/add-postgres-persistence` tại `9b75d576`](https://github.com/kiendt2312/cipher_workbench-be/blob/9b75d576f201f9df3c219fdc4f8f70834bd807ff/repo_docs/frontend-integration.md)
@@ -13,7 +16,7 @@ Frontend tích hợp theo contract chính thức của repo
 - Consumer guide và Backend implementation: [`fb459dd`](https://github.com/kiendt2312/cipher_workbench-be/blob/fb459ddcf35c622250b836f75fb14702b2eb0cf4/repo_docs/frontend-integration.md)
   (`fb459ddcf35c622250b836f75fb14702b2eb0cf4`, cập nhật Playfair ngày 28/09/2026).
 - Nguồn có thẩm quyền: [OpenSpec hiện hành](https://github.com/kiendt2312/cipher_workbench-be/tree/c314fa87bb87ad42ea10cd4fd96889ca176bfe26/openspec/specs)
-  của Backend; `openspec/changes/archive/` chỉ giữ lịch sử quyết định. BE đã có đủ năm cipher.
+  của Backend; `openspec/changes/archive/` chỉ giữ lịch sử quyết định. Mốc này có năm cipher; revision Hill ở trên bổ sung cipher thứ sáu.
 
 Nếu tài liệu FE khác OpenSpec Backend, OpenSpec Backend được ưu tiên và tài liệu FE phải sửa.
 Checkout BE được Compose build sử dụng phải đúng revision đã ghim; đổi nhãn image hoặc
@@ -26,6 +29,19 @@ Checkout BE được Compose build sử dụng phải đúng revision đã ghim;
 - Production là same-origin; không yêu cầu CORS.
 - `/docs` và `/openapi.json` dùng để đối chiếu schema. BE có `GET /api/health`;
   không có `GET /health` và không phục vụ UI tĩnh tại `/`.
+
+## Hill
+
+- `key` gửi ma trận không kèm `m`; từ khóa gửi `keyword,m`. Analyze/random trả
+  `{success:true,result:HillKeyAnalysis,warnings}`, transform trả thêm `blocks,key,warnings`.
+- Lỗi nghiệp vụ `{success:false,message,code,details}` phẳng; giữ nguyên message BE.
+- Chỉ cụm ký tự đơn ASCII tham gia khối; chữ Việt NFC/NFD giữ nguyên hoặc BE bỏ dấu theo options.
+- FE đọc `.txt` UTF-8 fatal, kiểm 5.242.880 raw bytes rồi gửi JSON text; không có file route.
+  Text BE cũng giới hạn 5.242.880 byte UTF-8 trước chuẩn hóa. Copy/download từ result đầy đủ.
+- Analyze/random không ghi history; transform ghi `cipher=hill,source=text`, kể cả nguồn file FE.
+  Nếu dùng PostgreSQL, cần migration Hill `0002`; không chỉ đổi image tag.
+- Checkout sibling mặc định còn ở `c314fa8` tại lúc đối chiếu: bản phát hành phải build lại
+  Backend chứa revision Hill, rồi bật `VITE_ENABLE_HILL=true` ở build FE.
 
 ## Lịch sử PostgreSQL
 
@@ -91,7 +107,7 @@ browser integration tests với BE ở commit được ghim, gồm Unicode round
 
 ## Điểm tích hợp phải giữ
 
-- Success JSON chỉ có `success`, `result`; error JSON chỉ có `success`, `message`.
+- Năm cipher cũ: success JSON chỉ có `success`, `result`; error JSON chỉ có `success`, `message`.
 - FE kiểm tra HTTP status và body, hiển thị nguyên văn `message` hợp lệ từ Backend.
 - Caesar text gửi key dưới dạng JSON integer thật sự. Vigenère và Playfair gửi key string.
 - Affine text gửi đúng `text`, `a`, `b`; hai khóa là JSON integer token không mất precision. File
@@ -110,8 +126,8 @@ browser integration tests với BE ở commit được ghim, gồm Unicode round
   response, không tự xóa thêm `X/Q`.
 - Columnar giữ nguyên Unicode code point, kể cả whitespace/CRLF/emoji; không chuẩn hóa hoặc đệm.
   File UTF-8 có BOM đầu vào: preview bỏ BOM logic, attachment giữ BOM. File BOM-only hợp lệ.
-- File giới hạn chính xác 5 MiB; preview dùng `response_mode=content`.
-- Download file là request thứ hai với `response_mode=file`, dùng attachment của Backend.
+- File năm cipher cũ giới hạn chính xác 5 MiB; preview dùng `response_mode=content`.
+- Download file năm cipher cũ là request thứ hai với `response_mode=file`, dùng attachment của Backend.
 - Result server là nguồn có thẩm quyền; không có runtime mock hoặc local cipher result.
 
 Không sao chép lại ma trận lỗi và toàn bộ scenario ở đây. Khi cần chi tiết, đọc handoff và

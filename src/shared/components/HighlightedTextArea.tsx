@@ -5,9 +5,19 @@ interface HighlightedTextAreaProps {
   value: string;
   disabled: boolean;
   onChange: (value: string) => void;
+  ariaLabel?: string;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
 }
 
-export function HighlightedTextArea({ value, disabled, onChange }: HighlightedTextAreaProps) {
+export function HighlightedTextArea({
+  value,
+  disabled,
+  onChange,
+  ariaLabel = "Nội dung đầu vào",
+  ariaInvalid,
+  ariaDescribedBy,
+}: HighlightedTextAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
 
@@ -43,7 +53,9 @@ export function HighlightedTextArea({ value, disabled, onChange }: HighlightedTe
         placeholder="Nhập hoặc dán nội dung tại đây…"
         disabled={disabled}
         spellCheck={false}
-        aria-label="Nội dung đầu vào"
+        aria-label={ariaLabel}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
       />
     </div>
   );

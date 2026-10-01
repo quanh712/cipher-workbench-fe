@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scope Frontend: Hệ mã hóa Hill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F8; --surface:#FFFFFF; --ink:#17202B; --muted:#56616F; --rule:#D5DBE2; --soft:#EAEEF2;
+  --plain:#1D5FA8; --key:#A8326E; --cipher:#16775A; --err:#B42318; --warn:#9A5B06;
+  --plain-bg:#E6EFF9; --key-bg:#F7E6EE; --cipher-bg:#E3F2EC; --err-bg:#FBE9E7; --warn-bg:#FBF1DF;
+  --sans:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161D; --surface:#18212B; --ink:#E6EBF0; --muted:#9AA6B3; --rule:#2C3845; --soft:#1F2A35;
+    --plain:#7DB3EE; --key:#EE8DBC; --cipher:#6FD1A8; --err:#FF8A7A; --warn:#F2B558;
+    --plain-bg:#15293E; --key-bg:#351A28; --cipher-bg:#123126; --err-bg:#3A1A17; --warn-bg:#35270F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10161D; --surface:#18212B; --ink:#E6EBF0; --muted:#9AA6B3; --rule:#2C3845; --soft:#1F2A35;
+  --plain:#7DB3EE; --key:#EE8DBC; --cipher:#6FD1A8; --err:#FF8A7A; --warn:#F2B558;
+  --plain-bg:#15293E; --key-bg:#351A28; --cipher-bg:#123126; --err-bg:#3A1A17; --warn-bg:#35270F;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 16px);scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--plain)}
+:focus-visible{outline:2px solid var(--plain);outline-offset:2px}
+code,pre,.mono{font-family:var(--mono);font-size:.86em}
+code{background:var(--soft);padding:.1em .35em;border-radius:4px}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 20px}
+@media (min-width:980px){.layout{grid-template-columns:230px minmax(0,1fr);gap:56px}}
+
+nav.toc{display:none}
+@media (min-width:980px){
+  nav.toc{display:block;position:sticky;top:env(safe-area-inset-top,0px);align-self:start;padding:40px 0;max-height:100vh;overflow:auto}
+}
+nav.toc p{margin:0 0 10px;font-weight:600;font-size:14px}
+nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:t}
+nav.toc li{counter-increment:t}
+nav.toc a{display:block;padding:5px 0 5px 12px;border-left:2px solid var(--rule);color:var(--muted);text-decoration:none;font-size:14px;line-height:1.35}
+nav.toc a::before{content:counter(t)". ";font-variant-numeric:tabular-nums}
+nav.toc a:hover{color:var(--ink);border-left-color:var(--ink)}
+
+main{min-width:0;padding:40px 0 80px}
+header.doc{border-bottom:1px solid var(--rule);padding-bottom:28px;margin-bottom:12px}
+header.doc h1{font-size:clamp(30px,5vw,44px);line-height:1.1;letter-spacing:-.02em;margin:0 0 14px;font-weight:700}
+header.doc .lede{max-width:64ch;color:var(--muted);margin:0 0 22px;font-size:17px}
+.formula-strip{display:flex;flex-wrap:wrap;gap:10px 22px;font-family:var(--mono);font-size:15px;margin-bottom:22px}
+.formula-strip span b{font-weight:600}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin:0}
+.meta div{border-top:2px solid var(--ink);padding-top:6px}
+.meta dt{font-size:13px;color:var(--muted)}
+.meta dd{margin:0;font-weight:600}
+
+.p{color:var(--plain)} .k{color:var(--key)} .c{color:var(--cipher)}
+
+section{padding-top:36px;max-width:820px}
+section h2{font-size:24px;letter-spacing:-.01em;margin:0 0 6px;line-height:1.25}
+section h2 small{color:var(--muted);font-weight:500;font-size:16px;margin-right:8px;font-variant-numeric:tabular-nums}
+section h3{font-size:17px;margin:26px 0 6px}
+section p,section li{max-width:72ch}
+ul,ol{padding-left:22px}
+li{margin:4px 0}
+
+.tbl{overflow-x:auto;margin:14px 0;border:1px solid var(--rule);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--rule)}
+th{font-weight:600;background:var(--soft);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.id{font-family:var(--mono);font-size:13px;white-space:nowrap;font-weight:600}
+.pri{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pri.must{background:var(--err-bg);color:var(--err)}
+.pri.should{background:var(--warn-bg);color:var(--warn)}
+.pri.nice{background:var(--soft);color:var(--muted)}
+
+pre{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.55;margin:12px 0}
+pre .cm{color:var(--muted)}
+
+.flow{list-style:none;padding:0;margin:16px 0;counter-reset:f}
+.flow li{counter-increment:f;position:relative;padding:10px 0 10px 46px;border-left:2px solid var(--rule);margin:0 0 0 14px;max-width:none}
+.flow li::before{content:counter(f);position:absolute;left:-15px;top:9px;width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;display:grid;place-items:center}
+.flow li:last-child{border-left-color:transparent}
+.flow b{display:block}
+
+.note{border-left:3px solid var(--warn);background:var(--warn-bg);padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0}
+
+/* Lab */
+.lab{background:var(--surface);border:1px solid var(--rule);border-radius:10px;margin:16px 0;overflow:hidden}
+.lab-grid{display:grid;grid-template-columns:1fr}
+@media (min-width:720px){.lab-grid{grid-template-columns:1fr 1fr}}
+.pane{padding:16px 18px;min-width:0}
+.pane + .pane{border-top:1px solid var(--rule)}
+@media (min-width:720px){.pane + .pane{border-top:0;border-left:1px solid var(--rule)}}
+.pane h4{margin:0 0 8px;font-size:14px;font-weight:600}
+.pane h4.p,.pane h4.k,.pane h4.c{display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
+textarea{width:100%;min-height:92px;resize:vertical;font-family:var(--mono);font-size:14px;padding:10px;border:1px solid var(--rule);border-radius:6px;background:var(--bg);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+select,button{font-family:var(--sans);font-size:14px;border:1px solid var(--rule);border-radius:6px;padding:6px 10px;background:var(--bg);color:var(--ink);cursor:pointer}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.matrix{display:inline-grid;gap:6px;padding:8px 10px;border-left:2px solid var(--key);border-right:2px solid var(--key);border-radius:6px}
+.matrix input{width:48px;padding:6px 4px;text-align:center;font-family:var(--mono);font-size:15px;border:1px solid var(--rule);border-radius:5px;background:var(--key-bg);color:var(--ink)}
+.status{font-size:14px;padding:8px 12px;border-radius:6px;margin-top:10px}
+.status.ok{background:var(--cipher-bg);color:var(--cipher)}
+.status.bad{background:var(--err-bg);color:var(--err)}
+.out{font-family:var(--mono);font-size:15px;background:var(--cipher-bg);color:var(--ink);border-radius:6px;padding:10px;min-height:44px;word-break:break-all;white-space:pre-wrap}
+.steps{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:10px;max-height:160px;overflow:auto;white-space:pre}
+.warnline{font-size:13px;color:var(--warn);margin-top:6px}
+.mini{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px;font-family:var(--mono);font-size:13px}
+.mini .lbl{font-family:var(--sans);color:var(--muted);font-size:12px;display:block}
+.m-inline{display:inline-grid;gap:2px 10px;border-left:1.5px solid var(--muted);border-right:1.5px solid var(--muted);padding:2px 6px;border-radius:4px}
+
+.ac li{list-style:none;position:relative;padding-left:4px}
+.ac{padding-left:22px}
+.ac li::before{content:"";position:absolute;left:-20px;top:.45em;width:12px;height:12px;border:1.5px solid var(--muted);border-radius:3px}
+footer{margin-top:48px;color:var(--muted);font-size:13px;border-top:1px solid var(--rule);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Mục lục">
+  <p>Mục lục</p>
+  <ol>
+    <li><a href="#muc-tieu">Mục tiêu Frontend</a></li>
+    <li><a href="#kien-thuc">Kiến thức cần nắm</a></li>
+    <li><a href="#bo-cuc">Bố cục giao diện</a></li>
+    <li><a href="#thanh-phan">Component và trạng thái</a></li>
+    <li><a href="#tuong-tac">Luồng tương tác</a></li>
+    <li><a href="#tich-hop-api">Tích hợp API</a></li>
+    <li><a href="#loi">Hiển thị lỗi và cảnh báo</a></li>
+    <li><a href="#fe">Task Frontend</a></li>
+    <li><a href="#thu">Prototype tương tác</a></li>
+    <li><a href="#test-ui">Kịch bản kiểm thử giao diện</a></li>
+    <li><a href="#nghiem-thu">Tiêu chí nghiệm thu Frontend</a></li>
+    <li><a href="#ngoai">Ngoài phạm vi</a></li>
+  </ol>
+</nav>
+<main>
+<header class="doc">
+  <h1>Scope Frontend: Hệ mã hóa Hill</h1>
+  <p class="lede">Giao diện, component, luồng tương tác và cách tích hợp API cho feature Hill. Thuật toán và API chi tiết nằm ở scope Backend riêng.</p>
+  <div class="formula-strip">
+    <span><b class="c">y</b> = <b class="p">x</b> · <b class="k">K</b> mod 26</span>
+    <span><b class="p">x</b> = <b class="c">y</b> · <b class="k">K⁻¹</b> mod 26</span>
+    <span><b class="k">K⁻¹</b> = (det K)⁻¹ · K* mod 26</span>
+    <span>ƯCLN(det K, 26) = 1</span>
+  </div>
+  <dl class="meta">
+    <div><dt>Dự án</dt><dd>Caesar_Cipher</dd></div>
+    <div><dt>Phần</dt><dd>Frontend</dd></div>
+    <div><dt>Kích thước khối m</dt><dd>2 đến 4</dd></div>
+    <div><dt>Phụ thuộc</dt><dd>API Hill (scope BE)</dd></div></dl>
+</header>
+<section id="muc-tieu">
+  <h2><small>1</small>Mục tiêu Frontend</h2>
+  <p>Thêm Hill vào công cụ mã hóa, dùng lại bố cục kiểu jwt.io và các component đầu vào của tuần Caesar. Người dùng nhập văn bản, nhập khóa ma trận, thấy ngay khóa có hợp lệ không, rồi mã hóa/giải mã và xem từng bước tính để phục vụ báo cáo và demo.</p>
+  <div class="tbl"><table>
+    <tr><th>Yêu cầu dự án</th><th>Phần việc của FE</th></tr>
+    <tr><td>Có giao diện</td><td>Tab Hill: trái là văn bản và khóa, phải là kết quả và phân tích khóa.</td></tr>
+    <tr><td>Đầu vào từ file hoặc bàn phím</td><td>Textarea + tải file .txt (đọc ở client, UTF-8, ≤ 1 MB). Khóa nhập dạng lưới hoặc từ khóa.</td></tr>
+    <tr><td>Mã hóa và giải mã</td><td>Gọi API BE, hiển thị kết quả tô màu theo khối.</td></tr>
+    <tr><td>Bắt lỗi và thông báo</td><td>Kiểm tra định dạng tại client, hiển thị lỗi BE đúng chỗ, đúng câu (mục 7).</td></tr>
+  </table></div>
+</section>
+
+<section id="kien-thuc">
+  <h2><small>2</small>Kiến thức cần nắm</h2>
+  <ul>
+    <li>Chữ cái ↔ số: A=0 … Z=25. Văn bản chia thành khối m chữ, mỗi khối là vector hàng <span class="p">x</span>.</li>
+    <li>Mã hóa: <span class="c">y</span> = <span class="p">x</span>·<span class="k">K</span> mod 26. Giải mã dùng K⁻¹ thay cho K.</li>
+    <li>Khóa chỉ hợp lệ khi det K mod 26 là số lẻ và khác 13. FE không tự tính mật mã, nhưng cần hiểu để trình bày panel phân tích khóa.</li>
+    <li>Quy ước màu dùng xuyên suốt giao diện: <span class="p">xanh dương = bản rõ</span>, <span class="k">hồng = khóa</span>, <span class="c">xanh lá = bản mã</span> (giống cách jwt.io tô header/payload/signature).</li>
+  </ul>
+  <p>Chi tiết thuật toán, API và mã lỗi đầy đủ nằm ở scope Backend.</p>
+</section>
+
+<section id="bo-cuc">
+  <h2><small>3</small>Bố cục giao diện</h2>
+  <p>Hai cột kiểu jwt.io trên desktop, xếp chồng trên điện thoại (cột trái lên trước).</p>
+<pre>┌─ Thuật toán: [Caesar] [Hill] ──────────────── [Mã hóa | Giải mã] ─┐
+│ CỘT TRÁI (đầu vào)               │ CỘT PHẢI (đầu ra)               │
+│ ┌ Văn bản ─────────────────────┐ │ ┌ Kết quả ─────────────────────┐│
+│ │ textarea          [Tải .txt] │ │ │ DP LE  (tô màu theo khối)    ││
+│ └──────────────────────────────┘ │ │ [Sao chép] [Tải .txt]        ││
+│ ┌ Khóa K ──────────────────────┐ │ └──────────────────────────────┘│
+│ │ m: [2▾]  (Lưới | Từ khóa)    │ │ ┌ Phân tích khóa ──────────────┐│
+│ │ ┌ 3  3 ┐                     │ │ │ ✓ det = 9, ƯCLN = 1          ││
+│ │ └ 2  5 ┘  [Khóa ngẫu nhiên]  │ │ │ (det)⁻¹ = 3   K*   K⁻¹       ││
+│ └──────────────────────────────┘ │ └──────────────────────────────┘│
+│ ☐ Bỏ dấu tiếng Việt              │ ▸ Xem từng bước                 │
+│ [ Mã hóa ]                       │                                 │
+└────────────────────────────────────────────────────────────────────┘</pre>
+</section>
+
+<section id="thanh-phan">
+  <h2><small>4</small>Component và trạng thái</h2>
+  <div class="tbl"><table>
+    <tr><th>Component</th><th>Props / dữ liệu</th><th>Trạng thái cần có</th><th>Dùng lại</th></tr>
+    <tr><td class="mono">AlgorithmTabs</td><td>danh sách thuật toán, tab đang chọn</td><td>Giữ văn bản khi đổi tab</td><td>Tuần 1, thêm tab</td></tr>
+    <tr><td class="mono">ModeToggle</td><td>encrypt | decrypt</td><td>Đổi nhãn nút chính: "Mã hóa" / "Giải mã"</td><td>Tuần 1</td></tr>
+    <tr><td class="mono">TextInput</td><td>text, onFile</td><td>rỗng, có dữ liệu, lỗi E01/E06/E07</td><td>Tuần 1</td></tr>
+    <tr><td class="mono">KeyMatrixInput</td><td>m, matrix, mode (grid | keyword)</td><td>ô lỗi E03 (viền đỏ tại ô), E09 với từ khóa</td><td>Mới</td></tr>
+    <tr><td class="mono">KeyAnalysisPanel</td><td>response <code>/key/analyze</code></td><td>đang kiểm tra, hợp lệ, không hợp lệ (E04 kèm lý do), cảnh báo W03</td><td>Mới</td></tr>
+    <tr><td class="mono">ResultPanel</td><td>result, blocks</td><td>trống, đang xử lý, có kết quả, lỗi E02/E05</td><td>Tuần 1, thêm tô khối</td></tr>
+    <tr><td class="mono">BlockTooltip</td><td>một phần tử <code>blocks</code> + K</td><td>hiện phép nhân x·K = y khi hover/focus khối</td><td>Mới</td></tr>
+    <tr><td class="mono">StepViewer</td><td>blocks, key</td><td>thu gọn / mở rộng</td><td>Mới</td></tr>
+    <tr><td class="mono">Notice</td><td>danh sách lỗi/cảnh báo</td><td>error (đỏ), warning (vàng)</td><td>Tuần 1</td></tr>
+  </table></div>
+  <h3>State của tab Hill</h3>
+<pre>{
+  text: string,
+  mode: "encrypt" | "decrypt",
+  m: 2 | 3 | 4,
+  keyInputMode: "grid" | "keyword",
+  matrix: string[][],        <span class="cm">// giữ chuỗi thô để báo lỗi đúng ô</span>
+  keyword: string,
+  stripDiacritics: boolean,
+  keyAnalysis: { status: "idle"|"loading"|"valid"|"invalid", data?, error? },
+  result: { status: "idle"|"loading"|"done"|"error", text?, blocks?, warnings?, error? }
+}</pre>
+</section>
+
+<section id="tuong-tac">
+  <h2><small>5</small>Luồng tương tác</h2>
+  <ol class="flow">
+    <li><b>Mở tab Hill</b>Khóa mặc định [[3,3],[2,5]], văn bản giữ từ tab trước. Gọi <code>/key/analyze</code> một lần.</li>
+    <li><b>Sửa khóa</b>Kiểm tra định dạng tại client (số nguyên, đủ ô). Hợp lệ về định dạng thì gọi <code>/key/analyze</code> với debounce 300 ms; hủy request cũ khi có request mới.</li>
+    <li><b>Đổi m</b>Dựng lại lưới m×m, điền khóa ngẫu nhiên hợp lệ từ <code>/key/random</code>.</li>
+    <li><b>Nhập văn bản</b>Gõ tay hoặc tải .txt. File được đọc ở client, kiểm tra đuôi, kích thước, UTF-8 trước khi đưa vào textarea.</li>
+    <li><b>Bấm Mã hóa / Giải mã</b>Nút bị khóa khi văn bản rỗng hoặc khóa chưa hợp lệ. Hiện trạng thái đang xử lý trên ResultPanel.</li>
+    <li><b>Nhận kết quả</b>Hiển thị văn bản kết quả, tô màu theo khối, cảnh báo W01/W02/W03 nếu có. Lỗi hiển thị tại đúng vùng gây lỗi.</li>
+    <li><b>Xem từng bước / xuất kết quả</b>Mở StepViewer, sao chép hoặc tải kết quả .txt.</li>
+  </ol>
+</section>
+
+<section id="tich-hop-api">
+  <h2><small>6</small>Tích hợp API</h2>
+  <div class="tbl"><table>
+    <tr><th>Endpoint</th><th>Gọi khi</th><th>Dùng dữ liệu nào</th></tr>
+    <tr><td class="mono">POST /api/hill/key/analyze</td><td>Khóa đổi và đúng định dạng (debounce 300 ms)</td><td><code>det</code>, <code>detInverse</code>, <code>adjugate</code>, <code>inverse</code> cho KeyAnalysisPanel</td></tr>
+    <tr><td class="mono">GET /api/hill/key/random?m=</td><td>Bấm "Khóa ngẫu nhiên", đổi m</td><td><code>key</code> điền vào lưới</td></tr>
+    <tr><td class="mono">POST /api/hill/encrypt</td><td>Bấm "Mã hóa"</td><td><code>result</code>, <code>blocks</code>, <code>warnings</code></td></tr>
+    <tr><td class="mono">POST /api/hill/decrypt</td><td>Bấm "Giải mã"</td><td><code>result</code>, <code>blocks</code>, <code>warnings</code></td></tr>
+  </table></div>
+<pre><span class="cm">// Request mã hóa</span>
+{ "text": "HELP", "key": [[3,3],[2,5]], "options": { "stripDiacritics": false, "padChar": "X" } }
+
+<span class="cm">// Response 200</span>
+{ "result": "DPLE",
+  "blocks": [ { "input": [7,4], "output": [3,15] }, { "input": [11,15], "output": [11,4] } ],
+  "key": { "m": 2, "det": 9, "detInverse": 3, "adjugate": [[5,23],[24,3]], "inverse": [[15,17],[20,9]] },
+  "warnings": [] }
+
+<span class="cm">// Response 422</span>
+{ "error": { "code": "E04", "message": "...", "details": { "det": 2, "gcd": 2 } } }</pre>
+  <p>Chế độ từ khóa: gửi <code>"keyword": "HILL"</code> thay cho <code>key</code>. Lỗi mạng hoặc 5xx hiển thị: "Không kết nối được máy chủ. Thử lại." kèm nút "Thử lại".</p>
+</section>
+
+<section id="loi">
+  <h2><small>7</small>Hiển thị lỗi và cảnh báo</h2>
+  <div class="tbl"><table>
+    <tr><th>Mã</th><th>Ai phát hiện</th><th>Hiển thị ở đâu</th><th>Thông báo</th></tr>
+    <tr><td class="id">E01</td><td>FE</td><td>Dưới textarea; khóa nút chính</td><td>Nhập văn bản hoặc tải file .txt để bắt đầu.</td></tr>
+    <tr><td class="id">E02</td><td>BE</td><td>ResultPanel</td><td>Văn bản không có chữ cái nào để mã hóa. Hill chỉ xử lý A–Z.</td></tr>
+    <tr><td class="id">E03</td><td>FE</td><td>Viền đỏ tại ô + dòng dưới lưới</td><td>Ô hàng {i} cột {j} phải là số nguyên.</td></tr>
+    <tr><td class="id">E04</td><td>BE (analyze)</td><td>KeyAnalysisPanel; khóa nút chính</td><td>Khóa không khả nghịch: det K mod 26 = {d}, chia hết cho {2|13}. Hãy đổi khóa.</td></tr>
+    <tr><td class="id">E05</td><td>BE</td><td>ResultPanel</td><td>Bản mã có {n} chữ cái, không chia hết cho m = {m}. Kiểm tra lại bản mã hoặc cấp khóa.</td></tr>
+    <tr><td class="id">E06</td><td>FE</td><td>Cạnh nút tải file</td><td>Chỉ hỗ trợ file .txt tối đa 1 MB.</td></tr>
+    <tr><td class="id">E07</td><td>FE</td><td>Cạnh nút tải file</td><td>Không đọc được file. Lưu lại file với mã hóa UTF-8.</td></tr>
+    <tr><td class="id">E08</td><td>FE</td><td>Không xảy ra qua UI (select 2–4); chỉ log nếu BE trả về</td><td>Cấp ma trận khóa phải từ 2 đến 4.</td></tr>
+    <tr><td class="id">E09</td><td>FE</td><td>Dưới ô từ khóa</td><td>Từ khóa cần đúng {m²} chữ cái, hiện có {n}.</td></tr>
+    <tr><td class="id">W01</td><td>BE</td><td>Notice vàng dưới kết quả</td><td>Đã thêm {k} ký tự X vào cuối để đủ khối {m} chữ.</td></tr>
+    <tr><td class="id">W02</td><td>BE</td><td>Notice vàng, kèm nút bật "Bỏ dấu tiếng Việt"</td><td>{n} chữ có dấu được giữ nguyên. Bật "Bỏ dấu tiếng Việt" để mã hóa chúng.</td></tr>
+    <tr><td class="id">W03</td><td>BE (analyze)</td><td>KeyAnalysisPanel, màu vàng</td><td>Khóa này là ma trận đơn vị hoặc tự nghịch đảo, không đảm bảo bí mật.</td></tr>
+  </table></div>
+</section>
+
+<section id="fe">
+  <h2><small>8</small>Task Frontend</h2>
+  <div class="tbl"><table>
+    <tr><th>ID</th><th>Nội dung</th><th>Định nghĩa hoàn thành</th><th>Ưu tiên</th></tr>
+    <tr><td class="id">FE-H01</td><td>Thêm Hill vào bộ chọn thuật toán, dùng lại layout jwt.io của tuần 1</td><td>Chuyển Caesar ↔ Hill không mất văn bản đang nhập</td><td><span class="pri must">Bắt buộc</span></td></tr>
+    <tr><td class="id">FE-H02</td><td>Lưới nhập ma trận m×m, chọn m, chế độ nhập bằng từ khóa</td><td>Điều hướng bằng Tab/phím mũi tên; từ khóa tự điền vào lưới</td><td><span class="pri must">Bắt buộc</span></td></tr>
+    <tr><td class="id">FE-H03</td><td>Panel phân tích khóa trực tiếp: det, ƯCLN, (det)⁻¹, K*, K⁻¹</td><td>Cập nhật khi sửa ô; trạng thái hợp lệ/không hợp lệ rõ ràng; khóa nút khi E04</td><td><span class="pri must">Bắt buộc</span></td></tr>
+    <tr><td class="id">FE-H04</td><td>Đầu vào văn bản và tải file .txt (dùng lại component tuần 1)</td><td>Xử lý E01, E06, E07</td><td><span class="pri must">Bắt buộc</span></td></tr>
+    <tr><td class="id">FE-H05</td><td>Panel kết quả, tô màu theo khối (bản rõ / khóa / bản mã)</td><td>Hover một khối hiện phép nhân x·K của khối đó</td><td><span class="pri must">Bắt buộc</span></td></tr>
+    <tr><td class="id">FE-H06</td><td>Hiển thị lỗi và cảnh báo theo mã ở mục 7</td><td>Mỗi mã có thông báo đúng nội dung, lỗi gắn với ô/trường gây lỗi</td><td><span class="pri must">Bắt buộc</span></td></tr>
+    <tr><td class="id">FE-H07</td><td>Nút tạo khóa ngẫu nhiên, sao chép và tải kết quả .txt</td><td>Dùng endpoint random; tải file đúng UTF-8</td><td><span class="pri should">Nên có</span></td></tr>
+    <tr><td class="id">FE-H08</td><td>Chế độ "Xem từng bước" cho demo/báo cáo</td><td>Liệt kê vector từng khối, phép nhân, kết quả mod 26</td><td><span class="pri should">Nên có</span></td></tr>
+  <tr><td class="id">FE-H09</td><td>Service gọi API Hill (debounce, hủy request cũ, map lỗi mạng)</td><td>Không có request thừa khi gõ nhanh; lỗi mạng có nút thử lại</td><td><span class="pri must">Bắt buộc</span></td></tr>
+    <tr><td class="id">FE-H10</td><td>Responsive và truy cập bằng bàn phím</td><td>Dùng được ở 375 px; mọi thao tác làm được bằng bàn phím, focus hiển thị rõ</td><td><span class="pri should">Nên có</span></td></tr>
+  </table></div>
+</section>
+
+<section id="thu">
+  <h2><small>9</small>Prototype tương tác</h2>
+  <p>Bản chạy thử hành vi mong muốn của tab Hill: phân tích khóa cập nhật khi sửa ô, khóa không hợp lệ thì chặn thao tác, kết quả kèm từng bước. Dùng để tham khảo tương tác và đối chiếu kết quả.</p>
+  <div class="lab">
+    <div class="lab-grid">
+      <div class="pane">
+        <h4 class="k"><span class="dot"></span>Ma trận khóa K</h4>
+        <div class="row">
+          <label for="msel">Cấp m</label>
+          <select id="msel"><option>2</option><option>3</option><option>4</option></select>
+          <button type="button" id="rand">Tạo khóa ngẫu nhiên hợp lệ</button>
+        </div>
+        <div id="matrix" class="matrix" role="group" aria-label="Ma trận khóa"></div>
+        <div id="kstatus" class="status" aria-live="polite"></div>
+        <div id="kmini" class="mini"></div>
+      </div>
+      <div class="pane">
+        <h4 class="p"><span class="dot"></span>Văn bản đầu vào</h4>
+        <textarea id="txt" aria-label="Văn bản đầu vào">HELP</textarea>
+        <div class="row">
+          <button type="button" class="primary" id="doEnc">Mã hóa</button>
+          <button type="button" id="doDec">Giải mã</button>
+          <label><input type="checkbox" id="strip"> Bỏ dấu tiếng Việt</label>
+        </div>
+        <h4 class="c"><span class="dot"></span>Kết quả</h4>
+        <div id="out" class="out" aria-live="polite"></div>
+        <div id="warn" class="warnline"></div>
+        <div id="steps" class="steps"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="test-ui">
+  <h2><small>10</small>Kịch bản kiểm thử giao diện</h2>
+  <div class="tbl"><table>
+    <tr><th>#</th><th>Thao tác</th><th>Kỳ vọng</th></tr>
+    <tr><td class="id">UI01</td><td>Khóa [[3,3],[2,5]], nhập HELP, bấm Mã hóa</td><td>Kết quả DPLE, 2 khối tô màu; panel hiện det 9, (det)⁻¹ 3</td></tr>
+    <tr><td class="id">UI02</td><td>Đổi ô (1,1) thành 2, (1,2) thành 4, hàng 2 thành 1 3</td><td>Panel báo E04 det = 2; nút Mã hóa bị khóa</td></tr>
+    <tr><td class="id">UI03</td><td>Gõ "a" vào một ô khóa</td><td>Viền đỏ tại ô đó, thông báo E03 đúng hàng/cột, không gọi API</td></tr>
+    <tr><td class="id">UI04</td><td>Nhập HELLO, mã hóa</td><td>DPDKKB và cảnh báo W01</td></tr>
+    <tr><td class="id">UI05</td><td>Chuyển sang Giải mã, nhập DPL</td><td>Lỗi E05 trong ResultPanel</td></tr>
+    <tr><td class="id">UI06</td><td>Chế độ từ khóa, nhập HIL</td><td>E09: cần 4 chữ, hiện có 3</td></tr>
+    <tr><td class="id">UI07</td><td>Từ khóa HILL, văn bản HILLCIPHER</td><td>Lưới tự điền [[7,8],[11,11]], kết quả HOQBYAAPHL</td></tr>
+    <tr><td class="id">UI08</td><td>Tải file .pdf, rồi file .txt 2 MB</td><td>E06 cả hai lần, textarea giữ nguyên</td></tr>
+    <tr><td class="id">UI09</td><td>Nhập "Tiếng Việt", mã hóa, rồi bấm nút trong cảnh báo W02</td><td>Lần đầu có W02; sau khi bật bỏ dấu thì không còn W02</td></tr>
+    <tr><td class="id">UI10</td><td>Đổi m từ 2 sang 3</td><td>Lưới 3×3 với khóa ngẫu nhiên hợp lệ, panel báo hợp lệ</td></tr>
+    <tr><td class="id">UI11</td><td>Hover khối "DP" trong kết quả</td><td>Tooltip: [7, 4] · K = [3, 15]</td></tr>
+    <tr><td class="id">UI12</td><td>Gõ nhanh 5 ký tự vào ô khóa</td><td>Chỉ 1 request <code>/key/analyze</code> được gửi sau khi ngừng gõ</td></tr>
+    <tr><td class="id">UI13</td><td>Tắt BE, bấm Mã hóa</td><td>Thông báo mất kết nối, có nút Thử lại</td></tr>
+  </table></div>
+</section>
+
+<section id="nghiem-thu">
+  <h2><small>11</small>Tiêu chí nghiệm thu Frontend</h2>
+  <ul class="ac">
+    <li>Pass toàn bộ UI01–UI13.</li>
+    <li>Tab Hill thống nhất giao diện với tab Caesar; đổi tab không mất văn bản.</li>
+    <li>Khóa không hợp lệ luôn bị chặn trước khi gọi mã hóa/giải mã, lý do hiển thị rõ.</li>
+    <li>Panel phân tích khóa hiển thị det, (det)⁻¹, K*, K⁻¹ khớp dữ liệu BE.</li>
+    <li>Mọi mã lỗi/cảnh báo hiển thị đúng vị trí và đúng câu ở mục lỗi.</li>
+    <li>Dùng được trên màn hình 375 px và hoàn toàn bằng bàn phím.</li>
+  </ul>
+</section>
+
+<section id="ngoai">
+  <h2><small>12</small>Ngoài phạm vi</h2>
+  <ul>
+    <li>Giao diện tấn công bản rõ đã biết, Affine-Hill, m lớn hơn 4.</li>
+    <li>Lưu lịch sử, đăng nhập, chia sẻ kết quả qua link.</li>
+    <li>Tự tính mật mã ở client để chạy offline (FE chỉ gọi BE).</li>
+  </ul>
+</section>
+
+<footer>Scope Frontend: Hệ mã hóa Hill. Dự án Caesar_Cipher. Bản cài đặt tham chiếu chạy hoàn toàn trên trình duyệt.</footer>
+</main>
+</div>
+<script>
+(function(){
+  const A = 65;
+  const mod = (a,n=26)=>((a%n)+n)%n;
+  const gcd = (a,b)=> b===0?Math.abs(a):gcd(b,a%b);
+  function modInverse(a,n=26){
+    let r0=mod(a,n), r1=n, s0=1, s1=0;
+    while(r1!==0){const q=Math.floor(r0/r1);[r0,r1]=[r1,r0-q*r1];[s0,s1]=[s1,s0-q*s1];}
+    return r0===1?mod(s0,n):null;
+  }
+  const minor=(M,i,j)=>M.filter((_,r)=>r!==i).map(row=>row.filter((_,c)=>c!==j));
+  function det(M){
+    if(M.length===1) return M[0][0];
+    let s=0; for(let j=0;j<M.length;j++) s+=(j%2?-1:1)*M[0][j]*det(minor(M,0,j)); return s;
+  }
+  function adj(M){
+    const n=M.length; if(n===1) return [[1]];
+    const out=[];
+    for(let i=0;i<n;i++){out.push([]);for(let j=0;j<n;j++){out[i].push(mod(((i+j)%2?-1:1)*det(minor(M,j,i))));}}
+    return out;
+  }
+  function analyze(K){
+    const d=mod(det(K)), g=gcd(d,26), di=g===1?modInverse(d):null;
+    const ad=adj(K);
+    const inv=di!==null?ad.map(r=>r.map(x=>mod(x*di))):null;
+    return {d,g,di,ad,inv};
+  }
+  const mul=(x,K)=>K[0].map((_,j)=>mod(x.reduce((s,xi,i)=>s+xi*K[i][j],0)));
+  function strip(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D');}
+
+  function run(text,K,dir,doStrip){
+    const m=K.length, warnings=[];
+    if(!text.trim()) return {err:'E01: Nhập văn bản để bắt đầu.'};
+    if(doStrip) text=strip(text);
+    const chars=[...text], pos=[], vals=[];
+    let accented=0;
+    chars.forEach((ch,i)=>{
+      if(/[A-Za-z]/.test(ch)){pos.push(i);vals.push(ch.toUpperCase().charCodeAt(0)-A);}
+      else if(/\p{L}/u.test(ch)) accented++;
+    });
+    if(accented) warnings.push(`W02: ${accented} chữ có dấu được giữ nguyên.`);
+    if(!vals.length) return {err:'E02: Văn bản không có chữ cái A–Z nào.'};
+    const a=analyze(K);
+    if(a.g!==1) return {err:`E04: Khóa không khả nghịch (det = ${a.d}).`};
+    let M=K;
+    if(dir==='dec'){ if(vals.length%m) return {err:`E05: Bản mã có ${vals.length} chữ, không chia hết cho m = ${m}.`}; M=a.inv; }
+    else { let k=0; while(vals.length%m){vals.push(23);k++;} if(k) warnings.push(`W01: Đã thêm ${k} ký tự X để đủ khối.`); }
+    const out=[], log=[];
+    for(let i=0;i<vals.length;i+=m){
+      const b=vals.slice(i,i+m), r=mul(b,M); out.push(...r);
+      log.push(`[${b.join(', ')}] · ${dir==='dec'?'K⁻¹':'K'} = [${r.join(', ')}]  ${b.map(v=>String.fromCharCode(v+A)).join('')} → ${r.map(v=>String.fromCharCode(v+A)).join('')}`);
+    }
+    pos.forEach((p,idx)=>{const up=chars[p]===chars[p].toUpperCase();const c=String.fromCharCode(out[idx]+A);chars[p]=up?c:c.toLowerCase();});
+    let res=chars.join('')+out.slice(pos.length).map(v=>String.fromCharCode(v+A)).join('');
+    return {res,warnings,log};
+  }
+
+  const msel=document.getElementById('msel'), grid=document.getElementById('matrix');
+  const kstatus=document.getElementById('kstatus'), kmini=document.getElementById('kmini');
+  const out=document.getElementById('out'), warn=document.getElementById('warn'), steps=document.getElementById('steps');
+  function build(K){
+    const m=K.length; grid.style.gridTemplateColumns=`repeat(${m},auto)`; grid.innerHTML='';
+    K.forEach((row,i)=>row.forEach((v,j)=>{
+      const inp=document.createElement('input'); inp.type='text'; inp.inputMode='numeric'; inp.value=v;
+      inp.setAttribute('aria-label',`Hàng ${i+1} cột ${j+1}`); inp.addEventListener('input',refresh); grid.appendChild(inp);
+    }));
+    refresh();
+  }
+  function readK(){
+    const m=+msel.value, ins=[...grid.querySelectorAll('input')], K=[];
+    for(let i=0;i<m;i++){K.push([]);for(let j=0;j<m;j++){const s=ins[i*m+j].value.trim();if(!/^-?\d+$/.test(s))return {bad:[i+1,j+1]};K[i].push(mod(parseInt(s,10)));}}
+    return {K};
+  }
+  const fmt=M=>`<span class="m-inline" style="grid-template-columns:repeat(${M.length},auto)">${M.flat().map(x=>`<span>${x}</span>`).join('')}</span>`;
+  let curK=null;
+  function refresh(){
+    const r=readK(); curK=null; kmini.innerHTML='';
+    if(r.bad){kstatus.className='status bad';kstatus.textContent=`E03: Ô hàng ${r.bad[0]} cột ${r.bad[1]} phải là số nguyên.`;return;}
+    const a=analyze(r.K);
+    if(a.g!==1){kstatus.className='status bad';kstatus.textContent=`E04: det K mod 26 = ${a.d}, chia hết cho ${a.d%2===0?2:13}. Khóa không khả nghịch.`;return;}
+    curK=r.K; kstatus.className='status ok'; kstatus.textContent=`Khóa hợp lệ: det = ${a.d}, ƯCLN(${a.d}, 26) = 1, (det)⁻¹ = ${a.di}`;
+    kmini.innerHTML=`<div><span class="lbl">K* (phụ hợp)</span>${fmt(a.ad)}</div><div><span class="lbl">K⁻¹ mod 26</span>${fmt(a.inv)}</div>`;
+  }
+  function go(dir){
+    warn.textContent=''; steps.textContent='';
+    if(!curK){out.textContent='Sửa khóa trước khi chạy.';return;}
+    const r=run(document.getElementById('txt').value,curK,dir,document.getElementById('strip').checked);
+    if(r.err){out.textContent=r.err;return;}
+    out.textContent=r.res; warn.textContent=r.warnings.join('  '); steps.textContent=r.log.join('\n');
+  }
+  function randomKey(m){
+    const I=(i,j)=>i===j?1:0;
+    for(;;){const K=Array.from({length:m},()=>Array.from({length:m},()=>Math.floor(Math.random()*26)));
+      if(gcd(mod(det(K)),26)===1 && !K.every((r,i)=>r.every((v,j)=>v===I(i,j)))) return K;}
+  }
+  msel.addEventListener('change',()=>build(randomKey(+msel.value)));
+  document.getElementById('rand').addEventListener('click',()=>build(randomKey(+msel.value)));
+  document.getElementById('doEnc').addEventListener('click',()=>go('enc'));
+  document.getElementById('doDec').addEventListener('click',()=>go('dec'));
+  build([[3,3],[2,5]]); go('enc');
+})();
+</script>
+</body>
+</html>

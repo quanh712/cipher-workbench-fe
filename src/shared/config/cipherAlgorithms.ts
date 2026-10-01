@@ -1,4 +1,4 @@
-export const cipherAlgorithms = [
+const allCipherAlgorithms = [
   {
     value: "caesar",
     name: "Caesar",
@@ -34,6 +34,21 @@ export const cipherAlgorithms = [
     status: "Khả dụng",
     available: true,
   },
+  {
+    value: "hill",
+    name: "Hill",
+    description: "Biến đổi khối bằng ma trận",
+    status: "Khả dụng",
+    available: true,
+  },
 ] as const;
 
-export type CipherAlgorithm = (typeof cipherAlgorithms)[number]["value"];
+export type CipherAlgorithm = (typeof allCipherAlgorithms)[number]["value"];
+
+// The backend Hill contract is still pending. Enable only in a verified environment.
+export const getCipherAlgorithms = () =>
+  allCipherAlgorithms.filter(
+    ({ value }) => value !== "hill" || import.meta.env.VITE_ENABLE_HILL === "true",
+  );
+
+export const cipherAlgorithms = getCipherAlgorithms();

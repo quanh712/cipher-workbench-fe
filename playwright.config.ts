@@ -3,7 +3,7 @@ import { createIntegrationWebServers } from "./playwright.web-servers";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: "backend-integration.spec.ts",
+  testIgnore: ["backend-integration.spec.ts", "hill.mock.spec.ts", "hill.backend.spec.ts"],
   fullyParallel: true,
   reporter: "html",
   use: {
