@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { CipherMode, InputType } from "../types/cipher";
 import { formatFileSize } from "../utils/formatFileSize";
-import { MAX_TEXT_FILE_BYTES } from "../utils/textFileValidation";
 import { ColorizedText } from "./ColorizedText";
 import { HighlightedTextArea } from "./HighlightedTextArea";
 
@@ -14,7 +13,13 @@ interface CipherInputPanelProps {
   error: string | null;
   disabled: boolean;
   isReadingFile?: boolean;
+  metadataOnly?: boolean;
+  fileAccept?: string;
+  fileAriaLabel?: string;
   fileHint?: string;
+  ariaLabel?: string;
+  textAriaLabel?: string;
+  showErrorWithoutInput?: boolean;
   onInputTypeChange: (value: InputType) => void;
   onTextChange: (value: string) => void;
   onFileChange: (file: File | null) => void;
@@ -24,6 +29,9 @@ interface CipherInputPanelProps {
 }
 
 export function CipherInputPanel(props: CipherInputPanelProps) {
+  const hasInput = props.inputType === "text" ? props.text.length > 0 : Boolean(props.file);
+  const error = hasInput || props.showErrorWithoutInput ? props.error : null;
+  const statusId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -32,7 +40,7 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
   }
 
   return (
-    <section>
+    <section aria-label={props.ariaLabel}>
       <div className="section-label">
         <span>Đầu vào</span>
         <div className="segmented" role="group" aria-label="Nguồn đầu vào">
@@ -45,7 +53,7 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
               disabled={props.disabled}
               aria-pressed={props.inputType === type}
             >
-              {type === "text" ? "Văn bản" : "File .txt"}
+              {type === "text" ? "Văn bản" : props.metadataOnly ? "File" : "File .txt"}
             </button>
           ))}
         </div>
@@ -55,7 +63,9 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
         <div className="panel__header">
           <h2>
             {props.inputType === "file"
-              ? "Tệp văn bản"
+              ? props.metadataOnly
+                ? "Tệp dữ liệu"
+                : "Tệp văn bản"
               : props.mode === "encrypt"
                 ? "Bản rõ"
                 : "Bản mã"}
@@ -94,6 +104,9 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
 
         {props.inputType === "text" ? (
           <HighlightedTextArea
+            ariaLabel={props.textAriaLabel}
+            ariaInvalid={Boolean(error)}
+            ariaDescribedBy={error ? statusId : undefined}
             value={props.text}
             onChange={props.onTextChange}
             disabled={props.disabled}
@@ -104,8 +117,13 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
               ref={fileInputRef}
               className="visually-hidden"
               type="file"
-              aria-label="Chọn file văn bản"
-              accept=".txt,text/plain"
+              aria-label={
+                props.fileAriaLabel ??
+                (props.metadataOnly ? "Chọn file dữ liệu" : "Chọn file văn bản")
+              }
+              accept={props.fileAccept ?? (props.metadataOnly ? undefined : ".txt,text/plain")}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? statusId : undefined}
               disabled={props.disabled}
               onChange={(event) => {
                 selectFile(event.target.files?.[0]);
@@ -115,7 +133,7 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
             {props.file ? (
               <div className="file-card">
                 <div className="file-card__header">
-                  <span className="file-extension">TXT</span>
+                  <span className="file-extension">{props.metadataOnly ? "FILE" : "TXT"}</span>
                   <span className="file-card__meta">
                     <strong>{props.file.name}</strong>
                     <small>{formatFileSize(props.file.size)}</small>
@@ -139,10 +157,12 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
                     </button>
                   </div>
                 </div>
-                <pre className="file-preview" aria-label="Xem trước nội dung file">
-                  <ColorizedText text={props.fileText.slice(0, 5_000)} />
-                  {props.fileText.length > 5_000 ? "\n…" : ""}
-                </pre>
+                {!props.metadataOnly && (
+                  <pre className="file-preview" aria-label="Xem trước nội dung file">
+                    <ColorizedText text={props.fileText.slice(0, 5_000)} />
+                    {props.fileText.length > 5_000 ? "\n…" : ""}
+                  </pre>
+                )}
               </div>
             ) : (
               <div
@@ -164,7 +184,9 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
                   selectFile(event.dataTransfer.files[0]);
                 }}
               >
-                <strong>Kéo thả file .txt vào đây</strong>
+                <strong>
+                  {props.metadataOnly ? "Kéo thả file vào đây" : "Kéo thả file .txt vào đây"}
+                </strong>
                 <span>hoặc</span>
                 <button
                   className="button button--secondary"
@@ -179,7 +201,9 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
                 </button>
                 <small>
                   {props.fileHint ??
-                    `Chỉ nhận .txt · tối đa ${MAX_TEXT_FILE_BYTES / 1024 / 1024} MiB = 5.242.880 byte`}
+                    (props.metadataOnly
+                      ? "Chỉ hiển thị tên và dung lượng file."
+                      : "Chỉ nhận file .txt UTF-8, tối đa 5 MiB")}
                 </small>
               </div>
             )}
@@ -187,19 +211,25 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
         )}
 
         <div
-          className={`status ${props.isReadingFile ? "" : props.inputType === "text" ? (props.text.length === 0 ? "" : props.error ? "status--error" : "status--success") : !props.file ? "" : props.error ? "status--error" : "status--success"}`}
-          role="status"
+          id={statusId}
+          className={`status ${props.isReadingFile ? "" : error ? "status--error" : (props.inputType === "text" ? props.text.length > 0 : Boolean(props.file)) ? "status--success" : ""}`}
+          role={error ? "alert" : "status"}
           aria-live="polite"
         >
-          {props.isReadingFile
-            ? "Đang đọc nội dung file…"
-            : props.inputType === "text" && props.text.length === 0
-              ? "Chưa có dữ liệu"
-              : props.inputType === "file" && !props.file
-                ? "Chưa chọn file"
-                : props.error
-                  ? `! ${props.error}`
-                  : "✓ Đầu vào hợp lệ ở mức sơ bộ."}
+          {props.isReadingFile ? (
+            "Đang đọc nội dung file…"
+          ) : error ? (
+            <>
+              <span aria-hidden="true">! </span>
+              <span>{error}</span>
+            </>
+          ) : props.inputType === "text" && !props.text ? (
+            "Chưa có dữ liệu"
+          ) : props.inputType === "file" && !props.file ? (
+            "Chưa chọn file"
+          ) : (
+            "✓ Đầu vào hợp lệ ở mức sơ bộ."
+          )}
         </div>
       </div>
     </section>

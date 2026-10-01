@@ -71,7 +71,6 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
           fileText={cipher.fileText}
           error={cipher.inputError}
           disabled={cipher.isLoading}
-          fileHint="File .txt UTF-8, tối đa 5 MiB"
           onInputTypeChange={cipher.setInputType}
           onTextChange={cipher.setText}
           onFileChange={cipher.setFile}

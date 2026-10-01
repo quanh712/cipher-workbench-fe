@@ -5,6 +5,12 @@ Frontend tích hợp theo contract chính thức của repo
 
 ## Phiên bản được ghim
 
+- Contract DES: [`31438eb`](https://github.com/kiendt2312/cipher_workbench-be/blob/31438eb49c94cdef570b3ca5afd2c2fff9e73501/repo_docs/frontend-integration.md),
+  nhánh `docs/des-fe-guide`, mục 4.7, 8, 9.2; OpenSpec DES hiện hành và implementation
+  cùng revision. Xem [DES_SPEC.md](DES_SPEC.md). Bật bằng `VITE_ENABLE_DES=true` sau khi
+  build/deploy BE tương thích; PostgreSQL cần migration `0003`. DES demo là cờ riêng,
+  không fallback cho API thật.
+
 - Contract Hill: [`4505ef7`](https://github.com/kiendt2312/cipher_workbench-be/blob/4505ef776d51d6657f26552531a9809e436318b9/repo_docs/frontend-integration.md),
   mục A.7, 4.6, 9.1 và các OpenSpec trong `openspec/changes/add-hill-cipher/specs/`.
   Xem [HILL_SPEC.md](HILL_SPEC.md) cho payload, response, Unicode và giới hạn 5 MiB.
@@ -16,7 +22,7 @@ Frontend tích hợp theo contract chính thức của repo
 - Consumer guide và Backend implementation: [`fb459dd`](https://github.com/kiendt2312/cipher_workbench-be/blob/fb459ddcf35c622250b836f75fb14702b2eb0cf4/repo_docs/frontend-integration.md)
   (`fb459ddcf35c622250b836f75fb14702b2eb0cf4`, cập nhật Playfair ngày 28/09/2026).
 - Nguồn có thẩm quyền: [OpenSpec hiện hành](https://github.com/kiendt2312/cipher_workbench-be/tree/c314fa87bb87ad42ea10cd4fd96889ca176bfe26/openspec/specs)
-  của Backend; `openspec/changes/archive/` chỉ giữ lịch sử quyết định. Mốc này có năm cipher; revision Hill ở trên bổ sung cipher thứ sáu.
+  của Backend; `openspec/changes/archive/` chỉ giữ lịch sử quyết định. Mốc này có năm cipher; revision Hill ở trên bổ sung cipher thứ sáu. DES là cipher thứ bảy, dùng OpenSpec tại revision `31438eb` đã ghim riêng.
 
 Nếu tài liệu FE khác OpenSpec Backend, OpenSpec Backend được ưu tiên và tài liệu FE phải sửa.
 Checkout BE được Compose build sử dụng phải đúng revision đã ghim; đổi nhãn image hoặc
@@ -40,8 +46,9 @@ Checkout BE được Compose build sử dụng phải đúng revision đã ghim;
   Text BE cũng giới hạn 5.242.880 byte UTF-8 trước chuẩn hóa. Copy/download từ result đầy đủ.
 - Analyze/random không ghi history; transform ghi `cipher=hill,source=text`, kể cả nguồn file FE.
   Nếu dùng PostgreSQL, cần migration Hill `0002`; không chỉ đổi image tag.
-- Checkout sibling mặc định còn ở `c314fa8` tại lúc đối chiếu: bản phát hành phải build lại
-  Backend chứa revision Hill, rồi bật `VITE_ENABLE_HILL=true` ở build FE.
+- Checkout sibling đã cập nhật lên `main` tại `80b61b6` ngày 01/10/2026, có cả Hill/DES.
+  Stack local cổng 18081 build lại với `VITE_ENABLE_HILL=true` và `VITE_ENABLE_DES=true`;
+  các môi trường khác cần build lại Backend/Frontend riêng, không tự nhận cập nhật này.
 
 ## Lịch sử PostgreSQL
 

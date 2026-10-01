@@ -55,6 +55,7 @@ test("Hill UI uses Backend blocks and fits desktop and 375px", async ({ page }, 
   );
   await page.getByRole("button", { name: "Chuyển sang nền tối" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({ path: testInfo.outputPath("hill-dark.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
     false,
   );

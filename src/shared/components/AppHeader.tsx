@@ -12,8 +12,8 @@ export function AppHeader({ disabled, onReset }: AppHeaderProps) {
   return (
     <nav className="nav" aria-label="Điều hướng chính">
       <div className="nav__inner">
-        <a className="logo" href="/" aria-label="Cipher Workbench">
-          CIPHER WORKBENCH
+        <a className="logo brand-name" href="/" aria-label="Cipher Workbench">
+          <span className="brand-name__cipher">Cipher</span> <span>Workbench</span>
         </a>
         <div className="nav__actions">
           <ThemeToggle theme={theme} onToggle={toggleTheme} />

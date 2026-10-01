@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CipherMode, NoticeState } from "../../../shared/types/cipher";
+import type { CipherMode, InputType, NoticeState } from "../../../shared/types/cipher";
 import { saveBlob } from "../../../shared/utils/download";
 import { HillApiError } from "../services/hillApi";
 import type { HillGateway } from "../services/hillGateway";
@@ -48,7 +48,9 @@ const KEY_ERRORS = new Set(["E03", "E04", "E08", "E09"]);
 export function useHillCipher(gateway: HillGateway, active: boolean) {
   const [mode, setModeState] = useState<CipherMode>("encrypt");
   const [text, setTextState] = useState("");
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [inputType, setInputTypeState] = useState<InputType>("text");
+  const [file, setFile] = useState<File | null>(null);
+  const [fileText, setFileText] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [m, setM] = useState<HillSize>(2);
@@ -76,9 +78,12 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     [m, keyInputMode, matrix, keyword],
   );
   const fingerprint = keyValidation.payload ? JSON.stringify(keyValidation.payload) : null;
-  const localInputError = useMemo(() => validateHillText(text), [text]);
+  const sourceText = inputType === "file" ? fileText : text;
+  const localInputError = useMemo(() => validateHillText(sourceText), [sourceText]);
   const inputError =
-    localInputError ??
+    (inputType === "file"
+      ? (fileError ?? (!file ? "Chọn file .txt để bắt đầu." : localInputError))
+      : localInputError) ??
     (resultError && ["E01", "E06"].includes(resultError.code) ? resultError.message : null);
   const isBusy = isProcessing || isReadingFile || isRandomizing;
   const canSubmit =
@@ -152,12 +157,11 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
   }
 
   function setText(next: string) {
-    if (isBusy) return;
+    if (isBusy) return false;
     fileVersion.current += 1;
     setTextState(next);
-    setFileName(null);
-    setFileError(null);
     clearResult();
+    return true;
   }
 
   function setMatrixCell(row: number, column: number, raw: string) {
@@ -233,6 +237,26 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     clearResult();
   }
 
+  function setInputType(next: InputType) {
+    if (isBusy || next === inputType) return;
+    setInputTypeState(next);
+    clearResult();
+  }
+
+  function removeFile() {
+    if (isBusy) return;
+    fileVersion.current += 1;
+    setFile(null);
+    setFileText("");
+    setFileError(null);
+    clearResult();
+  }
+
+  function clearInput() {
+    if (inputType === "file") removeFile();
+    else setText("");
+  }
+
   async function loadFile(file: File) {
     if (isBusy) return;
     const error = validateHillFile(file);
@@ -246,8 +270,9 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     try {
       const content = await readHillFile(file);
       if (version !== fileVersion.current) return;
-      setTextState(content);
-      setFileName(file.name);
+      setFileText(content);
+      setFile(file);
+      setInputTypeState("file");
       clearResult();
     } catch {
       if (version === fileVersion.current)
@@ -261,7 +286,7 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     if (!canSubmit || processing.current || !keyValidation.payload || !keyValidation.matrix) return;
     const snapshot = {
       mode,
-      text,
+      text: sourceText,
       payload: keyValidation.payload,
       stripDiacritics: stripOverride,
     };
@@ -330,7 +355,9 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     if (isBusy) return;
     setModeState("encrypt");
     setTextState("HELP");
-    setFileName(null);
+    setInputTypeState("text");
+    setFile(null);
+    setFileText("");
     setFileError(null);
     setM(2);
     setKeyInputMode("grid");
@@ -347,7 +374,9 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     analyzedFingerprint.current = null;
     setModeState("encrypt");
     setTextState("");
-    setFileName(null);
+    setInputTypeState("text");
+    setFile(null);
+    setFileText("");
     setFileError(null);
     setIsReadingFile(false);
     setIsRandomizing(false);
@@ -369,7 +398,12 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     setMode,
     text,
     setText,
-    fileName,
+    inputType,
+    setInputType,
+    file,
+    fileText,
+    removeFile,
+    clearInput,
     fileError,
     isReadingFile,
     loadFile,

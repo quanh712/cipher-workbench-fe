@@ -1,12 +1,14 @@
 import {
+  useEffect,
   useRef,
-  type ChangeEvent,
   type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
+  type SyntheticEvent,
 } from "react";
+import { ColorizedText } from "../../../shared/components/ColorizedText";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
-import { HighlightedTextArea } from "../../../shared/components/HighlightedTextArea";
+import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { Notification } from "../../../shared/components/Notification";
 import type { HillKeyAnalysis, HillMatrix, HillResultSnapshot } from "../types/cipher";
 import { hillTextClusters, isHillLetter } from "../utils/textClusters";
@@ -211,59 +213,72 @@ function KeyPanel({ cipher }: { cipher: Controller }) {
 }
 
 function InputPanel({ cipher }: { cipher: Controller }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  function selectFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) void cipher.loadFile(file);
-    event.target.value = "";
+  async function pasteInput() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (cipher.setText(text))
+        cipher.setNotice({ kind: "success", message: "Đã dán nội dung từ clipboard." });
+    } catch {
+      cipher.setNotice({ kind: "error", message: "Không thể đọc nội dung clipboard." });
+    }
   }
+  async function copyInput() {
+    try {
+      await navigator.clipboard.writeText(
+        cipher.inputType === "file" ? cipher.fileText : cipher.text,
+      );
+      cipher.setNotice({ kind: "success", message: "Đã sao chép đầu vào." });
+    } catch {
+      cipher.setNotice({ kind: "error", message: "Không thể sao chép đầu vào." });
+    }
+  }
+  const error =
+    cipher.inputType === "file"
+      ? (cipher.fileError ?? (cipher.file ? cipher.inputError : null))
+      : cipher.text
+        ? cipher.inputError
+        : null;
   return (
-    <section className="panel hill-input" aria-labelledby="hill-input-title">
-      <div className="panel__header">
-        <h2 id="hill-input-title">{cipher.mode === "encrypt" ? "Bản rõ" : "Bản mã"}</h2>
-        <span className="hill-input__badge">A–Z</span>
-      </div>
-      <div className="hill-panel-body">
-        <HighlightedTextArea
-          value={cipher.text}
-          disabled={cipher.isBusy}
-          ariaLabel="Văn bản đầu vào"
-          ariaInvalid={Boolean(cipher.inputError)}
-          ariaDescribedBy={cipher.inputError ? "hill-input-error" : undefined}
-          onChange={cipher.setText}
-        />
-        {cipher.inputError && (
-          <p id="hill-input-error" className="hill-error" role="alert">
-            {cipher.inputError}
-          </p>
-        )}
-        <div className="hill-input__footer">
-          <span>
-            {cipher.fileName
-              ? `File: ${cipher.fileName}`
-              : `${cipher.text.length} ký tự · .txt UTF-8, tối đa 5 MiB`}
-          </span>
-          <input ref={fileRef} type="file" accept=".txt,text/plain" hidden onChange={selectFile} />
-          <button
-            className="button button--secondary"
-            type="button"
-            disabled={cipher.isBusy}
-            onClick={() => fileRef.current?.click()}
-          >
-            {cipher.isReadingFile ? "Đang đọc…" : "Tải file .txt"}
-          </button>
-        </div>
-        {cipher.fileError && (
-          <p className="hill-error" role="alert">
-            {cipher.fileError}
-          </p>
-        )}
-      </div>
-    </section>
+    <div className="hill-input">
+      <CipherInputPanel
+        ariaLabel={
+          cipher.inputType === "file"
+            ? "Tệp văn bản"
+            : cipher.mode === "encrypt"
+              ? "Bản rõ"
+              : "Bản mã"
+        }
+        textAriaLabel="Văn bản đầu vào"
+        showErrorWithoutInput={cipher.inputType === "file" && Boolean(cipher.fileError)}
+        inputType={cipher.inputType}
+        mode={cipher.mode}
+        text={cipher.text}
+        file={cipher.file}
+        fileText={cipher.fileText}
+        error={error}
+        disabled={cipher.isBusy}
+        isReadingFile={cipher.isReadingFile}
+        onInputTypeChange={cipher.setInputType}
+        onTextChange={cipher.setText}
+        onFileChange={(file) => (file ? void cipher.loadFile(file) : cipher.removeFile())}
+        onClear={cipher.clearInput}
+        onPaste={() => void pasteInput()}
+        onCopy={() => void copyInput()}
+      />
+    </div>
   );
 }
 
 function ResultBlocks({ result }: { result: HillResultSnapshot }) {
+  function positionTooltip(event: SyntheticEvent<HTMLSpanElement>) {
+    const block = event.currentTarget;
+    const tooltip = block.querySelector<HTMLElement>(".hill-result__tooltip");
+    if (!tooltip) return;
+    const bounds = block.getBoundingClientRect();
+    tooltip.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - tooltip.offsetWidth - 12))}px`;
+    tooltip.style.top = `${Math.max(12, Math.min(bounds.bottom + 7, window.innerHeight - tooltip.offsetHeight - 12))}px`;
+  }
+
   const lettersPerBlock = result.key.m;
   const pieces: ReactNode[] = [];
   let pending = "";
@@ -288,8 +303,10 @@ function ResultBlocks({ result }: { result: HillResultSnapshot }) {
           tabIndex={0}
           key={blockIndex}
           aria-label={`Khối ${blockIndex + 1}: ${detail}${matrixDetail}`}
+          onMouseEnter={positionTooltip}
+          onFocus={positionTooltip}
         >
-          {pending}
+          <ColorizedText text={pending} />
           <span className="hill-result__tooltip" aria-hidden="true">
             {detail}
             {matrixDetail}
@@ -301,14 +318,11 @@ function ResultBlocks({ result }: { result: HillResultSnapshot }) {
       blockIndex += 1;
     }
   }
-  if (pending) pieces.push(pending);
+  if (pending) pieces.push(<ColorizedText key="tail" text={pending} />);
   return (
-    <div
-      className={`hill-result__text ${result.mode === "encrypt" ? "hill-result__text--cipher" : "hill-result__text--plain"}`}
-      aria-label="Kết quả"
-    >
+    <pre className="output hill-result__text" aria-label="Kết quả">
       {pieces}
-    </div>
+    </pre>
   );
 }
 
@@ -324,82 +338,90 @@ function ResultPanel({ cipher }: { cipher: Controller }) {
     }
   }
   return (
-    <section className="panel hill-result" aria-labelledby="hill-result-title">
-      <div className="panel__header">
-        <h2 id="hill-result-title">{cipher.mode === "encrypt" ? "Bản mã" : "Bản rõ"}</h2>
-        <div className="button-group">
-          <button
-            type="button"
-            className="button button--secondary"
-            disabled={!result}
-            onClick={() => void copyResult()}
-          >
-            Sao chép
-          </button>
-          <button
-            type="button"
-            className="button button--secondary"
-            disabled={!result}
-            onClick={cipher.downloadResult}
-          >
-            Tải .txt
-          </button>
-          <button
-            type="button"
-            className="button button--secondary"
-            disabled={!result}
-            onClick={cipher.clearResult}
-          >
-            Xóa
-          </button>
+    <section className="hill-result" aria-labelledby="hill-result-title">
+      <div className="section-label">Kết quả</div>
+      <div className="panel">
+        <div className="panel__header">
+          <h2 id="hill-result-title">{cipher.mode === "encrypt" ? "Bản mã" : "Bản rõ"}</h2>
+          <div className="button-group">
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={cipher.isBusy || !result}
+              onClick={cipher.downloadResult}
+            >
+              Tải kết quả
+            </button>
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={cipher.isBusy || !result}
+              onClick={() => void copyResult()}
+            >
+              Sao chép
+            </button>
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={cipher.isBusy || !result}
+              onClick={cipher.clearResult}
+            >
+              Xóa
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="hill-panel-body">
         {result ? (
           <ResultBlocks result={result} />
         ) : (
-          <p className="hill-result__empty">Kết quả sẽ xuất hiện ở đây sau khi xử lý.</p>
+          <pre className="output output--empty hill-result__text">
+            Kết quả sẽ hiển thị ở đây sau khi xử lý.
+          </pre>
         )}
-        {cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code) && (
-          <div className="hill-error" role="alert">
-            {cipher.resultError.message}{" "}
-            {["NETWORK", "SYSTEM"].includes(cipher.resultError.code) && (
-              <button
-                className="button button--secondary"
-                type="button"
-                onClick={() => void cipher.processCipher()}
-              >
-                Thử lại
-              </button>
+        <div
+          className={`status ${cipher.isProcessing ? "" : cipher.resultError ? "status--error" : result ? "status--success" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          {cipher.isProcessing
+            ? "Đang gửi yêu cầu…"
+            : cipher.resultError
+              ? "! Xử lý thất bại"
+              : result
+                ? `✓ Xử lý thành công · ${result.result.length} ký tự`
+                : "Chưa xử lý"}
+        </div>
+        {(Boolean(result?.warnings.length) ||
+          (cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code))) && (
+          <div className="hill-panel-body">
+            {cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code) && (
+              <div className="hill-error" role="alert">
+                {cipher.resultError.message}{" "}
+                {["NETWORK", "SYSTEM"].includes(cipher.resultError.code) && (
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    onClick={() => void cipher.processCipher()}
+                  >
+                    Thử lại
+                  </button>
+                )}
+              </div>
             )}
+            {result?.warnings.map((warning) => (
+              <div className="hill-warning" role="status" key={warning.code}>
+                {warning.message}{" "}
+                {warning.code === "W02" && !cipher.stripDiacritics && (
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={cipher.enableStripAndRetry}
+                  >
+                    Bỏ dấu và thử lại
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-        )}
-        {result?.warnings.map((warning) => (
-          <div className="hill-warning" role="status" key={warning.code}>
-            {warning.message}{" "}
-            {warning.code === "W02" && !cipher.stripDiacritics && (
-              <button
-                type="button"
-                className="button button--secondary"
-                onClick={cipher.enableStripAndRetry}
-              >
-                Bỏ dấu và thử lại
-              </button>
-            )}
-          </div>
-        ))}
-        {result && (
-          <details className="hill-steps">
-            <summary>Xem từng bước ({result.blocks.length} khối)</summary>
-            <ol>
-              {result.blocks.map((block, index) => (
-                <li key={index}>
-                  <strong>Khối {index + 1}</strong> [{block.input.join(", ")}] ·{" "}
-                  {result.mode === "encrypt" ? "K" : "K⁻¹"} = [{block.output.join(", ")}] (mod 26)
-                </li>
-              ))}
-            </ol>
-          </details>
         )}
       </div>
     </section>
@@ -408,7 +430,8 @@ function ResultPanel({ cipher }: { cipher: Controller }) {
 
 function AnalysisPanel({ cipher }: { cipher: Controller }) {
   const analysis = cipher.analysis;
-  const data = cipher.result?.key ?? (analysis.status === "valid" ? analysis.data?.result : null);
+  const result = cipher.result;
+  const data = result?.key ?? (analysis.status === "valid" ? analysis.data?.result : null);
   return (
     <section className="panel hill-analysis" aria-labelledby="hill-analysis-title">
       <div className="panel__header">
@@ -453,14 +476,46 @@ function AnalysisPanel({ cipher }: { cipher: Controller }) {
               {warning.message}
             </p>
           ))}
+        {result && (
+          <details className="hill-steps">
+            <summary>Xem từng bước ({result.blocks.length} khối)</summary>
+            <ol>
+              {result.blocks.map((block, index) => (
+                <li key={index}>
+                  <strong>Khối {index + 1}</strong> [{block.input.join(", ")}] ·{" "}
+                  {result.mode === "encrypt" ? "K" : "K⁻¹"} = [{block.output.join(", ")}] (mod 26)
+                </li>
+              ))}
+            </ol>
+          </details>
+        )}
       </div>
     </section>
   );
 }
 
 export function HillWorkspace({ cipher }: { cipher: Controller }) {
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    const input = workspace?.querySelector(
+      ".hill-input .highlighted-input, .hill-input .file-picker, .hill-input .file-card",
+    );
+    if (!workspace || !input) return;
+
+    const observer = new ResizeObserver(() => {
+      workspace.style.setProperty(
+        "--hill-result-height",
+        `${input.getBoundingClientRect().height}px`,
+      );
+    });
+    observer.observe(input);
+    return () => observer.disconnect();
+  }, [cipher.inputType, cipher.file]);
+
   return (
-    <div className="cipher-workspace hill-workspace">
+    <div ref={workspaceRef} className="cipher-workspace hill-workspace">
       <CipherModeSelector value={cipher.mode} disabled={cipher.isBusy} onChange={cipher.setMode} />
       <div className="helper-row">
         <span>

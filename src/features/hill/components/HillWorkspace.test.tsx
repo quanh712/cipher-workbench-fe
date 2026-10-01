@@ -37,8 +37,9 @@ describe("Hill workspace", () => {
       "aria-label",
       expect.stringContaining("K=[3, 3] [2, 5]"),
     );
-    await user.click(within(result).getByText("Xem từng bước (2 khối)"));
-    expect(within(result).getByText(/\[7, 4\] · K = \[3, 15\]/)).toBeVisible();
+    const analysis = screen.getByRole("region", { name: "Phân tích khóa" });
+    await user.click(within(analysis).getByText("Xem từng bước (2 khối)"));
+    expect(within(analysis).getByText(/\[7, 4\] · K = \[3, 15\]/)).toBeVisible();
     expect(screen.getByText("ƯCLN(det K, 26)").parentElement).toHaveTextContent("1");
     await user.click(within(result).getByRole("button", { name: "Sao chép" }));
     expect(writeText).toHaveBeenCalledWith("DPLE");
@@ -83,12 +84,14 @@ describe("Hill workspace", () => {
     expect(screen.getByText("Từ khóa cần đúng 4 chữ cái, hiện có 3.")).toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: /Từ khóa/ }), "L");
     expect(screen.getByRole("textbox", { name: "Khóa hàng 1 cột 1" })).toHaveValue("7");
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.click(screen.getByRole("button", { name: "File .txt" }));
+    const fileInput = screen.getByLabelText("Chọn file văn bản");
     await user.upload(fileInput, new File(["HELP"], "text.txt"));
-    expect(await screen.findByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELP");
+    expect(await screen.findByLabelText("Xem trước nội dung file")).toHaveTextContent("HELP");
     await user.upload(fileInput, new File(["oops"], "bad.pdf"));
     expect(screen.getByText("Chỉ chấp nhận file .txt.")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELP");
+    expect(screen.getByLabelText("Xem trước nội dung file")).toHaveTextContent("HELP");
+    expect(screen.getByText("text.txt")).toBeInTheDocument();
   });
 
   it("uses Backend random key on size change and retries W02 with stripDiacritics", async () => {
@@ -154,11 +157,13 @@ describe("Hill workspace", () => {
     });
     render(<Harness gateway={gateway} />);
     await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "DPL");
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.click(screen.getByRole("button", { name: "File .txt" }));
+    const fileInput = screen.getByLabelText("Chọn file văn bản");
     await user.upload(fileInput, new File([new Uint8Array([0xff])], "bad.txt"));
     expect(
       await screen.findByText("Không đọc được file. Lưu lại file với mã hóa UTF-8."),
     ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Văn bản" }));
     expect(screen.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("DPL");
     await user.click(screen.getByRole("radio", { name: /Giải mã/ }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Giải mã" })).toBeEnabled());
@@ -293,4 +298,34 @@ describe("Hill workspace", () => {
       }
     },
   );
+  it("keeps text/file drafts separate and sends the full file through JSON, beyond the preview", async () => {
+    const user = userEvent.setup();
+    const gateway = createHillGateway();
+    render(<Harness gateway={gateway} />);
+    await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "Typed draft");
+    await user.click(screen.getByRole("button", { name: "File .txt" }));
+    expect(screen.getByText("Kéo thả file .txt vào đây")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mã hóa" })).toBeDisabled();
+    const content = "HELP" + "!".repeat(6000);
+    await user.upload(screen.getByLabelText("Chọn file văn bản"), new File([content], "full.txt"));
+    const preview = await screen.findByLabelText("Xem trước nội dung file");
+    expect(preview.textContent).toBe(content.slice(0, 5000) + "\n…");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mã hóa" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Mã hóa" }));
+    expect(gateway.process).toHaveBeenCalledWith(
+      "encrypt",
+      expect.objectContaining({ text: content }),
+    );
+    const filePanel = screen.getByRole("region", { name: "Tệp văn bản" });
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    await user.click(within(filePanel).getByRole("button", { name: "Sao chép" }));
+    expect(writeText).toHaveBeenCalledWith(content);
+    await user.click(screen.getByRole("button", { name: "Văn bản" }));
+    expect(screen.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("Typed draft");
+    await user.click(screen.getByRole("button", { name: "File .txt" }));
+    expect(screen.getByText("full.txt")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Gỡ file" }));
+    expect(screen.getByText("Kéo thả file .txt vào đây")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mã hóa" })).toBeDisabled();
+  });
 });

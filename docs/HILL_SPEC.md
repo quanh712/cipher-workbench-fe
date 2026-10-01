@@ -74,12 +74,13 @@ thành `DPDKKB` sau khi thêm một `X` và báo W01. Các vector chỉ là orac
 - Trong tab Hill, desktop có hai cột: **trái** là văn bản, khóa, tùy chọn bỏ dấu và nút chính;
   **phải** là kết quả và panel phân tích khóa. Ở 375 px, xếp chồng theo thứ tự trái rồi phải,
   không cuộn ngang toàn trang.
-- Màu có nghĩa nhất quán với HTML: xanh dương cho bản rõ, hồng cho khóa, xanh lá cho bản mã.
-  Lỗi/cảnh báo dùng thêm chữ và biểu tượng, không chỉ dựa vào màu. Cả hai theme phải giữ độ tương
-  phản và focus nhìn rõ.
+- Theo yêu cầu UI cập nhật: đầu vào và kết quả dùng chung panel, header, typography, padding,
+  status và màu ký tự hoa/thường/khác của Workbench. Bỏ viền màu sáng riêng của các panel Hill,
+  khung lồng bên trong vùng văn bản và viền sáng quanh khối kết quả. Khối vẫn có tooltip/focus;
+  viền control trung tính, trạng thái lỗi và focus bàn phím giữ rõ trong cả hai theme.
 - Kết quả tô theo từng khối. Hover **hoặc focus bằng bàn phím** lên khối hiển thị vector đầu vào,
   ma trận đang áp dụng và vector đầu ra từ `blocks`; không cần FE tính lại tích ma trận.
-- `StepViewer` mặc định thu gọn; khi mở, liệt kê từng khối, vector, `x·K` hoặc `y·K⁻¹`, kết quả
+- `StepViewer` nằm trong ô **Phân tích khóa**, dưới thông tin khóa, mặc định thu gọn; khi mở, liệt kê từng khối, vector, `x·K` hoặc `y·K⁻¹`, kết quả
   modulo 26. Sao chép và tải `.txt` dùng đúng chuỗi `result` của Backend, không dùng chuỗi đã
   tô màu hoặc định dạng cho demo.
 - Lưới ma trận đi bằng Tab và phím mũi tên; tất cả control dùng được bằng bàn phím. Tooltip,
@@ -87,7 +88,7 @@ thành `DPDKKB` sau khi thêm một `X` và báo W01. Các vector chỉ là orac
 
 ## 5. Draft, chuyển tab và luồng tương tác
 
-Draft Hill tối thiểu gồm `text`, `mode`, `m`, `keyInputMode`, `matrix` dạng chuỗi thô,
+Draft Hill tối thiểu gồm `inputType`, `text`, `file`, `fileText`, `mode`, `m`, `keyInputMode`, `matrix` dạng chuỗi thô,
 `keyword`, `stripDiacritics`, `keyAnalysis`, `result`, `warnings`, `fileError` và trạng thái request.
 Giữ chuỗi thô của từng ô để báo E03 đúng hàng/cột trước khi parse.
 
@@ -126,11 +127,16 @@ Giữ chuỗi thô của từng ô để báo E03 đúng hàng/cột trước kh
 
 ### File `.txt`
 
-- File có đuôi `.txt` không phân biệt hoa/thường và tối đa **5 MiB = 5.242.880 byte gốc**. Đọc tại client
-  bằng UTF-8 nghiêm ngặt; nội dung hợp lệ được đưa vào textarea rồi gửi qua JSON như văn bản gõ.
-  Hill không dùng endpoint file của các cipher trước.
+- Hill dùng chung `CipherInputPanel` với các thuật toán khác: nguồn **Văn bản / File .txt**,
+  vùng chọn/kéo thả file (chú thích chung: **Chỉ nhận file .txt UTF-8, tối đa 5 MiB**),
+  thẻ tên và kích thước, xem trước tối đa 5.000 ký tự, đổi/gỡ file,
+  sao chép và xóa. Văn bản gõ và file có draft riêng; chuyển nguồn không làm mất draft.
+- File có đuôi `.txt` không phân biệt hoa/thường và tối đa **5 MiB = 5.242.880 byte gốc**.
+  Đọc tại client bằng UTF-8 nghiêm ngặt. Khi chọn nguồn file, toàn bộ `fileText` gửi qua JSON
+  text như contract Hill; không gửi bản xem trước bị cắt và không gọi endpoint file.
 - Sai đuôi báo `Chỉ chấp nhận file .txt.`; vượt giới hạn báo E06. Không giải mã được UTF-8 báo E07. Các trường hợp này giữ
-  nguyên textarea và result draft trước khi thử file. File rỗng dẫn đến E01 sau khi đọc.
+  nguyên draft văn bản, file hợp lệ và result trước khi thử file. Lỗi ở vùng input khóa submit
+  cho nguồn file đến khi chọn lại/gỡ file; file rỗng dẫn đến E01 sau khi đọc.
 - Văn bản gõ cũng giới hạn 5.242.880 byte UTF-8 trước normalization hoặc bỏ dấu. Kiểm tra
   giới hạn trước kiểm tra blank theo precedence Backend. Đúng ngưỡng được nhận; thêm một byte
   báo `Văn bản vượt quá giới hạn 5 MiB.` và khóa nút chính.
@@ -274,9 +280,8 @@ sau lỗi.
 | `src/app/styles.css`                                       | CSS `.hill-*` và semantic color tokens cho light/dark, responsive 375 px.                          |
 
 Dùng lại `CipherModeSelector`, `HighlightedTextArea`, khung panel/nút/theme và `saveBlob` từ
-shared. `CipherInputPanel` hiện áp dụng nguồn file riêng cho endpoint file nên **không dùng
-nguyên trạng** cho Hill chỉ gửi JSON; tạo input Hill trong feature hoặc mở rộng shared bằng props mà
-không đổi hành vi các cipher cũ. `readJsonSuccess` hiện chỉ nhận `{success:true,result}` nên
+shared. Hill dùng chung `CipherInputPanel`; hook Hill chọn `text` hoặc `fileText` của nguồn hiện tại
+để gửi JSON. UI file chung không quyết định transport Backend. `readJsonSuccess` hiện chỉ nhận `{success:true,result}` nên
 Hill cần parser response riêng cho `blocks/key/warnings`. Test mock ở gateway/fetch boundary;
 không đặt mock trong runtime.
 
@@ -296,7 +301,8 @@ fileError: null | E06 | E07
 ```
 
 `analysis` lưu fingerprint của khóa đã được Backend phân tích. `canSubmit` chỉ đúng khi
-`text.trim()` khác rỗng, validation khóa FE đạt, `analysis=valid` **cho đúng fingerprint khóa
+nội dung nguồn hiện tại (`text` hoặc toàn bộ `fileText`) hợp lệ và không có lỗi file,
+validation khóa FE đạt, `analysis=valid` **cho đúng fingerprint khóa
 hiện tại**, không đang đọc file/random/analyze/process và không có request submit khác. Ngay khi
 sửa khóa, vô hiệu analysis cũ và khóa nút chính, kể cả trong 300 ms debounce. E04 là `invalid`;
 lỗi mạng/5xx của analyze là `error` với nút Thử lại. Không coi response của khóa cũ là hợp lệ

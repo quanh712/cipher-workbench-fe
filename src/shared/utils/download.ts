@@ -3,6 +3,9 @@ export function saveBlob(blob: Blob, filename: string) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  try {
+    link.click();
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
 }

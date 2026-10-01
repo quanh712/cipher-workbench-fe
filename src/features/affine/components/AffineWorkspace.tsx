@@ -72,7 +72,6 @@ export function AffineWorkspace({ cipher }: AffineWorkspaceProps) {
           error={cipher.inputError}
           disabled={cipher.isBusy}
           isReadingFile={cipher.isReadingFile}
-          fileHint="File .txt UTF-8, tối đa 5 MiB"
           onInputTypeChange={cipher.setInputType}
           onTextChange={cipher.setText}
           onFileChange={cipher.setFile}

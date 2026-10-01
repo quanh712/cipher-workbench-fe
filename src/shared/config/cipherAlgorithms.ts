@@ -41,14 +41,31 @@ const allCipherAlgorithms = [
     status: "Khả dụng",
     available: true,
   },
+  {
+    value: "des",
+    name: "DES",
+    description: "Mã khối Feistel 16 vòng",
+    status: "Demo",
+    available: false,
+  },
 ] as const;
 
 export type CipherAlgorithm = (typeof allCipherAlgorithms)[number]["value"];
 
-// The backend Hill contract is still pending. Enable only in a verified environment.
+// Enable gated ciphers only with their verified Backend revision.
 export const getCipherAlgorithms = () =>
-  allCipherAlgorithms.filter(
-    ({ value }) => value !== "hill" || import.meta.env.VITE_ENABLE_HILL === "true",
-  );
+  allCipherAlgorithms
+    .filter(
+      ({ value }) =>
+        (value !== "hill" || import.meta.env.VITE_ENABLE_HILL === "true") &&
+        (value !== "des" ||
+          import.meta.env.VITE_ENABLE_DES === "true" ||
+          import.meta.env.VITE_ENABLE_DES_DEMO === "true"),
+    )
+    .map((algorithm) =>
+      algorithm.value === "des" && import.meta.env.VITE_ENABLE_DES === "true"
+        ? { ...algorithm, status: "Khả dụng", available: true }
+        : algorithm,
+    );
 
 export const cipherAlgorithms = getCipherAlgorithms();

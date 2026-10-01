@@ -1,3 +1,7 @@
+import { desApi } from "../features/des/services/desApi";
+import { DesWorkspace } from "../features/des/components/DesWorkspace";
+import { useDesCipher } from "../features/des/hooks/useDesCipher";
+import { createDesDemoGateway } from "../features/des/demo/createDesDemoGateway";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AffineWorkspace } from "../features/affine/components/AffineWorkspace";
 import { useAffineCipher } from "../features/affine/hooks/useAffineCipher";
@@ -21,6 +25,13 @@ import { AppHeader } from "../shared/components/AppHeader";
 import { getCipherAlgorithms } from "../shared/config/cipherAlgorithms";
 import type { CipherAlgorithm } from "../shared/types/cipher";
 
+const desGateway =
+  import.meta.env.VITE_ENABLE_DES === "true"
+    ? desApi
+    : import.meta.env.VITE_ENABLE_DES_DEMO === "true"
+      ? createDesDemoGateway()
+      : null;
+
 export function App() {
   const cipher = useCaesarCipher();
   const vigenere = useVigenereCipher();
@@ -30,6 +41,7 @@ export function App() {
   const [algorithm, setAlgorithm] = useState<CipherAlgorithm>("caesar");
   const [showHistory, setShowHistory] = useState(false);
   const hill = useHillCipher(hillApi, algorithm === "hill" && !showHistory);
+  const des = useDesCipher(desGateway, algorithm === "des" && !showHistory);
   const hillOpened = useRef(false);
   const cipherAlgorithms = getCipherAlgorithms();
   const [historyAvailable, setHistoryAvailable] = useState(false);
@@ -39,7 +51,8 @@ export function App() {
     playfair.isLoading ||
     affine.isBusy ||
     columnar.isBusy ||
-    hill.isBusy;
+    hill.isBusy ||
+    des.isBusy;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -62,6 +75,7 @@ export function App() {
     affine.resetAll();
     columnar.resetAll();
     hill.resetAll();
+    des.resetAll();
     hillOpened.current = false;
   }
 
@@ -75,8 +89,9 @@ export function App() {
     affine.setNotice(null);
     columnar.clearResult();
     hill.clearResult();
+    des.clearResult();
     if (nextAlgorithm === "hill" && !hillOpened.current) {
-      const drafts = { caesar: cipher, vigenere, playfair, affine, columnar };
+      const drafts = { caesar: cipher, vigenere, playfair, affine, columnar, des };
       const current = algorithm === "hill" ? null : drafts[algorithm];
       hill.seedText(current?.inputType === "text" ? current.text : "");
       hillOpened.current = true;
@@ -91,6 +106,7 @@ export function App() {
     affine: <AffineWorkspace cipher={affine} />,
     columnar: <ColumnarWorkspace cipher={columnar} />,
     hill: <HillWorkspace cipher={hill} />,
+    des: <DesWorkspace cipher={des} />,
   };
 
   return (
@@ -99,7 +115,9 @@ export function App() {
       <main className="page">
         <header className="hero">
           <div className="hero__title">
-            <h1>Cipher Workbench</h1>
+            <h1 className="brand-name" aria-label="Cipher Workbench">
+              <span className="brand-name__cipher">Cipher</span> <span>Workbench</span>
+            </h1>
           </div>
           <p>
             Mã hóa và giải mã Caesar, Vigenère, Playfair, Affine,
@@ -107,6 +125,10 @@ export function App() {
               ? " Hệ mã hàng hoặc Hill"
               : " hoặc Hệ mã hàng"}{" "}
             bằng kết quả từ Backend.
+            {cipherAlgorithms.some(({ value }) => value === "des") &&
+              (desGateway?.kind === "api"
+                ? " DES dùng kết quả từ Backend."
+                : " DES demo dùng dữ liệu mô phỏng riêng.")}
           </p>
         </header>
         <div className="workspace">

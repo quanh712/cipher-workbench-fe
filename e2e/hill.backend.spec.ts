@@ -31,7 +31,7 @@ test("default matrix, punctuation padding, decrypt, tooltip and full download", 
   );
   await expect(page.getByText(encrypted.warnings[0].message, { exact: true })).toBeVisible();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Tải .txt", exact: true }).click();
+  await page.getByRole("button", { name: "Tải kết quả", exact: true }).click();
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
@@ -126,27 +126,54 @@ test("random m=3/4 returns full analysis without a second analyze request", asyn
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });
 
-test("file uses JSON, strips one BOM, rejects invalid UTF-8, and preserves draft", async ({
+test("file picker uses JSON, strips one BOM, rejects invalid files and preserves drafts", async ({
   page,
-}) => {
+}, testInfo) => {
   await openHill(page);
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles({ name: "hill.txt", mimeType: "text/plain", buffer: Buffer.from("\uFEFFHELP") });
-  await expect(page.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELP");
-  expect((await process(page, "encrypt", "HELP")).result).toBe("DPLE");
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles({ name: "bad.txt", mimeType: "text/plain", buffer: Buffer.from([0xff]) });
+  await page.getByRole("textbox", { name: "Văn bản đầu vào" }).fill("Typed draft");
+  await page.getByRole("button", { name: "File .txt", exact: true }).click();
+  await expect(page.getByText("Kéo thả file .txt vào đây")).toBeVisible();
+  const fileInput = page.getByLabel("Chọn file văn bản");
+  await page.locator(".hill-input .file-picker").evaluate((element) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["\uFEFFHELP"], "hill.txt", { type: "text/plain" }));
+    element.dispatchEvent(
+      new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }),
+    );
+  });
+  await expect(page.getByLabel("Xem trước nội dung file")).toHaveText("HELP");
+  await page.screenshot({ path: testInfo.outputPath("hill-file-picker.png"), fullPage: true });
+  const response = page.waitForResponse((r) => r.url().endsWith("/api/hill/encrypt"));
+  await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
+  const encrypted = await response;
+  expect(encrypted.request().postDataJSON().text).toBe("HELP");
+  expect(encrypted.request().headers()["content-type"]).toBe("application/json");
+  expect((await encrypted.json()).result).toBe("DPLE");
+  await fileInput.setInputFiles({
+    name: "bad.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from([0xff]),
+  });
   await expect(page.getByText("Không đọc được file. Lưu lại file với mã hóa UTF-8.")).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELP");
-  await page.locator('input[type="file"]').setInputFiles({
+  await expect(page.getByLabel("Xem trước nội dung file")).toHaveText("HELP");
+  await fileInput.setInputFiles({
     name: "large.txt",
     mimeType: "text/plain",
     buffer: Buffer.alloc(5_242_881, 65),
   });
   await expect(page.getByText("Văn bản vượt quá giới hạn 5 MiB.")).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELP");
+  await expect(page.getByLabel("Xem trước nội dung file")).toHaveText("HELP");
+  await fileInput.setInputFiles({
+    name: "changed.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("DPLE"),
+  });
+  await expect(page.getByText("changed.txt", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Xem trước nội dung file")).toHaveText("DPLE");
+  await page.getByRole("button", { name: "Gỡ file", exact: true }).click();
+  await expect(page.getByText("Kéo thả file .txt vào đây")).toBeVisible();
+  await page.getByRole("button", { name: "Văn bản", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("Typed draft");
 });
 
 test("Backend text boundary is exactly 5 MiB before normalization", async ({ request }) => {

@@ -141,6 +141,24 @@ tải xuống dùng nguyên kết quả đó.
 
 ## Kiểm thử
 
+### DES — API thật và demo
+
+DES hỗ trợ Text/HEX, ECB/CBC với IV, file `.txt` UTF-8 tối đa 5 MiB, warnings và tải file
+chính thức từ Backend. Contract ghim tại BE `31438eb`, chi tiết ở [spec DES](docs/DES_SPEC.md).
+
+```bash
+VITE_ENABLE_HILL=true VITE_ENABLE_DES=true npm run dev
+BACKEND_CONTEXT=/path/to/backend-at-31438eb npm run test:e2e:des:integration
+```
+
+BE phải có DES trước khi bật cờ FE; checkout sibling cũ không tự cập nhật. PostgreSQL cần
+migration `0003`. Docker/Compose nhận build arg `VITE_ENABLE_DES` (mặc định false).
+
+Demo độc lập vẫn dùng `VITE_ENABLE_DES_DEMO=true npm run dev` và `npm run test:e2e:des`.
+Demo có nhãn mô phỏng, dùng fixture cố định và không gọi API. Nếu bật cả hai cờ, API thật
+được ưu tiên; không dùng demo làm fallback khi API lỗi. Integration chạy desktop/375 px trên
+Vite cổng 4178; bộ demo dùng 4176/4177.
+
 ### Kiểm tra trước khi tạo commit
 
 ```bash

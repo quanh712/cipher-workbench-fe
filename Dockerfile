@@ -9,7 +9,9 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 
-RUN npm run build
+ARG VITE_ENABLE_HILL=false
+ARG VITE_ENABLE_DES=false
+RUN VITE_ENABLE_HILL="${VITE_ENABLE_HILL}" VITE_ENABLE_DES="${VITE_ENABLE_DES}" npm run build
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 
