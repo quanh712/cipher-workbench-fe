@@ -47,11 +47,27 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
         </p>
       )}
       <CipherModeSelector value={cipher.mode} disabled={cipher.isBusy} onChange={cipher.setMode} />
+      <div className="helper-row">
+        <span>
+          DES xử lý block 64 bit, dùng khóa 64 bit với 56 bit hiệu dụng và cấu trúc Feistel 16 vòng.
+          Giải mã dùng khóa con theo thứ tự ngược.
+        </span>
+        <button
+          className="button button--secondary"
+          type="button"
+          disabled={cipher.isBusy}
+          onClick={cipher.loadExample}
+        >
+          Tạo ví dụ
+        </button>
+      </div>
       {!cipher.isDemo && (
         <section className="des-options" aria-label="Tùy chọn DES">
           {cipher.inputType === "text" && (
             <label>
-              Định dạng {cipher.mode === "encrypt" ? "bản rõ" : "kết quả"}
+              <span className="section-label">
+                Định dạng {cipher.mode === "encrypt" ? "bản rõ" : "kết quả"}
+              </span>
               <select
                 aria-label="Định dạng DES"
                 value={cipher.format}
@@ -66,7 +82,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
             </label>
           )}
           <label>
-            Chế độ mã khối
+            <span className="section-label">Chế độ mã khối</span>
             <select
               aria-label="Chế độ mã khối DES"
               value={cipher.cipherMode}
@@ -141,7 +157,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
             disabled={cipher.isBusy}
             onChange={cipher.setKey}
           />
-          <div className="button-group">
+          <div className="button-group des-actions">
             <button
               className="button button--primary"
               type="button"
@@ -162,13 +178,6 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
         </div>
         <div className="des-column">
           <DesResultPanel cipher={cipher} />
-          <section className="config-section" aria-label="Giới thiệu DES">
-            <h2>DES — Data Encryption Standard</h2>
-            <p>
-              DES xử lý block 64 bit, dùng khóa 64 bit với 56 bit hiệu dụng và cấu trúc Feistel 16
-              vòng. Giải mã dùng khóa con theo thứ tự ngược.
-            </p>
-          </section>
         </div>
       </div>
       {cipher.notice && (

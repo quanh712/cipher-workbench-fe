@@ -28,7 +28,9 @@
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --canvas: #ffffff;
+  --canvas: #f3f6f8;
+  --background-dot: #cad4de;
+  --background-hex: #94a8b9;
   --panel: #ffffff;
   --text: #18181b;
   --control-text: #3f3f46;
@@ -60,6 +62,8 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --canvas: #141821;
+  --background-dot: #354253;
+  --background-hex: #607890;
   --panel: #1b202b;
   --text: #f3f5f7;
   --control-text: #dfe3e8;
@@ -139,6 +143,8 @@ textarea,
 }
 
 .nav {
+  position: relative;
+  z-index: 1;
   border-bottom: 1px solid var(--border);
   background: var(--canvas);
 }
@@ -169,6 +175,64 @@ textarea,
   font-weight: 700;
   letter-spacing: 0.015em;
   text-transform: uppercase;
+}
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.cipher-mark {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.hero .cipher-mark {
+  width: 46px;
+  height: 46px;
+}
+.cipher-mark__outer,
+.cipher-mark__inner {
+  transform-origin: 32px 32px;
+  transition: rotate 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.brand-lockup:hover .cipher-mark__outer,
+.brand-lockup:focus-visible .cipher-mark__outer {
+  rotate: 90deg;
+}
+.brand-lockup:hover .cipher-mark__inner,
+.brand-lockup:focus-visible .cipher-mark__inner {
+  rotate: -120deg;
+}
+.cipher-mark--busy .cipher-mark__outer {
+  animation: cipher-ring-turn 5s linear infinite;
+}
+.cipher-mark--busy .cipher-mark__inner {
+  animation: cipher-ring-turn 7s linear infinite reverse;
+}
+@keyframes cipher-ring-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 420px) {
+  .logo .brand-name {
+    display: grid;
+    gap: 1px;
+    font-size: 18px;
+    line-height: 1.05;
+  }
+  .logo .cipher-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .hero .cipher-mark {
+    width: 36px;
+    height: 36px;
+  }
+  .hero h1.brand-lockup {
+    font-size: 26px;
+  }
 }
 .nav__actions {
   display: flex;
@@ -212,11 +276,15 @@ textarea,
 }
 
 .page {
+  position: relative;
+  z-index: 1;
   width: min(1180px, calc(100% - 40px));
   margin: auto;
   padding: 40px 0 64px;
 }
 .hero {
+  position: relative;
+  isolation: isolate;
   padding-bottom: 24px;
   border-bottom: 1px solid var(--border);
 }
@@ -236,6 +304,40 @@ textarea,
   max-width: 760px;
   margin: 0;
   color: var(--muted);
+  line-height: 1.6;
+}
+.hero__title,
+.hero p {
+  position: relative;
+  z-index: 1;
+}
+.workbench-background {
+  pointer-events: none;
+}
+.workbench-background--dots {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.workbench-background--hex {
+  position: absolute;
+  top: -24px;
+  right: 0;
+  width: min(60%, 650px);
+  height: calc(100% + 24px);
+  opacity: 0.5;
+  mask-image:
+    linear-gradient(to right, transparent, #000 65%),
+    linear-gradient(to bottom, #000 60%, transparent);
+  mask-composite: intersect;
+  z-index: 0;
+}
+@media (max-width: 640px) {
+  .workbench-background--hex {
+    width: 100%;
+    opacity: 0.25;
+  }
 }
 .workspace {
   padding-top: 24px;
@@ -1622,6 +1724,17 @@ textarea,
   flex-direction: column;
   gap: 24px;
 }
+.des-actions {
+  align-items: center;
+  gap: 12px;
+}
+.des-actions .button {
+  height: 44px;
+  margin-top: 0;
+}
+.des-actions .button--secondary {
+  padding: 10px 16px;
+}
 .des-demo-banner {
   padding: 12px 16px;
   border: 1px solid var(--border);
@@ -1637,6 +1750,7 @@ textarea,
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
+  margin-bottom: 24px;
 }
 .des-options label {
   display: flex;
@@ -1654,7 +1768,7 @@ textarea,
   background: var(--surface);
   color: var(--text);
 }
-.des-options span {
+.des-options span:not(.section-label) {
   font-size: 12px;
 }
 .des-warning {

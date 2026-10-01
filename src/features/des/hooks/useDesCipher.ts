@@ -261,6 +261,13 @@ export function useDesCipher(gateway: DesGateway | null, active = true) {
     setKey: (key: string) => mutate({ key }),
     setFile: (file: File | null) => mutate({ file }),
     resetInput: () => mutate(draft.inputType === "text" ? { text: "" } : { file: null }),
+    loadExample: () =>
+      mutate({
+        ...emptyDraft,
+        text: "0123456789ABCDEF",
+        key: "133457799BBCDFF1",
+        format: "hex",
+      }),
     clearResult,
     resetAll,
     processCipher,

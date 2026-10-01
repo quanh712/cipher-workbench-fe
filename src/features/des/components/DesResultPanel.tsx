@@ -57,14 +57,20 @@ export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
             {warning.message}
           </p>
         ))}
-        <div className="status" role="status" aria-live="polite">
+        <div
+          className={`status ${cipher.status === "success" ? "status--success" : cipher.status === "error" ? "status--error" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
           {cipher.isBusy
-            ? "Đang xử lý…"
-            : cipher.result
-              ? cipher.isDemo
-                ? "Dữ liệu mô phỏng — chưa tích hợp Backend DES."
-                : "Kết quả từ Backend DES."
-              : "Chưa có kết quả"}
+            ? "Đang gửi yêu cầu…"
+            : cipher.status === "error"
+              ? "! Xử lý thất bại"
+              : cipher.result
+                ? cipher.isDemo
+                  ? "Dữ liệu mô phỏng — chưa tích hợp Backend DES."
+                  : `✓ Xử lý thành công · ${Array.from(cipher.result.text ?? "").length} ký tự`
+                : "Chưa xử lý"}
         </div>
       </div>
     </section>

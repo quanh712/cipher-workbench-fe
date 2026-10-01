@@ -10,6 +10,34 @@ function Harness({ gateway }: { gateway: DesGateway }) {
 }
 
 describe("DES workspace", () => {
+  it("loads a valid example from file/decrypt mode and submits it to the backend", async () => {
+    const process = vi.fn<DesGateway["process"]>().mockResolvedValue({
+      text: "85E813540F0AB405",
+      attachment: null,
+    });
+    render(<Harness gateway={{ kind: "api", process }} />);
+    fireEvent.click(screen.getByRole("radio", { name: /Giải mã/ }));
+    fireEvent.click(screen.getByRole("button", { name: "File" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
+    expect(screen.getByLabelText("Nội dung đầu vào DES")).toHaveValue("0123456789ABCDEF");
+    expect(screen.getByLabelText("Khóa DES")).toHaveValue("133457799BBCDFF1");
+    expect(screen.getByLabelText("Định dạng DES")).toHaveValue("hex");
+    expect(screen.getByLabelText("Chế độ mã khối DES")).toHaveValue("ECB");
+    fireEvent.click(screen.getByRole("button", { name: "Mã hóa" }));
+    await screen.findByText("85E813540F0AB405");
+    expect(process).toHaveBeenCalledWith(
+      {
+        operation: "encrypt",
+        inputMode: "text",
+        text: "0123456789ABCDEF",
+        key: "133457799BBCDFF1",
+        format: "hex",
+        cipherMode: "ECB",
+      },
+      expect.any(AbortSignal),
+    );
+  });
+
   it("shows demo labels and focuses missing input before key", async () => {
     const gateway = createDesGateway();
     render(<Harness gateway={gateway} />);

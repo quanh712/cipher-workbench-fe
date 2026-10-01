@@ -22,6 +22,8 @@ import { HistoryWorkspace } from "../features/history/components/HistoryWorkspac
 import { canShowServerHistory, getHealthStatus } from "../features/history/services/historyApi";
 import { CipherAlgorithmSelector } from "../shared/components/CipherAlgorithmSelector";
 import { AppHeader } from "../shared/components/AppHeader";
+import { CipherMark } from "../shared/components/CipherMark";
+import { WorkbenchBackground } from "../shared/components/WorkbenchBackground";
 import { getCipherAlgorithms } from "../shared/config/cipherAlgorithms";
 import type { CipherAlgorithm } from "../shared/types/cipher";
 
@@ -111,25 +113,18 @@ export function App() {
 
   return (
     <>
+      <WorkbenchBackground />
       <AppHeader disabled={isLoading} onReset={resetWorkspace} />
       <main className="page">
         <header className="hero">
+          <WorkbenchBackground variant="hex" />
           <div className="hero__title">
-            <h1 className="brand-name" aria-label="Cipher Workbench">
-              <span className="brand-name__cipher">Cipher</span> <span>Workbench</span>
+            <h1 className="brand-lockup">
+              <CipherMark busy={isLoading} />
+              <span>Mã hóa &amp; giải mã</span>
             </h1>
           </div>
-          <p>
-            Mã hóa và giải mã Caesar, Vigenère, Playfair, Affine,
-            {cipherAlgorithms.some(({ value }) => value === "hill")
-              ? " Hệ mã hàng hoặc Hill"
-              : " hoặc Hệ mã hàng"}{" "}
-            bằng kết quả từ Backend.
-            {cipherAlgorithms.some(({ value }) => value === "des") &&
-              (desGateway?.kind === "api"
-                ? " DES dùng kết quả từ Backend."
-                : " DES demo dùng dữ liệu mô phỏng riêng.")}
-          </p>
+          <p>Chọn thuật toán, nhập văn bản hoặc tải file để bắt đầu.</p>
         </header>
         <div className="workspace">
           {historyAvailable && (
