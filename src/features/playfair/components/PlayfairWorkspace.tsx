@@ -1,3 +1,4 @@
+import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { DraftKeyConfig } from "../../../shared/components/DraftKeyConfig";
@@ -54,7 +55,7 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
           văn đầu vào.
         </span>
         <button
-          className="button button--secondary"
+          className="button button--secondary playfair-example"
           type="button"
           onClick={cipher.loadExample}
           disabled={cipher.isLoading}
@@ -92,14 +93,16 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
             onChange={cipher.setKey}
           />
 
-          <button
-            className="button button--primary"
-            type="button"
-            disabled={!cipher.canSubmit}
-            onClick={cipher.processCipher}
-          >
-            {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
-          </button>
+          <CipherActions disabled={cipher.isLoading} onReset={cipher.resetAll}>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={!cipher.canSubmit}
+              onClick={cipher.processCipher}
+            >
+              {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
+            </button>
+          </CipherActions>
         </div>
         <PlayfairOutputPanel
           key={cipher.result ? "result" : "empty"}

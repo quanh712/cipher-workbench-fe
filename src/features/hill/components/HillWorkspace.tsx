@@ -1,3 +1,4 @@
+import { CipherActions } from "../../../shared/components/CipherActions";
 import {
   useEffect,
   useRef,
@@ -339,7 +340,7 @@ function ResultPanel({ cipher }: { cipher: Controller }) {
     }
   }
   return (
-    <section className="hill-result" aria-labelledby="hill-result-title">
+    <section className="hill-result cipher-output-panel" aria-labelledby="hill-result-title">
       <div className="section-label">Kết quả</div>
       <div className="panel">
         <div className="panel__header">
@@ -582,14 +583,20 @@ export function HillWorkspace({ cipher }: { cipher: Controller }) {
               {cipher.resultError.message}
             </p>
           )}
-          <button
-            className="button button--primary hill-submit"
-            type="button"
-            disabled={!cipher.canSubmit}
-            onClick={() => void cipher.processCipher()}
-          >
-            {cipher.isProcessing ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
-          </button>
+          <CipherActions disabled={cipher.isBusy} onReset={cipher.resetAll}>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={!cipher.canSubmit}
+              onClick={() => void cipher.processCipher()}
+            >
+              {cipher.isProcessing
+                ? "Đang xử lý…"
+                : cipher.mode === "encrypt"
+                  ? "Mã hóa"
+                  : "Giải mã"}
+            </button>
+          </CipherActions>
         </div>
         <div className="hill-column">
           <ResultPanel cipher={cipher} />

@@ -46,7 +46,7 @@ test("demo text, validation, copy, draft and reset work without DES requests", a
   await page.getByRole("tab", { name: /DES.*Demo/ }).click();
   await expect(page.getByLabel("Nội dung đầu vào DES")).toHaveValue(" Tiếng Việt\n ");
   await expect(output).toHaveCount(0);
-  await page.getByRole("button", { name: "Đặt lại DES" }).click();
+  await page.getByRole("button", { name: "Đặt lại" }).click();
   await expect(page.getByLabel("Khóa DES")).toHaveValue("");
   await expect(page.getByRole("radio", { name: /Mã hóa/ })).toHaveAttribute("aria-checked", "true");
   expect(requests).toEqual([]);

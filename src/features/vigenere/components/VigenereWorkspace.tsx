@@ -1,3 +1,4 @@
+import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { DraftKeyConfig } from "../../../shared/components/DraftKeyConfig";
@@ -91,14 +92,16 @@ export function VigenereWorkspace({ cipher }: VigenereWorkspaceProps) {
             onChange={cipher.setKey}
           />
 
-          <button
-            className="button button--primary"
-            type="button"
-            disabled={!cipher.canSubmit}
-            onClick={cipher.processCipher}
-          >
-            {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
-          </button>
+          <CipherActions disabled={cipher.isLoading} onReset={cipher.resetAll}>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={!cipher.canSubmit}
+              onClick={cipher.processCipher}
+            >
+              {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
+            </button>
+          </CipherActions>
         </div>
         <VigenereOutputPanel
           key={cipher.result ? "result" : "empty"}

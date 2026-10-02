@@ -17,7 +17,9 @@ describe("DES workspace", () => {
     render(<Harness gateway={{ kind: "api", process }} />);
     fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     fireEvent.click(screen.getByRole("button", { name: "Mã hóa" }));
-    await screen.findByText("85E813540F0AB405");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Nội dung kết quả DES")).toHaveTextContent("85E813540F0AB405"),
+    );
     fireEvent.click(screen.getByRole("tab", { name: "Phân tích" }));
     expect(screen.getByText("DES · Mạng Feistel 16 vòng")).toBeVisible();
     expect(screen.queryByText("Phân biệt ECB và CBC")).not.toBeInTheDocument();
@@ -32,14 +34,16 @@ describe("DES workspace", () => {
     });
     render(<Harness gateway={{ kind: "api", process }} />);
     fireEvent.click(screen.getByRole("radio", { name: /Giải mã/ }));
-    fireEvent.click(screen.getByRole("button", { name: "File" }));
+    fireEvent.click(screen.getByRole("button", { name: "File .txt" }));
     fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     expect(screen.getByLabelText("Nội dung đầu vào DES")).toHaveValue("0123456789ABCDEF");
     expect(screen.getByLabelText("Khóa DES")).toHaveValue("133457799BBCDFF1");
     expect(screen.getByLabelText("Định dạng DES")).toHaveValue("hex");
     expect(screen.getByLabelText("Chế độ mã khối DES")).toHaveValue("ECB");
     fireEvent.click(screen.getByRole("button", { name: "Mã hóa" }));
-    await screen.findByText("85E813540F0AB405");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Nội dung kết quả DES")).toHaveTextContent("85E813540F0AB405"),
+    );
     expect(process).toHaveBeenCalledWith(
       {
         operation: "encrypt",

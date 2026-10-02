@@ -1,5 +1,9 @@
+import { useId } from "react";
+
 interface DraftKeyConfigProps {
   algorithmName: string;
+  keyLabel?: string;
+  showErrorWithoutValue?: boolean;
   value: string;
   error: string | null;
   placeholder: string;
@@ -11,6 +15,8 @@ interface DraftKeyConfigProps {
 
 export function DraftKeyConfig(props: DraftKeyConfigProps) {
   const hasValue = props.value.length > 0;
+  const id = useId();
+  const error = hasValue || props.showErrorWithoutValue ? props.error : null;
 
   return (
     <section className="config-section config-section--compact-key">
@@ -18,7 +24,7 @@ export function DraftKeyConfig(props: DraftKeyConfigProps) {
       <p>{props.description}</p>
       <div className="panel">
         <div className="panel__header">
-          <h2>Khóa dạng chuỗi</h2>
+          <h2>{props.keyLabel ?? "Khóa dạng chuỗi"}</h2>
         </div>
         <div className="key-control key-control--text">
           <input
@@ -27,19 +33,22 @@ export function DraftKeyConfig(props: DraftKeyConfigProps) {
             value={props.value}
             onChange={(event) => props.onChange(event.target.value)}
             disabled={props.disabled}
+            aria-invalid={Boolean(error)}
+            aria-describedby={`${id}-hint ${id}-status`}
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
-        <div className="key-note">{props.hint}</div>
+        <div id={`${id}-hint`} className="key-note">
+          {props.hint}
+        </div>
         <div
-          className={`status ${!hasValue ? "" : props.error ? "status--error" : "status--success"}`}
-          role="status"
+          id={`${id}-status`}
+          className={`status ${error ? "status--error" : hasValue ? "status--success" : ""}`}
+          role={error ? "alert" : "status"}
           aria-live="polite"
         >
-          {!hasValue
-            ? "Chưa nhập khóa"
-            : props.error
-              ? `! ${props.error}`
-              : "✓ Khóa hợp lệ ở mức sơ bộ."}
+          {error ? `! ${error}` : hasValue ? "✓ Khóa hợp lệ ở mức sơ bộ." : "Chưa nhập khóa"}
         </div>
       </div>
     </section>

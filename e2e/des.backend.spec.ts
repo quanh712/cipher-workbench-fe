@@ -23,7 +23,7 @@ test("real controls validate raw key, IV and file metadata in dark theme", async
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `/tmp/des-real-dark-${info.project.name}.png`, fullPage: true });
-  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("button", { name: "File .txt", exact: true }).click();
   await page
     .getByLabel("Chọn file DES")
     .setInputFiles({ name: "bad.des", mimeType: "text/plain", buffer: Buffer.from("x") });
@@ -96,7 +96,7 @@ test("file preview/download use original file, server filename and BOM", async (
       );
     }
   });
-  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("button", { name: "File .txt", exact: true }).click();
   await page.getByLabel("Chọn file DES").setInputFiles({
     name: "bai.tap.TXT",
     mimeType: "text/plain",
@@ -128,7 +128,7 @@ test("file preview/download use original file, server filename and BOM", async (
 test("invalid UTF-8 and padding show exact server errors; network retry works", async ({
   page,
 }) => {
-  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("button", { name: "File .txt", exact: true }).click();
   await page
     .getByLabel("Chọn file DES")
     .setInputFiles({ name: "bad.txt", mimeType: "text/plain", buffer: Buffer.from([0xff]) });

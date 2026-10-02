@@ -14,6 +14,7 @@ interface CipherInputPanelProps {
   disabled: boolean;
   isReadingFile?: boolean;
   metadataOnly?: boolean;
+  fileKind?: "text" | "data";
   fileAccept?: string;
   fileAriaLabel?: string;
   fileHint?: string;
@@ -29,6 +30,7 @@ interface CipherInputPanelProps {
 }
 
 export function CipherInputPanel(props: CipherInputPanelProps) {
+  const isTextFile = (props.fileKind ?? (props.metadataOnly ? "data" : "text")) === "text";
   const hasInput = props.inputType === "text" ? props.text.length > 0 : Boolean(props.file);
   const error = hasInput || props.showErrorWithoutInput ? props.error : null;
   const statusId = useId();
@@ -53,7 +55,7 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
               disabled={props.disabled}
               aria-pressed={props.inputType === type}
             >
-              {type === "text" ? "Văn bản" : props.metadataOnly ? "File" : "File .txt"}
+              {type === "text" ? "Văn bản" : isTextFile ? "File .txt" : "File"}
             </button>
           ))}
         </div>
@@ -63,9 +65,9 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
         <div className="panel__header">
           <h2>
             {props.inputType === "file"
-              ? props.metadataOnly
-                ? "Tệp dữ liệu"
-                : "Tệp văn bản"
+              ? isTextFile
+                ? "Tệp văn bản"
+                : "Tệp dữ liệu"
               : props.mode === "encrypt"
                 ? "Bản rõ"
                 : "Bản mã"}
@@ -133,7 +135,7 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
             {props.file ? (
               <div className="file-card">
                 <div className="file-card__header">
-                  <span className="file-extension">{props.metadataOnly ? "FILE" : "TXT"}</span>
+                  <span className="file-extension">{isTextFile ? "TXT" : "FILE"}</span>
                   <span className="file-card__meta">
                     <strong>{props.file.name}</strong>
                     <small>{formatFileSize(props.file.size)}</small>
@@ -184,9 +186,7 @@ export function CipherInputPanel(props: CipherInputPanelProps) {
                   selectFile(event.dataTransfer.files[0]);
                 }}
               >
-                <strong>
-                  {props.metadataOnly ? "Kéo thả file vào đây" : "Kéo thả file .txt vào đây"}
-                </strong>
+                <strong>{isTextFile ? "Kéo thả file .txt vào đây" : "Kéo thả file vào đây"}</strong>
                 <span>hoặc</span>
                 <button
                   className="button button--secondary"

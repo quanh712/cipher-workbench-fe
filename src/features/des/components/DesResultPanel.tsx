@@ -1,5 +1,6 @@
 import type { DesCipherController } from "../hooks/useDesCipher";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { ColorizedText } from "../../../shared/components/ColorizedText";
 import { DesAnalysis } from "./DesAnalysis";
 
 export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
@@ -23,7 +24,7 @@ export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
     tabs.current[next]?.focus();
   }
   return (
-    <section aria-label="Kết quả DES">
+    <section className="cipher-output-panel" aria-label="Kết quả DES">
       <div className="section-label">{cipher.isDemo ? "Kết quả mô phỏng" : "Kết quả"}</div>
       <div className="panel">
         <div className="panel__header">
@@ -84,13 +85,13 @@ export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
         >
           {hasText ? (
             <pre className="output des-result" aria-label="Nội dung kết quả DES">
-              {cipher.result?.text}
+              <ColorizedText text={cipher.result?.text ?? ""} />
             </pre>
           ) : (
             <div className="output output--empty">
               {cipher.isDemo
                 ? "Chưa có nội dung kết quả mô phỏng."
-                : "Kết quả DES sẽ xuất hiện ở đây."}
+                : "Kết quả sẽ hiển thị ở đây sau khi xử lý."}
             </div>
           )}
         </div>

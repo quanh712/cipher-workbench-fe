@@ -65,7 +65,7 @@ export function ColumnarOutputPanel(props: ColumnarOutputPanelProps) {
   }
 
   return (
-    <section className="columnar-output-panel">
+    <section className="columnar-output-panel cipher-output-panel">
       <div className="section-label">Kết quả</div>
       <div className="panel">
         <div className="panel__header">

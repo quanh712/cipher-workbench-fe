@@ -1,3 +1,4 @@
+import { CipherActions } from "../../../shared/components/CipherActions";
 import type { CaesarCipherController } from "../hooks/useCaesarCipher";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { Notification } from "../../../shared/components/Notification";
@@ -105,14 +106,16 @@ export function CaesarWorkspace({ cipher }: CaesarWorkspaceProps) {
         onChange={cipher.setKey}
       />
 
-      <button
-        className="button button--primary"
-        type="button"
-        disabled={!cipher.canSubmit}
-        onClick={cipher.processCipher}
-      >
-        {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
-      </button>
+      <CipherActions disabled={cipher.isLoading} onReset={cipher.resetAll}>
+        <button
+          className="button button--primary"
+          type="button"
+          disabled={!cipher.canSubmit}
+          onClick={cipher.processCipher}
+        >
+          {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
+        </button>
+      </CipherActions>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

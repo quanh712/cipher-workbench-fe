@@ -1,3 +1,4 @@
+import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { Notification } from "../../../shared/components/Notification";
@@ -86,20 +87,22 @@ export function ColumnarWorkspace({ cipher }: ColumnarWorkspaceProps) {
             onKeyChange={cipher.setKey}
           />
 
-          <button
-            className="button button--primary"
-            type="button"
-            disabled={!cipher.canSubmit}
-            onClick={cipher.processCipher}
-          >
-            {cipher.isReadingFile
-              ? "Đang đọc file…"
-              : cipher.isLoading
-                ? "Đang xử lý…"
-                : cipher.mode === "encrypt"
-                  ? "Mã hóa"
-                  : "Giải mã"}
-          </button>
+          <CipherActions disabled={cipher.isBusy} onReset={cipher.resetAll}>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={!cipher.canSubmit}
+              onClick={cipher.processCipher}
+            >
+              {cipher.isReadingFile
+                ? "Đang đọc file…"
+                : cipher.isLoading
+                  ? "Đang xử lý…"
+                  : cipher.mode === "encrypt"
+                    ? "Mã hóa"
+                    : "Giải mã"}
+            </button>
+          </CipherActions>
         </div>
         <ColumnarOutputPanel
           key={cipher.result ? "result" : "empty"}

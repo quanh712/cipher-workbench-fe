@@ -1,3 +1,4 @@
+import { CipherActions } from "../../../shared/components/CipherActions";
 import { useRef } from "react";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
@@ -97,7 +98,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
           </label>
           {cipher.cipherMode === "CBC" && (
             <label>
-              IV (16 ký tự HEX)
+              <span className="section-label">IV (16 ký tự HEX)</span>
               <input
                 aria-label="IV DES"
                 autoComplete="off"
@@ -123,7 +124,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
         </p>
       )}
       <div className="workspace__columns">
-        <div className="des-column">
+        <div className="workspace__input-column">
           <CipherInputPanel
             inputType={cipher.inputType}
             mode={cipher.mode}
@@ -131,6 +132,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
             file={cipher.file}
             fileText=""
             metadataOnly
+            fileKind={cipher.isDemo ? "data" : "text"}
             fileAriaLabel="Chọn file DES"
             fileAccept={cipher.isDemo ? undefined : ".txt,text/plain"}
             fileHint={
@@ -157,7 +159,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
             disabled={cipher.isBusy}
             onChange={cipher.setKey}
           />
-          <div className="button-group des-actions">
+          <CipherActions disabled={cipher.isBusy} onReset={cipher.resetAll}>
             <button
               className="button button--primary"
               type="button"
@@ -166,19 +168,9 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
             >
               {cipher.isBusy ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
             </button>
-            <button
-              className="button button--secondary"
-              type="button"
-              disabled={cipher.isBusy}
-              onClick={cipher.resetAll}
-            >
-              Đặt lại DES
-            </button>
-          </div>
+          </CipherActions>
         </div>
-        <div className="des-column">
-          <DesResultPanel cipher={cipher} />
-        </div>
+        <DesResultPanel cipher={cipher} />
       </div>
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

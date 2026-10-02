@@ -37,7 +37,7 @@ export function AffineOutputPanel(props: AffineOutputPanelProps) {
   }
 
   return (
-    <section>
+    <section className="cipher-output-panel">
       <div className="section-label">Kết quả</div>
       <div className="panel">
         <div className="panel__header">
