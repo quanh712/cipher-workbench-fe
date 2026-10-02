@@ -13,6 +13,48 @@ function Harness({ gateway }: { gateway: HillGateway }) {
 }
 
 describe("Hill workspace", () => {
+  it("filters backend padding for display and copy without processing again", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    const gateway = createHillGateway({
+      process: vi.fn().mockResolvedValue({
+        success: true,
+        result: "HELLO!X",
+        key: exampleKey,
+        warnings: [],
+        blocks: [
+          { input: [3, 15], output: [7, 4] },
+          { input: [3, 10], output: [11, 11] },
+          { input: [10, 1], output: [14, 23] },
+        ],
+        padding: { count: 1, positions: [5], filtered: "HELLO!" },
+      }),
+    });
+    render(<Harness gateway={gateway} />);
+    await user.click(screen.getByRole("radio", { name: /Giải mã/ }));
+    await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "DPDKK!B");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Giải mã" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Giải mã" }));
+    await waitFor(() =>
+      expect(
+        Array.from(screen.getByLabelText("Kết quả").querySelectorAll(".character"))
+          .map((n) => n.textContent)
+          .join(""),
+      ).toBe("HELLO!"),
+    );
+    const output = within(screen.getByRole("region", { name: "Bản rõ" }));
+    await user.click(output.getByRole("button", { name: "Sao chép" }));
+    expect(writeText).toHaveBeenLastCalledWith("HELLO!");
+    await user.click(screen.getByRole("checkbox", { name: /Tự động lọc/ }));
+    expect(
+      Array.from(screen.getByLabelText("Kết quả").querySelectorAll(".character"))
+        .map((n) => n.textContent)
+        .join(""),
+    ).toBe("HELLO!X");
+    await user.click(output.getByRole("button", { name: "Sao chép" }));
+    expect(writeText).toHaveBeenLastCalledWith("HELLO!X");
+    expect(gateway.process).toHaveBeenCalledTimes(1);
+  });
   it("runs HELP through the gateway and shows backend blocks, key facts, copy and steps", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");

@@ -154,3 +154,93 @@ test("invalid UTF-8 and padding show exact server errors; network retry works", 
     "B1CA74BB3514268701A9ACC3E4E69FAA",
   );
 });
+
+test("analysis displays real DES rounds and padding filters use the new contract", async ({
+  page,
+}, info) => {
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
+  await expect(page.getByLabel("Nội dung kết quả DES")).toHaveText("85E813540F0AB405");
+  await page.getByRole("tab", { name: "Phân tích", exact: true }).click();
+  await expect(page.getByText("CC00CCFFF0AAF0AA", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .locator(".des-trace table")
+      .filter({ hasText: "Giá trị sau từng vòng" })
+      .locator("tbody tr"),
+  ).toHaveCount(16);
+  await expect(page.getByText("Phân biệt ECB và CBC", { exact: true })).toHaveCount(0);
+  await page.getByText("1. Sinh 16 khóa con", { exact: false }).click();
+  await expect(page.getByText("1B02EFFC7072", { exact: true })).toBeVisible();
+  await page.getByText("4. Chi tiết hàm f", { exact: false }).click();
+  await page.getByLabel("Vòng phân tích").selectOption("16");
+  await expect(page.getByText("Vòng 16", { exact: true })).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `/tmp/des-trace-${info.project.name}.png`, fullPage: true });
+
+  await page.getByRole("tab", { name: /Hill.*Khả dụng/ }).click();
+  await page.getByRole("radio", { name: /Giải mã/ }).click();
+  await page.getByRole("textbox", { name: "Văn bản đầu vào" }).fill("DPDKK!B");
+  await page.getByRole("button", { name: "Giải mã", exact: true }).click();
+  await expect
+    .poll(async () =>
+      (await page.locator(".hill-result__text .character").allTextContents()).join(""),
+    )
+    .toBe("HELLO!");
+  const filter = page.getByRole("checkbox", {
+    name: "Tự động lọc ký tự đệm (Playfair/Hill padding)",
+  });
+  await filter.uncheck();
+  await expect
+    .poll(async () =>
+      (await page.locator(".hill-result__text .character").allTextContents()).join(""),
+    )
+    .toBe("HELLO!X");
+  await filter.check();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Tải kết quả", exact: true }).click();
+  const stream = await (await download).createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  expect(Buffer.concat(chunks).toString("utf8")).toBe("HELLO!");
+
+  await page.getByRole("tab", { name: /Playfair.*Khả dụng/ }).click();
+  await page.getByRole("radio", { name: /Giải mã/ }).click();
+  await page.getByRole("textbox", { name: "Nội dung đầu vào" }).fill("PDGW");
+  await page.getByRole("textbox", { name: "Khóa Playfair" }).fill("PLAYFAIR EXAMPLE");
+  await page.getByRole("button", { name: "Giải mã", exact: true }).click();
+  await expect(page.getByRole("tabpanel", { name: "Văn bản", exact: true })).toHaveText("ABX");
+  await filter.uncheck();
+  await expect(page.getByRole("tabpanel", { name: "Văn bản", exact: true })).toHaveText("ABXQ");
+  await filter.check();
+  await page.getByRole("button", { name: "File .txt", exact: true }).click();
+  await page
+    .getByLabel("Chọn file văn bản")
+    .setInputFiles({ name: "playfair.txt", mimeType: "text/plain", buffer: Buffer.from("PDGW") });
+  await page.getByRole("button", { name: "Giải mã", exact: true }).click();
+  await expect(page.getByRole("tabpanel", { name: "Văn bản", exact: true })).toHaveText("ABX");
+  const fileDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Tải kết quả", exact: true }).click();
+  const fileStream = await (await fileDownload).createReadStream();
+  const fileChunks: Buffer[] = [];
+  for await (const chunk of fileStream!) fileChunks.push(Buffer.from(chunk));
+  expect(Buffer.concat(fileChunks).toString("utf8")).toBe("ABX");
+  await page.screenshot({ path: `/tmp/padding-filter-${info.project.name}.png`, fullPage: true });
+});
+
+test("CBC trace prepares UTF-8 text and decrypt trace uses reversed subkeys", async ({ page }) => {
+  await page.getByLabel("Nội dung đầu vào DES").fill("Hello World");
+  await page.getByLabel("Chế độ mã khối DES").selectOption("CBC");
+  await page.getByLabel("IV DES").fill("1234567890ABCDEF");
+  await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
+  await expect(page.getByLabel("Nội dung kết quả DES")).toContainText("FE6885B7E58524D4");
+  const ciphertext = await page.getByLabel("Nội dung kết quả DES").textContent();
+  await page.getByRole("tab", { name: "Phân tích", exact: true }).click();
+  await expect(page.locator(".des-trace")).toContainText("5A513A14FF8B9A80");
+  await page.getByRole("radio", { name: /Giải mã/ }).click();
+  await page.getByLabel("Nội dung đầu vào DES").fill(ciphertext!);
+  await page.getByRole("button", { name: "Giải mã", exact: true }).click();
+  await expect(page.locator(".des-trace")).toContainText("Giải mã dùng khóa con K₁₆ → K₁.");
+  await expect(page.locator(".des-trace")).toContainText("FE6885B7E58524D4");
+  await expect(page.locator(".des-trace")).toContainText("5A513A14FF8B9A80");
+});

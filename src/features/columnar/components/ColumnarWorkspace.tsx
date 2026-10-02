@@ -61,22 +61,46 @@ export function ColumnarWorkspace({ cipher }: ColumnarWorkspaceProps) {
       </div>
 
       <div className="workspace__columns">
-        <CipherInputPanel
-          inputType={cipher.inputType}
-          mode={cipher.mode}
-          text={cipher.text}
-          file={cipher.file}
-          fileText={cipher.fileText}
-          error={cipher.inputError}
-          disabled={cipher.isBusy}
-          isReadingFile={cipher.isReadingFile}
-          onInputTypeChange={cipher.setInputType}
-          onTextChange={cipher.setText}
-          onFileChange={cipher.setFile}
-          onClear={cipher.resetInput}
-          onPaste={pasteInput}
-          onCopy={copyInput}
-        />
+        <div className="workspace__input-column">
+          <CipherInputPanel
+            inputType={cipher.inputType}
+            mode={cipher.mode}
+            text={cipher.text}
+            file={cipher.file}
+            fileText={cipher.fileText}
+            error={cipher.inputError}
+            disabled={cipher.isBusy}
+            isReadingFile={cipher.isReadingFile}
+            onInputTypeChange={cipher.setInputType}
+            onTextChange={cipher.setText}
+            onFileChange={cipher.setFile}
+            onClear={cipher.resetInput}
+            onPaste={pasteInput}
+            onCopy={copyInput}
+          />
+
+          <ColumnarKeyConfig
+            keyValue={cipher.key}
+            validation={cipher.keyValidation}
+            disabled={cipher.isBusy}
+            onKeyChange={cipher.setKey}
+          />
+
+          <button
+            className="button button--primary"
+            type="button"
+            disabled={!cipher.canSubmit}
+            onClick={cipher.processCipher}
+          >
+            {cipher.isReadingFile
+              ? "Đang đọc file…"
+              : cipher.isLoading
+                ? "Đang xử lý…"
+                : cipher.mode === "encrypt"
+                  ? "Mã hóa"
+                  : "Giải mã"}
+          </button>
+        </div>
         <ColumnarOutputPanel
           key={cipher.result ? "result" : "empty"}
           result={cipher.result}
@@ -88,28 +112,6 @@ export function ColumnarWorkspace({ cipher }: ColumnarWorkspaceProps) {
           onDownload={cipher.downloadResult}
         />
       </div>
-
-      <ColumnarKeyConfig
-        keyValue={cipher.key}
-        validation={cipher.keyValidation}
-        disabled={cipher.isBusy}
-        onKeyChange={cipher.setKey}
-      />
-
-      <button
-        className="button button--primary"
-        type="button"
-        disabled={!cipher.canSubmit}
-        onClick={cipher.processCipher}
-      >
-        {cipher.isReadingFile
-          ? "Đang đọc file…"
-          : cipher.isLoading
-            ? "Đang xử lý…"
-            : cipher.mode === "encrypt"
-              ? "Mã hóa"
-              : "Giải mã"}
-      </button>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

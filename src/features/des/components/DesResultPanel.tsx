@@ -1,13 +1,54 @@
 import type { DesCipherController } from "../hooks/useDesCipher";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { DesAnalysis } from "./DesAnalysis";
 
 export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
   const hasText = Boolean(cipher.result?.text);
+  const [view, setView] = useState<"text" | "analysis">("text");
+  const id = useId();
+  const tabs = useRef<Array<HTMLButtonElement | null>>([]);
+  const views = ["text", "analysis"] as const;
+  function selectTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? 1
+          : event.key === "ArrowLeft" || event.key === "ArrowRight"
+            ? 1 - index
+            : null;
+    if (next === null) return;
+    event.preventDefault();
+    setView(views[next]);
+    tabs.current[next]?.focus();
+  }
   return (
     <section aria-label="Kết quả DES">
       <div className="section-label">{cipher.isDemo ? "Kết quả mô phỏng" : "Kết quả"}</div>
       <div className="panel">
         <div className="panel__header">
           <h2>{cipher.mode === "encrypt" ? "Bản mã" : "Bản rõ"}</h2>
+          <div className="panel-tabs" role="tablist" aria-label="Kiểu hiển thị kết quả DES">
+            {views.map((tab, index) => (
+              <button
+                key={tab}
+                ref={(element) => {
+                  tabs.current[index] = element;
+                }}
+                id={`${id}-${tab}-tab`}
+                aria-controls={`${id}-${tab}-panel`}
+                type="button"
+                role="tab"
+                aria-selected={view === tab}
+                tabIndex={view === tab ? 0 : -1}
+                disabled={cipher.isBusy}
+                onClick={() => setView(tab)}
+                onKeyDown={(event) => selectTab(event, index)}
+              >
+                {tab === "text" ? "Văn bản" : "Phân tích"}
+              </button>
+            ))}
+          </div>
           <div className="button-group">
             <button
               className="button button--secondary"
@@ -35,17 +76,32 @@ export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
             </button>
           </div>
         </div>
-        {hasText ? (
-          <pre className="output des-result" aria-label="Nội dung kết quả DES">
-            {cipher.result?.text}
-          </pre>
-        ) : (
-          <div className="output output--empty">
-            {cipher.isDemo
-              ? "Chưa có nội dung kết quả mô phỏng."
-              : "Kết quả DES sẽ xuất hiện ở đây."}
-          </div>
-        )}
+        <div
+          id={`${id}-text-panel`}
+          role="tabpanel"
+          aria-labelledby={`${id}-text-tab`}
+          hidden={view !== "text"}
+        >
+          {hasText ? (
+            <pre className="output des-result" aria-label="Nội dung kết quả DES">
+              {cipher.result?.text}
+            </pre>
+          ) : (
+            <div className="output output--empty">
+              {cipher.isDemo
+                ? "Chưa có nội dung kết quả mô phỏng."
+                : "Kết quả DES sẽ xuất hiện ở đây."}
+            </div>
+          )}
+        </div>
+        <div
+          id={`${id}-analysis-panel`}
+          role="tabpanel"
+          aria-labelledby={`${id}-analysis-tab`}
+          hidden={view !== "analysis"}
+        >
+          {view === "analysis" && <DesAnalysis cipher={cipher} />}
+        </div>
         {!cipher.isDemo && cipher.resultOptions?.cipherMode === "CBC" && (
           <div className="key-note">
             CBC · IV: <code>{cipher.resultOptions.iv}</code>. Hãy giữ IV cùng bản mã; giải mã với IV

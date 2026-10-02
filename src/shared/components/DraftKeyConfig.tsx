@@ -13,7 +13,7 @@ export function DraftKeyConfig(props: DraftKeyConfigProps) {
   const hasValue = props.value.length > 0;
 
   return (
-    <section className="config-section">
+    <section className="config-section config-section--compact-key">
       <h2>Khóa {props.algorithmName}</h2>
       <p>{props.description}</p>
       <div className="panel">

@@ -10,6 +10,7 @@ import type {
 } from "../types/cipher";
 import type { HillGateway } from "./hillGateway";
 
+import { readPadding } from "../../../shared/utils/padding";
 import { countHillLetters } from "../utils/textClusters";
 
 const UNAVAILABLE = "Không kết nối được máy chủ. Thử lại.";
@@ -194,6 +195,7 @@ export const hillApi: HillGateway = {
       result: data.result,
       key,
       blocks: parsedBlocks,
+      padding: mode === "decrypt" ? readPadding(data.padding, data.result) : undefined,
       warnings: warnings(data.warnings),
     };
   },

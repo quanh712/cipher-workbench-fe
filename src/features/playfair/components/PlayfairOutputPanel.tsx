@@ -1,4 +1,5 @@
 import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { PaddingResult } from "../../../shared/components/PaddingResult";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
 import type { CipherMode } from "../../../shared/types/cipher";
 import type { PlayfairResultSnapshot, ProcessingStatus } from "../types/cipher";
@@ -6,12 +7,14 @@ import {
   buildPlayfairMatrix,
   normalizePlayfairKey,
   preparePlayfairDigraphs,
-  suggestPlayfairPlaintext,
 } from "../utils/analysis";
 import { normalizePlayfairLetters } from "../utils/validation";
 
 interface PlayfairOutputPanelProps {
   result: PlayfairResultSnapshot | null;
+  displayResult?: string;
+  filterPadding?: boolean;
+  onFilterPadding?: (value: boolean) => void;
   mode: CipherMode;
   processingStatus: ProcessingStatus;
   disabled: boolean;
@@ -36,8 +39,6 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
     props.result?.mode === "encrypt"
       ? inputDigraphs.join("").length - normalizedInput.length
       : null;
-  const fillerSuggestion =
-    props.result?.mode === "decrypt" ? suggestPlayfairPlaintext(props.result.text) : null;
 
   function selectWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) {
     let nextIndex: number | null = null;
@@ -114,7 +115,7 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
           hidden={view !== "text"}
         >
           {props.result ? (
-            <ColorizedText text={props.result.text} />
+            <ColorizedText text={props.displayResult ?? props.result.text} />
           ) : (
             "Kết quả sẽ hiển thị ở đây sau khi xử lý."
           )}
@@ -146,30 +147,13 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
                 </div>
                 <div>
                   <dt>{fillerCount === null ? "Filler khi giải mã" : "Filler được chèn"}</dt>
-                  <dd>{fillerCount === null ? "Giữ filler giữa, bỏ filler cuối" : fillerCount}</dd>
+                  <dd>
+                    {fillerCount === null
+                      ? (props.result?.padding?.count ?? "Chưa có thông tin")
+                      : fillerCount}
+                  </dd>
                 </div>
               </dl>
-
-              {props.result.mode === "decrypt" && (
-                <div className="playfair-filler-suggestion">
-                  <strong>Gợi ý bỏ filler (không chắc chắn)</strong>
-                  {fillerSuggestion ? (
-                    <>
-                      <pre>{fillerSuggestion.text}</pre>
-                      <small>
-                        Có thể bỏ {fillerSuggestion.removedCount} ký tự X/Q nằm giữa hai chữ giống
-                        nhau. Backend đã xử lý filler cuối; kết quả chính thức, sao chép và tải
-                        xuống vẫn giữ nguyên response từ server.
-                      </small>
-                    </>
-                  ) : (
-                    <small>
-                      Không thấy X/Q nào nằm giữa hai chữ giống nhau; Backend đã xử lý filler cuối
-                      nếu có.
-                    </small>
-                  )}
-                </div>
-              )}
 
               <div className="playfair-analysis__details">
                 <div className="key-stream">
@@ -186,8 +170,7 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
                       .join("   ")}
                   </pre>
                   <small>
-                    Visualization chỉ giải thích phép biến đổi; cặp cuối có thể còn một chữ sau khi
-                    Backend bỏ filler. Kết quả chính thức lấy từ Backend.
+                    Ánh xạ dùng bản thô đủ cặp chữ do backend trả về, trước khi lọc ký tự đệm.
                   </small>
                 </div>
               </div>
@@ -197,6 +180,15 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
           )}
         </div>
 
+        {props.result?.mode === "decrypt" && (
+          <PaddingResult
+            raw={props.result.text}
+            padding={props.result.padding}
+            enabled={props.filterPadding ?? true}
+            disabled={props.disabled}
+            onChange={props.onFilterPadding ?? (() => {})}
+          />
+        )}
         <div
           className={`status ${props.processingStatus === "success" ? "status--success" : props.processingStatus === "error" ? "status--error" : ""}`}
           role="status"
@@ -207,7 +199,7 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
             : props.processingStatus === "error"
               ? "! Xử lý thất bại"
               : props.result
-                ? `✓ Xử lý thành công · ${props.result.text.length} ký tự`
+                ? `✓ Xử lý thành công · ${(props.displayResult ?? props.result.text).length} ký tự`
                 : "Chưa xử lý"}
         </div>
       </div>

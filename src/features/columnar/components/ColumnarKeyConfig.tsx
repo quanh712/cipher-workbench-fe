@@ -16,7 +16,7 @@ export function ColumnarKeyConfig(props: ColumnarKeyConfigProps) {
   const permutation = props.validation.ok ? props.validation.value.permutation : null;
 
   return (
-    <section className="config-section" aria-labelledby={`${id}-title`}>
+    <section className="config-section config-section--compact-key" aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`}>Khóa Hệ mã hàng</h2>
       <p>Nhập hoán vị số hoặc từ khóa ASCII. Hệ thống tự nhận dạng khóa từ 2 đến 256 cột.</p>
       <div className="panel">

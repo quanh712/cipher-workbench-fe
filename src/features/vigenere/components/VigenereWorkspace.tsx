@@ -63,21 +63,43 @@ export function VigenereWorkspace({ cipher }: VigenereWorkspaceProps) {
       </div>
 
       <div className="workspace__columns">
-        <CipherInputPanel
-          inputType={cipher.inputType}
-          mode={cipher.mode}
-          text={cipher.text}
-          file={cipher.file}
-          fileText={cipher.fileText}
-          error={cipher.inputError}
-          disabled={cipher.isLoading}
-          onInputTypeChange={cipher.setInputType}
-          onTextChange={cipher.setText}
-          onFileChange={cipher.setFile}
-          onClear={cipher.resetInput}
-          onPaste={pasteInput}
-          onCopy={copyInput}
-        />
+        <div className="workspace__input-column">
+          <CipherInputPanel
+            inputType={cipher.inputType}
+            mode={cipher.mode}
+            text={cipher.text}
+            file={cipher.file}
+            fileText={cipher.fileText}
+            error={cipher.inputError}
+            disabled={cipher.isLoading}
+            onInputTypeChange={cipher.setInputType}
+            onTextChange={cipher.setText}
+            onFileChange={cipher.setFile}
+            onClear={cipher.resetInput}
+            onPaste={pasteInput}
+            onCopy={copyInput}
+          />
+
+          <DraftKeyConfig
+            algorithmName="Vigenère"
+            value={cipher.key}
+            error={cipher.keyError}
+            placeholder="Ví dụ: LEMON"
+            description="Khóa Vigenère phải là chuỗi không rỗng chỉ gồm A–Z hoặc a–z."
+            hint="Backend nhận đúng giá trị đã nhập; chữ thường và chữ hoa cho cùng dòng khóa logic."
+            disabled={cipher.isLoading}
+            onChange={cipher.setKey}
+          />
+
+          <button
+            className="button button--primary"
+            type="button"
+            disabled={!cipher.canSubmit}
+            onClick={cipher.processCipher}
+          >
+            {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
+          </button>
+        </div>
         <VigenereOutputPanel
           key={cipher.result ? "result" : "empty"}
           result={cipher.result}
@@ -89,26 +111,6 @@ export function VigenereWorkspace({ cipher }: VigenereWorkspaceProps) {
           onDownload={cipher.downloadResult}
         />
       </div>
-
-      <DraftKeyConfig
-        algorithmName="Vigenère"
-        value={cipher.key}
-        error={cipher.keyError}
-        placeholder="Ví dụ: LEMON"
-        description="Khóa Vigenère phải là chuỗi không rỗng chỉ gồm A–Z hoặc a–z."
-        hint="Backend nhận đúng giá trị đã nhập; chữ thường và chữ hoa cho cùng dòng khóa logic."
-        disabled={cipher.isLoading}
-        onChange={cipher.setKey}
-      />
-
-      <button
-        className="button button--primary"
-        type="button"
-        disabled={!cipher.canSubmit}
-        onClick={cipher.processCipher}
-      >
-        {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
-      </button>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

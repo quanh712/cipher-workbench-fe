@@ -1,8 +1,10 @@
+import { readPadding, type PaddingInfo } from "../utils/padding";
 import type { CipherAlgorithm } from "../types/cipher";
 
 export interface SuccessResponse {
   success: true;
   result: string;
+  padding?: PaddingInfo;
 }
 
 export interface FileCipherRequest {
@@ -10,6 +12,7 @@ export interface FileCipherRequest {
   file: File;
   key: string;
   action: "encrypt" | "decrypt";
+  stripPadding?: boolean;
 }
 
 export interface DownloadResponse {
@@ -59,7 +62,8 @@ export async function readJsonSuccess(response: Response): Promise<SuccessRespon
   if (response.status !== 200 || !isSuccessResponse(body)) {
     apiError(isErrorResponse(body) ? body.message : SYSTEM_ERROR, response.status);
   }
-  return body;
+  const padding = readPadding("padding" in body ? body.padding : undefined, body.result);
+  return { ...body, ...(padding ? { padding } : {}) };
 }
 
 function createFileForm(request: FileCipherRequest, responseMode: "content" | "file") {
@@ -68,6 +72,8 @@ function createFileForm(request: FileCipherRequest, responseMode: "content" | "f
   data.append("key", request.key);
   data.append("action", request.action);
   data.append("response_mode", responseMode);
+  if (request.cipher === "playfair" && request.action === "decrypt")
+    data.append("strip_padding", String(request.stripPadding ?? false));
   return data;
 }
 

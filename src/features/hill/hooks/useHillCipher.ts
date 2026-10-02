@@ -61,6 +61,14 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
   const [analysis, setAnalysis] = useState<AnalysisState>(idleAnalysis);
   const [analysisRetry, setAnalysisRetry] = useState(0);
   const [result, setResult] = useState<HillResultSnapshot | null>(null);
+  const [filterPadding, setFilterPaddingState] = useState(true);
+  const displayResult =
+    result?.mode === "decrypt" && filterPadding
+      ? (result.padding?.filtered ?? result.result)
+      : (result?.result ?? "");
+  function setFilterPadding(next: boolean) {
+    if (!isBusy) setFilterPaddingState(next);
+  }
   const [resultError, setResultError] = useState<ResultError | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -346,7 +354,7 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
   function downloadResult() {
     if (!result) return;
     saveBlob(
-      new Blob([result.result], { type: "text/plain;charset=utf-8" }),
+      new Blob([displayResult], { type: "text/plain;charset=utf-8" }),
       `hill.${result.mode === "encrypt" ? "encrypted" : "decrypted"}.txt`,
     );
   }
@@ -424,6 +432,9 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     randomKey,
     isRandomizing,
     result,
+    displayResult,
+    filterPadding,
+    setFilterPadding,
     resultError,
     notice,
     setNotice,

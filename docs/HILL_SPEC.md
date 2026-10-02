@@ -425,3 +425,11 @@ Nếu kiểm thử một instance đã chạy, dùng `PLAYWRIGHT_BASE_URL` trỏ
 Test đã chạy bằng clone BE riêng ở revision ghim; không chứng minh Backend deploy hiện tại đã cập nhật.
 `VITE_ENABLE_HILL=false` vẫn là mặc định. Sau khi build/restart Backend chứa Hill (và migrate `0002`
 nếu dùng PostgreSQL), đặt `VITE_ENABLE_HILL=true` rồi build FE để phát hành tab.
+
+## Cập nhật contract 02/10/2026: lọc ký tự đệm
+
+BE revision `291da33` thay thế quy định giữ nguyên kết quả hiển thị khi decrypt:
+`result` vẫn là bản thô, thêm `padding: {count,positions,filtered}`. FE mặc định dùng
+`filtered` cho hiển thị/copy/download; toggle tắt sẽ dùng `result` mà không gọi lại API.
+Bản thô luôn xem được, đệm đánh dấu theo vị trí chữ, khung phân tích chỉ ra khối/ô.
+Không tự cắt X ở FE. Chi tiết trong [PADDING_FILTER_SPEC.md](PADDING_FILTER_SPEC.md).

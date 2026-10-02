@@ -10,6 +10,21 @@ function Harness({ gateway }: { gateway: DesGateway }) {
 }
 
 describe("DES workspace", () => {
+  it("shows algorithm analysis instead of the ECB/CBC comparison", async () => {
+    const process = vi
+      .fn<DesGateway["process"]>()
+      .mockResolvedValue({ text: "85E813540F0AB405", attachment: null });
+    render(<Harness gateway={{ kind: "api", process }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mã hóa" }));
+    await screen.findByText("85E813540F0AB405");
+    fireEvent.click(screen.getByRole("tab", { name: "Phân tích" }));
+    expect(screen.getByText("DES · Mạng Feistel 16 vòng")).toBeVisible();
+    expect(screen.queryByText("Phân biệt ECB và CBC")).not.toBeInTheDocument();
+    const tab = screen.getByRole("tab", { name: "Phân tích" });
+    fireEvent.keyDown(tab, { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: "Văn bản" })).toHaveFocus();
+  });
   it("loads a valid example from file/decrypt mode and submits it to the backend", async () => {
     const process = vi.fn<DesGateway["process"]>().mockResolvedValue({
       text: "85E813540F0AB405",

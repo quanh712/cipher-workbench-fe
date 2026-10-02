@@ -1,3 +1,4 @@
+import type { PaddingInfo } from "../../../shared/utils/padding";
 import type { CipherMode } from "../../../shared/types/cipher";
 
 export type HillSize = 2 | 3 | 4;
@@ -41,6 +42,7 @@ export type HillProcessRequest = HillKeyPayload & {
 };
 
 export interface HillProcessResponse {
+  padding?: PaddingInfo;
   success: true;
   result: string;
   blocks: HillBlock[];

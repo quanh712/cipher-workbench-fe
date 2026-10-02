@@ -22,7 +22,7 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
 
   async function copyResult() {
     try {
-      await navigator.clipboard.writeText(cipher.result?.text ?? "");
+      await navigator.clipboard.writeText(cipher.displayResult);
       cipher.setNotice({ kind: "success", message: "Đã sao chép kết quả." });
     } catch {
       cipher.setNotice({ kind: "error", message: "Không thể sao chép kết quả." });
@@ -49,8 +49,9 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
 
       <div className="helper-row">
         <span>
-          Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I, loại định dạng; khi giải mã giữ filler X
-          giữa chuỗi và bỏ filler cuối; kết quả không khôi phục nguyên văn đầu vào.
+          Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I, loại định dạng; khi giải mã, bản thô giữ
+          mọi filler X/Q, bộ lọc ký tự đệm có thể bỏ nhầm X/Q thật; kết quả không khôi phục nguyên
+          văn đầu vào.
         </span>
         <button
           className="button button--secondary"
@@ -63,24 +64,49 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
       </div>
 
       <div className="workspace__columns">
-        <CipherInputPanel
-          inputType={cipher.inputType}
-          mode={cipher.mode}
-          text={cipher.text}
-          file={cipher.file}
-          fileText={cipher.fileText}
-          error={cipher.inputError}
-          disabled={cipher.isLoading}
-          onInputTypeChange={cipher.setInputType}
-          onTextChange={cipher.setText}
-          onFileChange={cipher.setFile}
-          onClear={cipher.resetInput}
-          onPaste={pasteInput}
-          onCopy={copyInput}
-        />
+        <div className="workspace__input-column">
+          <CipherInputPanel
+            inputType={cipher.inputType}
+            mode={cipher.mode}
+            text={cipher.text}
+            file={cipher.file}
+            fileText={cipher.fileText}
+            error={cipher.inputError}
+            disabled={cipher.isLoading}
+            onInputTypeChange={cipher.setInputType}
+            onTextChange={cipher.setText}
+            onFileChange={cipher.setFile}
+            onClear={cipher.resetInput}
+            onPaste={pasteInput}
+            onCopy={copyInput}
+          />
+
+          <DraftKeyConfig
+            algorithmName="Playfair"
+            value={cipher.key}
+            error={cipher.keyError}
+            placeholder="Ví dụ: PLAYFAIR EXAMPLE"
+            description="Khóa Playfair được chuẩn hóa thành chữ hoa ASCII, gộp J/I và loại ký tự trùng."
+            hint="Khoảng trắng và ký tự ngoài ASCII bị loại nếu khóa vẫn còn ít nhất một chữ cái A–Z."
+            disabled={cipher.isLoading}
+            onChange={cipher.setKey}
+          />
+
+          <button
+            className="button button--primary"
+            type="button"
+            disabled={!cipher.canSubmit}
+            onClick={cipher.processCipher}
+          >
+            {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
+          </button>
+        </div>
         <PlayfairOutputPanel
           key={cipher.result ? "result" : "empty"}
           result={cipher.result}
+          displayResult={cipher.displayResult}
+          filterPadding={cipher.filterPadding}
+          onFilterPadding={cipher.setFilterPadding}
           mode={cipher.mode}
           processingStatus={cipher.processingStatus}
           disabled={cipher.isLoading}
@@ -89,26 +115,6 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
           onDownload={cipher.downloadResult}
         />
       </div>
-
-      <DraftKeyConfig
-        algorithmName="Playfair"
-        value={cipher.key}
-        error={cipher.keyError}
-        placeholder="Ví dụ: PLAYFAIR EXAMPLE"
-        description="Khóa Playfair được chuẩn hóa thành chữ hoa ASCII, gộp J/I và loại ký tự trùng."
-        hint="Khoảng trắng và ký tự ngoài ASCII bị loại nếu khóa vẫn còn ít nhất một chữ cái A–Z."
-        disabled={cipher.isLoading}
-        onChange={cipher.setKey}
-      />
-
-      <button
-        className="button button--primary"
-        type="button"
-        disabled={!cipher.canSubmit}
-        onClick={cipher.processCipher}
-      >
-        {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
-      </button>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

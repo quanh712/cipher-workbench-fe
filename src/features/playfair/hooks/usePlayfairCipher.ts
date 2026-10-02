@@ -21,6 +21,14 @@ export function usePlayfairCipher() {
   const [fileText, setFileText] = useState("");
   const [key, setKeyState] = useState("");
   const [result, setResult] = useState<PlayfairResultSnapshot | null>(null);
+  const [filterPadding, setFilterPaddingState] = useState(true);
+  const displayResult =
+    result?.mode === "decrypt" && filterPadding
+      ? (result.padding?.filtered ?? result.text)
+      : (result?.text ?? "");
+  function setFilterPadding(next: boolean) {
+    if (!isLoading) setFilterPaddingState(next);
+  }
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>("idle");
@@ -110,6 +118,7 @@ export function usePlayfairCipher() {
           : await playfairApi.previewFile(snapshot.mode, snapshot.file!, snapshot.key);
       setResult({
         text: response.result,
+        padding: response.padding,
         source,
         mode: snapshot.mode,
         inputType: snapshot.inputType,
@@ -141,7 +150,7 @@ export function usePlayfairCipher() {
       if (snapshot.inputType === "text") {
         const suffix = snapshot.mode === "encrypt" ? "encrypted" : "decrypted";
         saveBlob(
-          new Blob([snapshot.text], { type: "text/plain;charset=utf-8" }),
+          new Blob([displayResult], { type: "text/plain;charset=utf-8" }),
           `ket-qua.${suffix}.txt`,
         );
       } else {
@@ -149,6 +158,7 @@ export function usePlayfairCipher() {
           snapshot.mode,
           snapshot.file!,
           snapshot.keyValue,
+          filterPadding,
         );
         saveBlob(download.blob, download.filename);
       }
@@ -213,6 +223,9 @@ export function usePlayfairCipher() {
     key,
     setKey,
     result,
+    displayResult,
+    filterPadding,
+    setFilterPadding,
     notice,
     setNotice,
     isLoading,

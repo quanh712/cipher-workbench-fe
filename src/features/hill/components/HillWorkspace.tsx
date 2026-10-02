@@ -6,6 +6,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react";
+import { PaddingResult } from "../../../shared/components/PaddingResult";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
@@ -331,7 +332,7 @@ function ResultPanel({ cipher }: { cipher: Controller }) {
   async function copyResult() {
     if (!result) return;
     try {
-      await navigator.clipboard.writeText(result.result);
+      await navigator.clipboard.writeText(cipher.displayResult);
       cipher.setNotice({ kind: "success", message: "Đã sao chép kết quả." });
     } catch {
       cipher.setNotice({ kind: "error", message: "Không thể sao chép kết quả." });
@@ -371,7 +372,7 @@ function ResultPanel({ cipher }: { cipher: Controller }) {
           </div>
         </div>
         {result ? (
-          <ResultBlocks result={result} />
+          <ResultBlocks result={{ ...result, result: cipher.displayResult }} />
         ) : (
           <pre className="output output--empty hill-result__text">
             Kết quả sẽ hiển thị ở đây sau khi xử lý.
@@ -387,9 +388,19 @@ function ResultPanel({ cipher }: { cipher: Controller }) {
             : cipher.resultError
               ? "! Xử lý thất bại"
               : result
-                ? `✓ Xử lý thành công · ${result.result.length} ký tự`
+                ? `✓ Xử lý thành công · ${cipher.displayResult.length} ký tự`
                 : "Chưa xử lý"}
         </div>
+        {result?.mode === "decrypt" && (
+          <PaddingResult
+            raw={result.result}
+            padding={result.padding}
+            enabled={cipher.filterPadding}
+            onChange={cipher.setFilterPadding}
+            disabled={cipher.isBusy}
+            size={result.key.m}
+          />
+        )}
         {(Boolean(result?.warnings.length) ||
           (cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code))) && (
           <div className="hill-panel-body">
@@ -476,6 +487,24 @@ function AnalysisPanel({ cipher }: { cipher: Controller }) {
               {warning.message}
             </p>
           ))}
+        {result?.mode === "decrypt" && result.padding && (
+          <div className="hill-padding-analysis">
+            <h3>Lọc ký tự đệm</h3>
+            <p>
+              Ký tự đệm: X · {result.padding.count} chữ ·{" "}
+              {cipher.filterPadding ? "Đang hiển thị bản đã lọc" : "Đang hiển thị bản thô"}.
+            </p>
+            <p>
+              {result.padding.positions
+                .map((p) => `Khối ${Math.floor(p / result.key.m) + 1}, ô ${(p % result.key.m) + 1}`)
+                .join("; ") || "Không nhận diện ký tự đệm."}
+            </p>
+            <small>
+              Bật/tắt lọc và xem hai bản bên dưới kết quả. Các vector dưới đây giữ bản thô của
+              backend.
+            </small>
+          </div>
+        )}
         {result && (
           <details className="hill-steps">
             <summary>Xem từng bước ({result.blocks.length} khối)</summary>

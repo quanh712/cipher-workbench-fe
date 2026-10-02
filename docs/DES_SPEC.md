@@ -203,3 +203,21 @@ Compose `cipher-postgres-local` từ `.env.stage`, chạy migration `0003` thàn
 `http://127.0.0.1:18081`: **20/20 Hill** và **16/16 DES** integration đạt ở desktop/375 px.
 Hai suite chạy tuần tự với `--workers=1` và output riêng trong `/tmp` để tránh xung đột
 artifact và rate limit Nginx. Cổng 8080 là stack khác; không được cập nhật trong thao tác này.
+
+## 11. Phân tích thuật toán DES (02/10/2026)
+
+Output có tab Văn bản / Phân tích, hỗ trợ phím mũi tên/Home/End. Bỏ bảng so sánh
+ECB/CBC và ví dụ hai khối; giữ chọn chế độ để mã hóa/giải mã bình thường.
+
+Phân tích gọi `POST /api/des/trace` khi mở tab sau một kết quả thật. Minh họa khối đầu:
+text mã UTF-8 và PKCS#7; HEX lấy 16 ký tự đầu; file UTF-8 fatal decode và bỏ BOM đầu.
+Encrypt CBC XOR khối bản rõ đầu với IV trước khi gọi trace. Decrypt gửi khối bản mã
+đầu trực tiếp; đầu ra DES thô còn cần XOR IV khi CBC. Không tính DES ở FE.
+
+Hiển thị 16 khóa con (PC-1, dịch trái C/D, PC-2), IP và L0/R0, bảng 16 vòng,
+hàm f của vòng chọn (E, XOR khóa, 8 S-box, P), R16L16 và IP nghịch đảo. Giá trị
+trung gian lấy từ BE; encrypt kiểm đầu ra trace khớp khối bản mã đầu đã xử lý.
+Request trace bị hủy khi rời tab/thay kết quả; lỗi riêng có nút thử lại và không xóa
+kết quả chính. Demo không gọi trace. Copy/download vẫn dùng toàn bộ kết quả chính.
+
+Giữ thông tin số khối/dung lượng/padding từ snapshot, tối đa 16 khối bản mã hiển thị.

@@ -10,7 +10,7 @@ export const playfairApi = {
     return previewFile({ cipher: "playfair", file, key, action: mode });
   },
 
-  downloadFile(mode: CipherMode, file: File, key: string) {
-    return downloadFile({ cipher: "playfair", file, key, action: mode });
+  downloadFile(mode: CipherMode, file: File, key: string, stripPadding = false) {
+    return downloadFile({ cipher: "playfair", file, key, action: mode, stripPadding });
   },
 };

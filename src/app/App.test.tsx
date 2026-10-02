@@ -32,7 +32,7 @@ describe("Cipher Workbench", () => {
     ["Playfair", "Khóa Playfair"],
     ["Affine", "Khóa Affine"],
     ["Hệ mã hàng", "Khóa Hệ mã hàng"],
-  ])("uses the Caesar workspace structure for %s", async (algorithm, keyHeading) => {
+  ])("shows input, output and key controls for %s", async (algorithm, keyHeading) => {
     const user = userEvent.setup();
     render(<App />);
     if (algorithm !== "Caesar") {
@@ -46,7 +46,10 @@ describe("Cipher Workbench", () => {
 
     expect(within(workspace).getByRole("button", { name: "Tạo ví dụ" })).toBeVisible();
     expect(columns.children).toHaveLength(2);
-    expect(columns.children[0].tagName).toBe("SECTION");
+    expect(columns.children[0].contains(input)).toBe(true);
+    if (["Vigenère", "Playfair", "Hệ mã hàng"].includes(algorithm)) {
+      expect(columns.children[0].contains(keySection)).toBe(true);
+    }
     expect(columns.children[1].tagName).toBe("SECTION");
     expect(input.closest(".highlighted-input")).not.toBeNull();
     expect(within(workspace).getByRole("tab", { name: "Văn bản" })).toBeVisible();
@@ -557,7 +560,7 @@ describe("Cipher Workbench", () => {
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
-    await user.click(screen.getByRole("button", { name: "Mã hóa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mã hóa" }));
 
     expect(screen.getByRole("radio", { name: /Giải mã/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "File .txt" })).toBeDisabled();
