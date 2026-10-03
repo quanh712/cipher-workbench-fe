@@ -69,6 +69,7 @@ describe("Columnar result analysis", () => {
     expect(full?.rows).toHaveLength(100);
     expect(preview).toMatchObject({ isPreview: true, totalRows: 101 });
     expect(preview?.rows).toHaveLength(10);
+    expect(Array.from(preview?.sourcePreview ?? "")).toHaveLength(80);
     expect(
       buildColumnarAnalysis({ sourceText: "abc", result: "ab", mode: "encrypt", key: key("2 1") }),
     ).toBeNull();

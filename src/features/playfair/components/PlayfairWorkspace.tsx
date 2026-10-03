@@ -2,6 +2,7 @@ import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { DraftKeyConfig } from "../../../shared/components/DraftKeyConfig";
+import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import { Notification } from "../../../shared/components/Notification";
 import type { PlayfairCipherController } from "../hooks/usePlayfairCipher";
 import { PlayfairOutputPanel } from "./PlayfairOutputPanel";
@@ -64,7 +65,7 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
         </button>
       </div>
 
-      <div className="workspace__columns">
+      <KeyAlignedColumns>
         <div className="workspace__input-column">
           <CipherInputPanel
             inputType={cipher.inputType}
@@ -117,7 +118,7 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
           onClear={cipher.clearResult}
           onDownload={cipher.downloadResult}
         />
-      </div>
+      </KeyAlignedColumns>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

@@ -102,6 +102,7 @@ test("file preview/download use original file, server filename and BOM", async (
     mimeType: "text/plain",
     buffer: Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("Hello World")]),
   });
+  await expect(page.getByLabel("Xem trước nội dung file")).toContainText("Hello World");
   await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
   await expect(page.getByLabel("Nội dung kết quả DES")).toHaveText(
     "B1CA74BB3514268701A9ACC3E4E69FAA",
@@ -120,6 +121,7 @@ test("file preview/download use original file, server filename and BOM", async (
     mimeType: "text/plain",
     buffer: Buffer.from("B1CA74BB35142687\r\n01A9ACC3E4E69FAA\r\n"),
   });
+  await expect(page.getByLabel("Xem trước nội dung file")).toContainText("B1CA74BB35142687");
   await page.getByRole("button", { name: "Giải mã", exact: true }).click();
   await expect(page.getByLabel("Nội dung kết quả DES")).toHaveText("Hello World");
   await page.screenshot({ path: `/tmp/des-real-${info.project.name}.png`, fullPage: true });

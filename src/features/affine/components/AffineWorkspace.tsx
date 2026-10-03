@@ -1,4 +1,5 @@
 import { CipherActions } from "../../../shared/components/CipherActions";
+import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { Notification } from "../../../shared/components/Notification";
@@ -63,23 +64,50 @@ export function AffineWorkspace({ cipher }: AffineWorkspaceProps) {
         </button>
       </div>
 
-      <div className="workspace__columns">
-        <CipherInputPanel
-          inputType={cipher.inputType}
-          mode={cipher.mode}
-          text={cipher.text}
-          file={cipher.file}
-          fileText={cipher.fileText}
-          error={cipher.inputError}
-          disabled={cipher.isBusy}
-          isReadingFile={cipher.isReadingFile}
-          onInputTypeChange={cipher.setInputType}
-          onTextChange={cipher.setText}
-          onFileChange={cipher.setFile}
-          onClear={cipher.resetInput}
-          onPaste={pasteInput}
-          onCopy={copyInput}
-        />
+      <KeyAlignedColumns>
+        <div className="workspace__input-column">
+          <CipherInputPanel
+            inputType={cipher.inputType}
+            mode={cipher.mode}
+            text={cipher.text}
+            file={cipher.file}
+            fileText={cipher.fileText}
+            error={cipher.inputError}
+            disabled={cipher.isBusy}
+            isReadingFile={cipher.isReadingFile}
+            onInputTypeChange={cipher.setInputType}
+            onTextChange={cipher.setText}
+            onFileChange={cipher.setFile}
+            onClear={cipher.resetInput}
+            onPaste={pasteInput}
+            onCopy={copyInput}
+          />
+          <AffineKeyConfig
+            mode={cipher.mode}
+            a={cipher.a}
+            b={cipher.b}
+            validation={cipher.keyValidation}
+            disabled={cipher.isBusy}
+            onAChange={cipher.setA}
+            onBChange={cipher.setB}
+          />
+          <CipherActions disabled={cipher.isBusy} onReset={cipher.resetAll}>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={!cipher.canSubmit}
+              onClick={cipher.processCipher}
+            >
+              {cipher.isReadingFile
+                ? "Đang đọc file…"
+                : cipher.isLoading
+                  ? "Đang xử lý…"
+                  : cipher.mode === "encrypt"
+                    ? "Mã hóa"
+                    : "Giải mã"}
+            </button>
+          </CipherActions>
+        </div>
         <AffineOutputPanel
           key={cipher.result ? "result" : "empty"}
           result={cipher.result}
@@ -90,36 +118,9 @@ export function AffineWorkspace({ cipher }: AffineWorkspaceProps) {
           onClear={cipher.clearResult}
           onDownload={cipher.downloadResult}
         />
-      </div>
+      </KeyAlignedColumns>
 
       <AffineMap mode={cipher.mode} input={currentInput} validation={cipher.keyValidation} />
-
-      <AffineKeyConfig
-        mode={cipher.mode}
-        a={cipher.a}
-        b={cipher.b}
-        validation={cipher.keyValidation}
-        disabled={cipher.isBusy}
-        onAChange={cipher.setA}
-        onBChange={cipher.setB}
-      />
-
-      <CipherActions disabled={cipher.isBusy} onReset={cipher.resetAll}>
-        <button
-          className="button button--primary"
-          type="button"
-          disabled={!cipher.canSubmit}
-          onClick={cipher.processCipher}
-        >
-          {cipher.isReadingFile
-            ? "Đang đọc file…"
-            : cipher.isLoading
-              ? "Đang xử lý…"
-              : cipher.mode === "encrypt"
-                ? "Mã hóa"
-                : "Giải mã"}
-        </button>
-      </CipherActions>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

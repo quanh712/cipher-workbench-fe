@@ -1,6 +1,7 @@
 import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
+import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import { Notification } from "../../../shared/components/Notification";
 import type { ColumnarCipherController } from "../hooks/useColumnarCipher";
 import { ColumnarKeyConfig } from "./ColumnarKeyConfig";
@@ -61,7 +62,7 @@ export function ColumnarWorkspace({ cipher }: ColumnarWorkspaceProps) {
         </button>
       </div>
 
-      <div className="workspace__columns">
+      <KeyAlignedColumns>
         <div className="workspace__input-column">
           <CipherInputPanel
             inputType={cipher.inputType}
@@ -114,7 +115,7 @@ export function ColumnarWorkspace({ cipher }: ColumnarWorkspaceProps) {
           onClear={cipher.clearResult}
           onDownload={cipher.downloadResult}
         />
-      </div>
+      </KeyAlignedColumns>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

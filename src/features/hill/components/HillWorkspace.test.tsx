@@ -79,6 +79,7 @@ describe("Hill workspace", () => {
       "aria-label",
       expect.stringContaining("K=[3, 3] [2, 5]"),
     );
+    await user.click(within(result).getByRole("tab", { name: "Phân tích" }));
     const analysis = screen.getByRole("region", { name: "Phân tích khóa" });
     await user.click(within(analysis).getByText("Xem từng bước (2 khối)"));
     expect(within(analysis).getByText(/\[7, 4\] · K = \[3, 15\]/)).toBeVisible();
@@ -122,9 +123,13 @@ describe("Hill workspace", () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<Harness gateway={createHillGateway()} />);
     await user.click(screen.getByRole("button", { name: "Từ khóa" }));
+    expect(screen.queryByLabelText("Cấp ma trận")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Lưới ma trận khóa")).not.toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: /Từ khóa/ }), "HIL");
     expect(screen.getByText("Từ khóa cần đúng 4 chữ cái, hiện có 3.")).toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: /Từ khóa/ }), "L");
+    expect(screen.queryByRole("textbox", { name: "Khóa hàng 1 cột 1" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ma trận" }));
     expect(screen.getByRole("textbox", { name: "Khóa hàng 1 cột 1" })).toHaveValue("7");
     await user.click(screen.getByRole("button", { name: "File .txt" }));
     const fileInput = screen.getByLabelText("Chọn file văn bản");
@@ -269,6 +274,7 @@ describe("Hill workspace", () => {
     });
     render(<Harness gateway={gateway} />);
     await user.selectOptions(screen.getByLabelText("Cấp ma trận"), "3");
+    await user.click(screen.getByRole("tab", { name: "Phân tích" }));
     const analysis = screen.getByRole("region", { name: "Phân tích khóa" });
     expect(
       await within(analysis).findByText("Không kết nối được máy chủ. Thử lại."),
@@ -288,10 +294,13 @@ describe("Hill workspace", () => {
     render(<Harness gateway={gateway} />);
     await waitFor(() => expect(gateway.analyze).toHaveBeenCalledTimes(1));
     await user.click(screen.getByRole("button", { name: "Khóa ngẫu nhiên" }));
+    await user.click(screen.getByRole("tab", { name: "Phân tích" }));
     const panel = screen.getByRole("region", { name: "Phân tích khóa" });
     await user.click(await within(panel).findByRole("button", { name: "Thử lại" }));
     await waitFor(() => expect(gateway.random).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(within(panel).getByText(/Khóa khả nghịch/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(panel).getByText("Ma trận nghịch đảo K⁻¹")).toBeInTheDocument(),
+    );
     expect(gateway.analyze).toHaveBeenCalledTimes(1);
   });
 

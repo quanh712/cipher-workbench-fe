@@ -36,6 +36,7 @@ describe("ColumnarOutputPanel", () => {
       within(screen.getByRole("table", { name: "Ma trận Hệ mã hàng" })).getAllByRole("row"),
     ).toHaveLength(10);
     expect(screen.getByText("Bản xem trước: 9 / 9 hàng")).toBeInTheDocument();
+    expect(screen.getByText(/xem trước 80\/201 ký tự/)).toBeInTheDocument();
     expect(screen.getByText(/Hiện đủ 9 hàng; chỉ rút gọn phần Đầu vào/)).toBeInTheDocument();
   });
 });

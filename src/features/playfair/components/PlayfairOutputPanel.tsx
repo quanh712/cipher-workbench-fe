@@ -23,6 +23,8 @@ interface PlayfairOutputPanelProps {
   onDownload: () => void;
 }
 
+const NORMALIZED_INPUT_PREVIEW_LENGTH = 80;
+
 export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
   const [view, setView] = useState<"text" | "analysis">("text");
   const id = useId();
@@ -139,7 +141,11 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
                 </div>
                 <div>
                   <dt>Đầu vào chuẩn hóa</dt>
-                  <dd>{normalizedInput}</dd>
+                  <dd>
+                    {normalizedInput.slice(0, NORMALIZED_INPUT_PREVIEW_LENGTH)}
+                    {normalizedInput.length > NORMALIZED_INPUT_PREVIEW_LENGTH &&
+                      `… (xem trước ${NORMALIZED_INPUT_PREVIEW_LENGTH}/${normalizedInput.length} ký tự)`}
+                  </dd>
                 </div>
                 <div>
                   <dt>Số digraph</dt>

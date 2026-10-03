@@ -2,6 +2,7 @@ import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { DraftKeyConfig } from "../../../shared/components/DraftKeyConfig";
+import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import { Notification } from "../../../shared/components/Notification";
 import type { VigenereCipherController } from "../hooks/useVigenereCipher";
 import { VigenereOutputPanel } from "./VigenereOutputPanel";
@@ -63,7 +64,7 @@ export function VigenereWorkspace({ cipher }: VigenereWorkspaceProps) {
         </button>
       </div>
 
-      <div className="workspace__columns">
+      <KeyAlignedColumns>
         <div className="workspace__input-column">
           <CipherInputPanel
             inputType={cipher.inputType}
@@ -113,7 +114,7 @@ export function VigenereWorkspace({ cipher }: VigenereWorkspaceProps) {
           onClear={cipher.clearResult}
           onDownload={cipher.downloadResult}
         />
-      </div>
+      </KeyAlignedColumns>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

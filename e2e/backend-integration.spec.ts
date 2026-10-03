@@ -147,6 +147,42 @@ test("uses the real Playfair text contract", async ({ page }) => {
   await expect(page.getByText(/HI → BM/)).toBeVisible();
 });
 
+test("wraps long normalized Playfair input inside its analysis panel", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("tab", { name: /Playfair/ }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.getByRole("textbox", { name: "Nội dung đầu vào" }).fill("HELLO WORLD ".repeat(80));
+  await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
+  await expect(page.locator(".cipher-output-panel .status--success")).toBeVisible();
+  await page.getByRole("tab", { name: "Phân tích" }).click();
+
+  await expect(page.locator(".playfair-analysis .stats-list dd").nth(1)).toContainText(
+    "xem trước 80/800 ký tự",
+  );
+
+  for (const width of [1280, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    const bounds = await page.evaluate(() => {
+      const row = [...document.querySelectorAll(".playfair-analysis .stats-list > div")].find(
+        (element) => element.querySelector("dt")?.textContent?.includes("Đầu vào chuẩn hóa"),
+      )!;
+      const value = row.querySelector<HTMLElement>("dd")!;
+      const panel = document.querySelector<HTMLElement>(".playfair-analysis")!;
+      return {
+        valueRight: value.getBoundingClientRect().right,
+        panelRight: panel.getBoundingClientRect().right,
+        valueScrollWidth: value.scrollWidth,
+        valueClientWidth: value.clientWidth,
+        pageWidth: document.documentElement.scrollWidth,
+        viewport: innerWidth,
+      };
+    });
+    expect(bounds.valueRight).toBeLessThanOrEqual(bounds.panelRight - 8);
+    expect(bounds.valueScrollWidth).toBeLessThanOrEqual(bounds.valueClientWidth + 1);
+    expect(bounds.pageWidth).toBeLessThanOrEqual(bounds.viewport);
+  }
+});
+
 test("suggests only internal Playfair fillers after the Backend trims the terminal filler", async ({
   page,
 }) => {
@@ -367,6 +403,73 @@ test("previews and downloads a Vigenère file with two requests", async ({ page 
   expect((await downloadRequest).method()).toBe("POST");
   expect((await downloadEvent).suggestedFilename()).toBe("attack.encrypted.txt");
 });
+
+test("keeps a long Vigenère file result within the key panel and scrolls its text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await page.getByRole("tab", { name: /Vigenère/ }).click();
+  await page.getByRole("button", { name: "File .txt" }).click();
+  await page.getByLabel("Chọn file văn bản").setInputFiles({
+    name: "long.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("HELP WORLD. ".repeat(250)),
+  });
+  await page.getByRole("textbox", { name: "Khóa Vigenère" }).fill("LEMON");
+  await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
+
+  const result = page.locator(".cipher-output-panel");
+  await expect(result.locator(".status")).toContainText("Xử lý thành công");
+  const bounds = await page.evaluate(() => {
+    const output = document.querySelector<HTMLElement>(".cipher-output-panel .output")!;
+    const resultPanel = document.querySelector<HTMLElement>(".cipher-output-panel > .panel")!;
+    const keyPanel = document.querySelector<HTMLElement>(
+      ".workspace__input-column .config-section .panel",
+    )!;
+    return {
+      resultBottom: resultPanel.getBoundingClientRect().bottom,
+      keyBottom: keyPanel.getBoundingClientRect().bottom,
+      scrollHeight: output.scrollHeight,
+      clientHeight: output.clientHeight,
+    };
+  });
+  expect(Math.abs(bounds.resultBottom - bounds.keyBottom)).toBeLessThanOrEqual(2);
+  expect(bounds.scrollHeight).toBeGreaterThan(bounds.clientHeight);
+});
+
+for (const algorithm of ["Caesar", "Affine"] as const) {
+  test(`keeps a long ${algorithm} result beside its key and scrolls its text`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/");
+    await page.getByRole("tab", { name: new RegExp(algorithm) }).click();
+    await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+    await page.getByRole("button", { name: "File .txt" }).click();
+    await page.getByLabel("Chọn file văn bản").setInputFiles({
+      name: "long.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("HELP WORLD. ".repeat(250)),
+    });
+    await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
+    const columns = page.locator(".workspace__columns--key-aligned");
+    await expect(columns.locator(".cipher-output-panel .status")).toContainText("Xử lý thành công");
+    const bounds = await columns.evaluate((element) => {
+      const output = element.querySelector<HTMLElement>(".cipher-output-panel .output")!;
+      const resultPanel = element.querySelector<HTMLElement>(".cipher-output-panel > .panel")!;
+      const keyPanel = element.querySelector<HTMLElement>(
+        ".workspace__input-column .config-section .panel",
+      )!;
+      return {
+        resultBottom: resultPanel.getBoundingClientRect().bottom,
+        keyBottom: keyPanel.getBoundingClientRect().bottom,
+        scrollHeight: output.scrollHeight,
+        clientHeight: output.clientHeight,
+      };
+    });
+    expect(Math.abs(bounds.resultBottom - bounds.keyBottom)).toBeLessThanOrEqual(2);
+    expect(bounds.scrollHeight).toBeGreaterThan(bounds.clientHeight);
+  });
+}
 
 test("sends a large key as an exact JSON integer token", async ({ page }) => {
   await page.goto("/");

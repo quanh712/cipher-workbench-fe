@@ -81,6 +81,24 @@ describe("DES workspace", () => {
     expect(screen.queryByText("empty.des")).not.toBeInTheDocument();
   });
 
+  it("previews a real TXT file, replaces stale text and copies the full input", async () => {
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    render(<Harness gateway={{ kind: "api", process: vi.fn() }} />);
+    fireEvent.click(screen.getByRole("button", { name: "File .txt" }));
+    const input = screen.getByLabelText("Chọn file DES");
+    fireEvent.change(input, { target: { files: [new File(["FIRST"], "first.txt")] } });
+    expect(await screen.findByLabelText("Xem trước nội dung file")).toHaveTextContent("FIRST");
+
+    fireEvent.change(input, { target: { files: [new File(["SECOND"], "second.txt")] } });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Xem trước nội dung file")).toHaveTextContent("SECOND"),
+    );
+    expect(screen.getByLabelText("Xem trước nội dung file")).not.toHaveTextContent("FIRST");
+    const inputPanel = screen.getByRole("region", { name: "Đầu vào DES" });
+    fireEvent.click(within(inputPanel).getByRole("button", { name: "Sao chép" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("SECOND"));
+  });
+
   it.each([
     { text: "", attachment: null, copy: false, download: false },
     { text: "preview", attachment: null, copy: true, download: false },

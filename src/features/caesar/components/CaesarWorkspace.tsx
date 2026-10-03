@@ -1,4 +1,5 @@
 import { CipherActions } from "../../../shared/components/CipherActions";
+import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import type { CaesarCipherController } from "../hooks/useCaesarCipher";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { Notification } from "../../../shared/components/Notification";
@@ -64,22 +65,41 @@ export function CaesarWorkspace({ cipher }: CaesarWorkspaceProps) {
         </button>
       </div>
 
-      <div className="workspace__columns">
-        <InputPanel
-          inputType={cipher.inputType}
-          mode={cipher.mode}
-          text={cipher.text}
-          file={cipher.file}
-          fileText={cipher.fileText}
-          error={cipher.inputError}
-          disabled={cipher.isLoading}
-          onInputTypeChange={cipher.setInputType}
-          onTextChange={cipher.setText}
-          onFileChange={cipher.setFile}
-          onClear={cipher.resetInput}
-          onPaste={pasteInput}
-          onCopy={copyInput}
-        />
+      <KeyAlignedColumns>
+        <div className="workspace__input-column">
+          <InputPanel
+            inputType={cipher.inputType}
+            mode={cipher.mode}
+            text={cipher.text}
+            file={cipher.file}
+            fileText={cipher.fileText}
+            error={cipher.inputError}
+            disabled={cipher.isLoading}
+            onInputTypeChange={cipher.setInputType}
+            onTextChange={cipher.setText}
+            onFileChange={cipher.setFile}
+            onClear={cipher.resetInput}
+            onPaste={pasteInput}
+            onCopy={copyInput}
+          />
+          <CipherConfig
+            value={cipher.key}
+            normalizedKey={cipher.normalizedKey}
+            error={cipher.keyError}
+            disabled={cipher.isLoading}
+            onChange={cipher.setKey}
+          />
+          <CipherActions disabled={cipher.isLoading} onReset={cipher.resetAll}>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={!cipher.canSubmit}
+              onClick={cipher.processCipher}
+            >
+              {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
+            </button>
+          </CipherActions>
+        </div>
         <OutputPanel
           key={cipher.result ? "result" : "empty"}
           result={cipher.result}
@@ -90,32 +110,13 @@ export function CaesarWorkspace({ cipher }: CaesarWorkspaceProps) {
           onClear={cipher.clearResult}
           onDownload={cipher.downloadResult}
         />
-      </div>
+      </KeyAlignedColumns>
 
       <AlphabetMap
         mode={cipher.mode}
         normalizedKey={cipher.normalizedKey ?? 0}
         input={cipher.inputType === "text" ? cipher.text : cipher.fileText}
       />
-
-      <CipherConfig
-        value={cipher.key}
-        normalizedKey={cipher.normalizedKey}
-        error={cipher.keyError}
-        disabled={cipher.isLoading}
-        onChange={cipher.setKey}
-      />
-
-      <CipherActions disabled={cipher.isLoading} onReset={cipher.resetAll}>
-        <button
-          className="button button--primary"
-          type="button"
-          disabled={!cipher.canSubmit}
-          onClick={cipher.processCipher}
-        >
-          {cipher.isLoading ? "Đang xử lý…" : cipher.mode === "encrypt" ? "Mã hóa" : "Giải mã"}
-        </button>
-      </CipherActions>
 
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />

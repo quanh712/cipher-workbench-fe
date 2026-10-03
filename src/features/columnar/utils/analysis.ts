@@ -25,6 +25,7 @@ export interface ColumnarAnalysis {
 }
 
 const MAX_FULL_MATRIX_CODE_POINTS = 200;
+const SOURCE_PREVIEW_CODE_POINTS = 80;
 const PREVIEW_ROWS = 10;
 
 // Presentation only: the Backend response owns the actual result.
@@ -87,7 +88,7 @@ export function buildColumnarAnalysis({
 
   return {
     mode,
-    sourcePreview: sourceHead.slice(0, MAX_FULL_MATRIX_CODE_POINTS).join(""),
+    sourcePreview: sourceHead.slice(0, SOURCE_PREVIEW_CODE_POINTS).join(""),
     codePointCount,
     rawKey: key.raw,
     canonicalKey: key.canonicalKey,

@@ -1,14 +1,46 @@
 import { CipherActions } from "../../../shared/components/CipherActions";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { Notification } from "../../../shared/components/Notification";
 import type { DesCipherController } from "../hooks/useDesCipher";
 import { DesKeyInput } from "./DesKeyInput";
 import { DesResultPanel } from "./DesResultPanel";
+import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
+import { readTextFile, validateTextFile } from "../../../shared/utils/textFileValidation";
 
 export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
   const workspace = useRef<HTMLDivElement>(null);
+  const [filePreview, setFilePreview] = useState<{
+    file: File;
+    text: string;
+    error: string | null;
+  } | null>(null);
+  const canPreviewFile = !cipher.isDemo && cipher.file && !validateTextFile(cipher.file);
+
+  useEffect(() => {
+    const file = cipher.file;
+    if (cipher.isDemo || !file || validateTextFile(file)) return;
+    let current = true;
+    readTextFile(file).then(
+      (text) => {
+        if (current) setFilePreview({ file, text, error: null });
+      },
+      () => {
+        if (current)
+          setFilePreview({
+            file,
+            text: "",
+            error: "Không thể đọc nội dung file để xem trước.",
+          });
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [cipher.file, cipher.isDemo]);
+
+  const currentPreview = filePreview?.file === cipher.file ? filePreview : null;
 
   async function submit() {
     const errors = await cipher.processCipher();
@@ -33,7 +65,11 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
 
   async function copyInput() {
     try {
-      await navigator.clipboard.writeText(cipher.text);
+      const text =
+        cipher.inputType === "file" && cipher.file && !cipher.isDemo
+          ? await readTextFile(cipher.file)
+          : cipher.text;
+      await navigator.clipboard.writeText(text);
       cipher.setNotice({ kind: "success", message: "Đã sao chép đầu vào." });
     } catch {
       cipher.setNotice({ kind: "error", message: "Không thể sao chép đầu vào." });
@@ -57,7 +93,10 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
           className="button button--secondary"
           type="button"
           disabled={cipher.isBusy}
-          onClick={cipher.loadExample}
+          onClick={() => {
+            setFilePreview(null);
+            cipher.loadExample();
+          }}
         >
           Tạo ví dụ
         </button>
@@ -123,15 +162,15 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
           liệu nếu cần giải mã lại qua API.
         </p>
       )}
-      <div className="workspace__columns">
+      <KeyAlignedColumns>
         <div className="workspace__input-column">
           <CipherInputPanel
             inputType={cipher.inputType}
             mode={cipher.mode}
             text={cipher.text}
             file={cipher.file}
-            fileText=""
-            metadataOnly
+            fileText={currentPreview?.text ?? ""}
+            metadataOnly={!canPreviewFile}
             fileKind={cipher.isDemo ? "data" : "text"}
             fileAriaLabel="Chọn file DES"
             fileAccept={cipher.isDemo ? undefined : ".txt,text/plain"}
@@ -143,12 +182,21 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
             showErrorWithoutInput
             ariaLabel="Đầu vào DES"
             textAriaLabel="Nội dung đầu vào DES"
-            error={cipher.fieldErrors.input ?? cipher.fieldErrors.file ?? null}
+            error={
+              cipher.fieldErrors.input ?? cipher.fieldErrors.file ?? currentPreview?.error ?? null
+            }
             disabled={cipher.isBusy}
+            isReadingFile={Boolean(canPreviewFile && !currentPreview)}
             onInputTypeChange={cipher.setInputType}
             onTextChange={cipher.setText}
-            onFileChange={cipher.setFile}
-            onClear={cipher.resetInput}
+            onFileChange={(file) => {
+              setFilePreview(null);
+              cipher.setFile(file);
+            }}
+            onClear={() => {
+              setFilePreview(null);
+              cipher.resetInput();
+            }}
             onPaste={pasteInput}
             onCopy={copyInput}
           />
@@ -159,7 +207,13 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
             disabled={cipher.isBusy}
             onChange={cipher.setKey}
           />
-          <CipherActions disabled={cipher.isBusy} onReset={cipher.resetAll}>
+          <CipherActions
+            disabled={cipher.isBusy}
+            onReset={() => {
+              setFilePreview(null);
+              cipher.resetAll();
+            }}
+          >
             <button
               className="button button--primary"
               type="button"
@@ -171,7 +225,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
           </CipherActions>
         </div>
         <DesResultPanel cipher={cipher} />
-      </div>
+      </KeyAlignedColumns>
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />
       )}

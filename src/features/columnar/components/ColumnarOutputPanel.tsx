@@ -157,7 +157,9 @@ export function ColumnarOutputPanel(props: ColumnarOutputPanelProps) {
                   <dt>Đầu vào</dt>
                   <dd>
                     {visibleSegment(analysis.sourcePreview)}
-                    {analysis.codePointCount > 200 ? "… (bản xem trước)" : ""}
+                    {analysis.codePointCount > Array.from(analysis.sourcePreview).length
+                      ? `… (xem trước ${Array.from(analysis.sourcePreview).length}/${analysis.codePointCount} ký tự)`
+                      : ""}
                   </dd>
                 </div>
                 <div>
