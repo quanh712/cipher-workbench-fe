@@ -103,17 +103,6 @@ export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
         >
           {view === "analysis" && <DesAnalysis cipher={cipher} />}
         </div>
-        {!cipher.isDemo && cipher.resultOptions?.cipherMode === "CBC" && (
-          <div className="key-note">
-            CBC · IV: <code>{cipher.resultOptions.iv}</code>. Hãy giữ IV cùng bản mã; giải mã với IV
-            sai vẫn có thể thành công nhưng sai dữ liệu.
-          </div>
-        )}
-        {cipher.result?.warnings?.map((warning) => (
-          <p className="des-warning" role="status" key={warning.code}>
-            {warning.message}
-          </p>
-        ))}
         <div
           className={`status ${cipher.status === "success" ? "status--success" : cipher.status === "error" ? "status--error" : ""}`}
           role="status"
@@ -130,6 +119,17 @@ export function DesResultPanel({ cipher }: { cipher: DesCipherController }) {
                 : "Chưa xử lý"}
         </div>
       </div>
+      {!cipher.isDemo && cipher.resultOptions?.cipherMode === "CBC" && (
+        <div className="key-note des-result-note">
+          CBC · IV: <code>{cipher.resultOptions.iv}</code>. Hãy giữ IV cùng bản mã; giải mã với IV
+          sai vẫn có thể thành công nhưng sai dữ liệu.
+        </div>
+      )}
+      {cipher.result?.warnings?.map((warning) => (
+        <p className="des-warning" role="status" key={warning.code}>
+          {warning.message}
+        </p>
+      ))}
     </section>
   );
 }

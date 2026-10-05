@@ -65,7 +65,7 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
         </button>
       </div>
 
-      <KeyAlignedColumns>
+      <KeyAlignedColumns alignTo="input">
         <div className="workspace__input-column">
           <CipherInputPanel
             inputType={cipher.inputType}

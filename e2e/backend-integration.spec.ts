@@ -202,6 +202,116 @@ test("suggests only internal Playfair fillers after the Backend trims the termin
   await expect(page.locator("pre.output")).toHaveText("CNTXT");
 });
 
+test("keeps Playfair padding details in the scrollable analysis tab", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("tab", { name: /Playfair/ }).click();
+  await page.getByRole("radio", { name: /Giải mã/ }).click();
+  await page.getByRole("textbox", { name: "Nội dung đầu vào" }).fill("OEKCBOFTFT".repeat(100));
+  await page.getByRole("textbox", { name: "Khóa Playfair" }).fill("MATMA");
+  await page.getByRole("button", { name: "Giải mã" }).click();
+  await expect(page.locator(".cipher-output-panel .status--success")).toBeVisible();
+
+  const paddingControl = page.locator(".playfair-output-panel > .panel > .padding-result");
+  await expect(paddingControl.getByRole("checkbox", { name: /Tự động lọc/ })).toBeVisible();
+  await expect(page.getByText("Xem bản thô và bản đã lọc")).toBeHidden();
+  await page.getByRole("tab", { name: "Phân tích" }).click();
+  const analysis = page.locator(".playfair-analysis");
+  await analysis.getByText("Xem bản thô và bản đã lọc").click();
+
+  const bounds = await analysis.evaluate((element) => {
+    const panel = element.closest<HTMLElement>(".panel")!;
+    const key = document.querySelector<HTMLElement>(
+      ".workspace__input-column .config-section .panel",
+    )!;
+    return {
+      panelBottom: panel.getBoundingClientRect().bottom,
+      keyBottom: key.getBoundingClientRect().bottom,
+      contentHeight: element.scrollHeight,
+      viewportHeight: element.clientHeight,
+    };
+  });
+  expect(bounds.panelBottom).toBeLessThanOrEqual(bounds.keyBottom + 1);
+  expect(bounds.contentHeight).toBeGreaterThan(bounds.viewportHeight);
+  await analysis.evaluate((element) => (element.scrollTop = element.scrollHeight));
+  await expect(analysis.getByText("Bản đã lọc", { exact: true })).toBeVisible();
+});
+
+test("caps long Playfair file output at the key panel", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("tab", { name: /Playfair/ }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.getByRole("button", { name: "File .txt" }).click();
+  await page.getByLabel("Chọn file văn bản").setInputFiles({
+    name: "long.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("HELLO WORLD ".repeat(400)),
+  });
+  await page.getByRole("button", { name: "Mã hóa", exact: true }).click();
+  await expect(page.locator(".cipher-output-panel .status--success")).toBeVisible();
+  const bounds = await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>(".cipher-output-panel > .panel")!;
+    const text = panel.querySelector<HTMLElement>(".playfair-text-panel")!;
+    const key = document.querySelector<HTMLElement>(
+      ".workspace__input-column .config-section .panel",
+    )!;
+    return {
+      panelBottom: panel.getBoundingClientRect().bottom,
+      keyBottom: key.getBoundingClientRect().bottom,
+      textScrollHeight: text.scrollHeight,
+      textClientHeight: text.clientHeight,
+    };
+  });
+  expect(bounds.panelBottom).toBeLessThanOrEqual(bounds.keyBottom + 1);
+  expect(bounds.textScrollHeight).toBeGreaterThan(bounds.textClientHeight);
+});
+
+test("keeps a long Playfair decrypt panel aligned and resets text scroll when filtering", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("tab", { name: /Playfair/ }).click();
+  await page.getByRole("radio", { name: /Giải mã/ }).click();
+  await page.getByRole("textbox", { name: "Nội dung đầu vào" }).fill("OEKCBOFTFT".repeat(390));
+  await page.getByRole("textbox", { name: "Khóa Playfair" }).fill("MATMA");
+  await page.getByRole("button", { name: "Giải mã" }).click();
+  await expect(page.locator(".cipher-output-panel .status--success")).toBeVisible();
+
+  const text = page.locator(".playfair-text-panel");
+  await text.evaluate((element) => (element.scrollTop = element.scrollHeight));
+  await page.getByRole("checkbox", { name: /Tự động lọc ký tự đệm/ }).uncheck();
+  await expect(text).toHaveJSProperty("scrollTop", 0);
+
+  const bounds = await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>(".cipher-output-panel > .panel")!;
+    const key = document.querySelector<HTMLElement>(
+      ".workspace__input-column .config-section .panel",
+    )!;
+    return {
+      panelBottom: panel.getBoundingClientRect().bottom,
+      keyBottom: key.getBoundingClientRect().bottom,
+    };
+  });
+  expect(bounds.panelBottom).toBeLessThanOrEqual(bounds.keyBottom + 1);
+
+  await page.getByRole("tab", { name: "Phân tích" }).click();
+  const analysis = page.locator(".playfair-analysis");
+  await analysis.getByText("Xem bản thô và bản đã lọc").click();
+  const analysisBounds = await analysis.evaluate((element) => {
+    const panel = element.closest<HTMLElement>(".panel")!;
+    const key = document.querySelector<HTMLElement>(
+      ".workspace__input-column .config-section .panel",
+    )!;
+    return {
+      panelBottom: panel.getBoundingClientRect().bottom,
+      keyBottom: key.getBoundingClientRect().bottom,
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+    };
+  });
+  expect(analysisBounds.panelBottom).toBeLessThanOrEqual(analysisBounds.keyBottom + 1);
+  expect(analysisBounds.scrollHeight).toBeGreaterThan(analysisBounds.clientHeight);
+});
+
 test("uses the Backend's terminal-filler rule for Playfair text and file decrypt", async ({
   page,
 }) => {
@@ -516,3 +626,80 @@ test("shows the canonical backend message for invalid UTF-8", async ({ page }) =
   await expect(page.getByText("File phải sử dụng UTF-8.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Tải kết quả" })).toBeDisabled();
 });
+
+for (const width of [1280, 375]) {
+  test(`keeps Playfair padding at the panel bottom for short and long text at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route("**/api/playfair/decrypt", async (route) => {
+      const { text } = route.request().postDataJSON() as { text: string };
+      const raw = "HELXLO".repeat(text.length / 10);
+      await route.fulfill({
+        json: {
+          success: true,
+          result: raw,
+          padding: {
+            count: raw.length / 6,
+            positions: Array.from({ length: raw.length / 6 }, (_, index) => index * 6 + 3),
+            filtered: raw.replaceAll("X", ""),
+          },
+        },
+      });
+    });
+    await page.goto("/");
+    await page.getByRole("tab", { name: /Playfair/ }).click();
+    const panel = page.locator(".playfair-output-panel > .panel");
+    const input = page.locator(".workspace__input-column > section:first-child > .panel");
+    async function expectMatchingPanels() {
+      await expect
+        .poll(async () => {
+          const outputBounds = (await panel.boundingBox())!;
+          const inputBounds = (await input.boundingBox())!;
+          return Math.max(
+            Math.abs(outputBounds.height - inputBounds.height),
+            Math.abs(outputBounds.width - inputBounds.width),
+          );
+        })
+        .toBeLessThanOrEqual(1);
+    }
+    await expectMatchingPanels();
+    await page
+      .locator(".workspace__columns")
+      .screenshot({ path: testInfo.outputPath("playfair-matching-panels.png") });
+    await page.getByRole("radio", { name: /Giải mã/ }).click();
+    const emptyHeight = (await panel.boundingBox())!.height;
+    await page.getByRole("textbox", { name: "Khóa Playfair" }).fill("MATMA");
+    for (const repeat of [1, 390]) {
+      await page
+        .getByRole("textbox", { name: "Nội dung đầu vào" })
+        .fill("OEKCBOFTFT".repeat(repeat));
+      await page.getByRole("button", { name: "Giải mã" }).click();
+      await expect(panel.locator(".status--success")).toBeVisible();
+      await expectMatchingPanels();
+      const footer = panel.locator(":scope > .padding-result");
+      await expect(footer.getByRole("checkbox")).toBeVisible();
+      await expect(page.getByText("Xem bản thô và bản đã lọc")).toBeHidden();
+      const before = (await footer.boundingBox())!;
+      expect((await panel.boundingBox())!.height).toBeLessThanOrEqual(emptyHeight + 1);
+      await page.locator(".playfair-text-panel").evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      expect((await footer.boundingBox())!.y).toBeCloseTo(before.y, 0);
+      const status = (await panel.locator(":scope > .status").boundingBox())!;
+      expect(before.y + before.height).toBeCloseTo(status.y, 0);
+      if (repeat === 390) {
+        await panel.screenshot({ path: testInfo.outputPath("playfair-text-footer.png") });
+      }
+      await page.getByRole("tab", { name: "Phân tích", exact: true }).click();
+      await page.locator(".playfair-analysis").getByText("Xem bản thô và bản đã lọc").click();
+      expect((await panel.boundingBox())!.height).toBeLessThanOrEqual(emptyHeight + 1);
+      await expect(footer.getByRole("checkbox")).toBeVisible();
+      await expectMatchingPanels();
+      if (repeat === 390) {
+        await panel.screenshot({ path: testInfo.outputPath("playfair-analysis-padding.png") });
+      }
+      await page.getByRole("tab", { name: "Văn bản", exact: true }).click();
+    }
+  });
+}

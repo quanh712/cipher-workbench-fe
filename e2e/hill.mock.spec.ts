@@ -48,6 +48,7 @@ test("Hill UI uses Backend blocks and fits desktop and 375px", async ({ page }, 
   await page.getByRole("button", { name: "Mã hóa" }).click();
   await expect(page.locator(".hill-result__block")).toHaveCount(2);
   await expect(page.getByRole("region", { name: "Bản mã" })).toContainText("DP");
+  await page.getByRole("tab", { name: "Phân tích", exact: true }).click();
   await expect(page.getByRole("region", { name: "Phân tích khóa" })).toContainText("det K mod 26");
   await page.screenshot({ path: testInfo.outputPath("hill-light.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(

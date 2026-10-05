@@ -1,5 +1,6 @@
-import { useId, useRef, useState, type KeyboardEvent } from "react";
-import { PaddingResult } from "../../../shared/components/PaddingResult";
+import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { PaddingDetails, PaddingResult } from "../../../shared/components/PaddingResult";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
 import type { CipherMode } from "../../../shared/types/cipher";
 import type { PlayfairResultSnapshot, ProcessingStatus } from "../types/cipher";
@@ -30,6 +31,7 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
   const id = useId();
   const views = ["text", "analysis"] as const;
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const textPanelRef = useRef<HTMLDivElement>(null);
   const matrix = props.result ? buildPlayfairMatrix(props.result.keyValue) : null;
   const normalizedInput = props.result ? normalizePlayfairLetters(props.result.source) : "";
   const normalizedKey = props.result ? normalizePlayfairKey(props.result.keyValue) : "";
@@ -41,6 +43,10 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
     props.result?.mode === "encrypt"
       ? inputDigraphs.join("").length - normalizedInput.length
       : null;
+
+  useLayoutEffect(() => {
+    if (textPanelRef.current) textPanelRef.current.scrollTop = 0;
+  }, [props.filterPadding]);
 
   function selectWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) {
     let nextIndex: number | null = null;
@@ -55,7 +61,7 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
   }
 
   return (
-    <section className="cipher-output-panel">
+    <section className="cipher-output-panel playfair-output-panel">
       <div className="section-label">Kết quả</div>
       <div className="panel">
         <div className="panel__header">
@@ -109,23 +115,26 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
           </div>
         </div>
 
-        <pre
+        <div
+          ref={textPanelRef}
           id={`${id}-text-panel`}
-          className={props.result ? "output" : "output output--empty"}
+          className="playfair-text-panel"
           role="tabpanel"
           aria-labelledby={`${id}-text-tab`}
           hidden={view !== "text"}
         >
-          {props.result ? (
-            <ColorizedText text={props.displayResult ?? props.result.text} />
-          ) : (
-            "Kết quả sẽ hiển thị ở đây sau khi xử lý."
-          )}
-        </pre>
+          <pre className={props.result ? "output" : "output output--empty"}>
+            {props.result ? (
+              <ColorizedText text={props.displayResult ?? props.result.text} />
+            ) : (
+              "Kết quả sẽ hiển thị ở đây sau khi xử lý."
+            )}
+          </pre>
+        </div>
 
         <div
           id={`${id}-analysis-panel`}
-          className="playfair-analysis"
+          className="cipher-analysis playfair-analysis"
           role="tabpanel"
           aria-labelledby={`${id}-analysis-tab`}
           hidden={view !== "analysis"}
@@ -162,13 +171,13 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
               </dl>
 
               <div className="playfair-analysis__details">
-                <div className="key-stream">
+                <div className="key-stream analysis-section">
                   <strong>Key Matrix 5×5</strong>
                   <pre className="playfair-matrix">
                     {matrix.map((row) => row.join("  ")).join("\n")}
                   </pre>
                 </div>
-                <div className="key-stream">
+                <div className="key-stream analysis-section">
                   <strong>Ánh xạ digraph đầu vào → đầu ra</strong>
                   <pre>
                     {inputDigraphs
@@ -180,9 +189,12 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
                   </small>
                 </div>
               </div>
+              {props.result.mode === "decrypt" && (
+                <PaddingDetails raw={props.result.text} padding={props.result.padding} />
+              )}
             </>
           ) : (
-            <div className="analysis-empty">Chưa có kết quả để phân tích.</div>
+            <CipherAnalysisEmpty />
           )}
         </div>
 
@@ -193,8 +205,10 @@ export function PlayfairOutputPanel(props: PlayfairOutputPanelProps) {
             enabled={props.filterPadding ?? true}
             disabled={props.disabled}
             onChange={props.onFilterPadding ?? (() => {})}
+            showDetails={false}
           />
         )}
+
         <div
           className={`status ${props.processingStatus === "success" ? "status--success" : props.processingStatus === "error" ? "status--error" : ""}`}
           role="status"

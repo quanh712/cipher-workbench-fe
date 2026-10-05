@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-base_url=${1:-http://127.0.0.1:8080}
+base_url=${1:-http://127.0.0.1:18081}
 validation_dir=$(mktemp -d)
 trap 'rm -rf "$validation_dir"' EXIT
 

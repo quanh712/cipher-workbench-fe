@@ -7,6 +7,7 @@ export function PaddingResult({
   disabled,
   onChange,
   size,
+  showDetails = true,
 }: {
   raw: string;
   padding?: PaddingInfo;
@@ -14,9 +15,8 @@ export function PaddingResult({
   disabled: boolean;
   onChange: (enabled: boolean) => void;
   size?: number;
+  showDetails?: boolean;
 }) {
-  let letter = 0;
-  const positions = new Set(padding?.positions);
   return (
     <div className="padding-result">
       <label className="checkbox">
@@ -34,6 +34,24 @@ export function PaddingResult({
           : "Backend chưa trả thông tin ký tự đệm; đang giữ bản thô."}
         {padding && " Chữ thật trùng mẫu đệm có thể bị lọc nhầm. Tắt lọc để giữ chúng."}
       </p>
+      {showDetails && <PaddingDetails raw={raw} padding={padding} size={size} />}
+    </div>
+  );
+}
+
+export function PaddingDetails({
+  raw,
+  padding,
+  size,
+}: {
+  raw: string;
+  padding?: PaddingInfo;
+  size?: number;
+}) {
+  let letter = 0;
+  const positions = new Set(padding?.positions);
+  return (
+    <div className="padding-result padding-result--details">
       <details>
         <summary>Xem bản thô và bản đã lọc</summary>
         <strong>Bản thô (ký tự đệm được đánh dấu)</strong>

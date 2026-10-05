@@ -1,3 +1,4 @@
+import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
 import type { DesCipherController } from "../hooks/useDesCipher";
 import { DesTracePanel } from "./DesTracePanel";
 import { analyzeDesResult } from "../utils/analysis";
@@ -11,8 +12,16 @@ export function DesAnalysis({ cipher }: { cipher: DesCipherController }) {
       ? analyzeDesResult(request, cipher.result.text)
       : null;
 
-  return (
-    <div className="des-analysis">
+  if (!cipher.result) {
+    return (
+      <div className="cipher-analysis des-analysis">
+        <CipherAnalysisEmpty />
+      </div>
+    );
+  }
+
+  const overview = (
+    <section className="analysis-section">
       <h3>DES · Mạng Feistel 16 vòng</h3>
       <p>
         Khối 64 bit được hoán vị IP, chia thành hai nửa 32 bit, biến đổi qua 16 vòng, ghép R₁₆L₁₆
@@ -24,10 +33,14 @@ export function DesAnalysis({ cipher }: { cipher: DesCipherController }) {
           ciphertext={encrypt ? (cipher.result.text ?? undefined) : undefined}
         />
       )}
+    </section>
+  );
+
+  return (
+    <div className="cipher-analysis des-analysis">
       {analysis && request ? (
         <>
-          <h3>Thông tin lần xử lý</h3>
-          <dl className="des-analysis-stats">
+          <dl className="stats-list">
             <div>
               <dt>Thao tác</dt>
               <dd>
@@ -75,8 +88,9 @@ export function DesAnalysis({ cipher }: { cipher: DesCipherController }) {
               </div>
             )}
           </dl>
+          {overview}
           {analysis.blocks.length > 0 && (
-            <>
+            <section className="analysis-section">
               <h3>Các khối bản mã</h3>
               <p>
                 {encrypt ? "Lấy từ kết quả backend." : "Lấy từ bản mã đã gửi để giải mã."}{" "}
@@ -94,15 +108,18 @@ export function DesAnalysis({ cipher }: { cipher: DesCipherController }) {
                   );
                 })}
               </ol>
-            </>
+            </section>
           )}
         </>
       ) : (
-        <p>
-          {cipher.isDemo
-            ? "Kết quả mô phỏng không dùng để phân tích khối thực tế."
-            : "Chạy mã hóa hoặc giải mã để xem thông tin và các khối của kết quả thực tế."}
-        </p>
+        <>
+          {overview}
+          <p className="analysis-empty">
+            {cipher.isDemo
+              ? "Kết quả mô phỏng không dùng để phân tích khối thực tế."
+              : "Chạy mã hóa hoặc giải mã để xem thông tin và các khối của kết quả thực tế."}
+          </p>
+        </>
       )}
     </div>
   );

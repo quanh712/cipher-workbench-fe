@@ -633,9 +633,12 @@ textarea,
 .workspace__columns--key-aligned .cipher-output-panel > .panel {
   display: flex;
   flex-direction: column;
-  max-height: var(--key-aligned-output-height, none);
+  height: var(--key-aligned-output-height, 480px);
+  max-height: var(--key-aligned-output-height, 480px);
 }
 .workspace__columns--key-aligned .cipher-output-panel > .panel > [role="tabpanel"] {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
 }
 .workspace__columns--key-aligned .cipher-output-panel > .panel > .panel__header,
@@ -855,8 +858,7 @@ textarea,
   accent-color: var(--accent);
 }
 .hill-result__text {
-  height: var(--hill-result-height, 280px);
-  overflow: auto;
+  height: auto;
 }
 .hill-analysis {
   min-height: var(--hill-result-height, 280px);
@@ -864,35 +866,43 @@ textarea,
 .hill-analysis .hill-panel-body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 16px;
+  gap: 0;
+  padding: 0;
 }
 .hill-analysis .stats-list {
   min-height: 0;
-  padding: 0;
+  padding: 10px 16px;
 }
-.hill-analysis .stats-list div {
-  padding: 10px 0;
-}
-.hill-analysis .analysis-empty {
-  min-height: calc(var(--hill-result-height, 280px) - 32px);
+.hill-analysis .stats-list dd {
+  min-width: 0;
+  max-width: 60%;
+  overflow-wrap: anywhere;
 }
 .hill-analysis > .hill-panel-body > .hill-error,
 .hill-analysis > .hill-panel-body > .hill-warning,
 .hill-analysis > .hill-panel-body > .hill-muted {
-  margin: 0;
+  margin: 16px;
 }
 .hill-analysis .hill-facts__matrices {
-  gap: 20px;
-  margin-top: 16px;
-  padding: 18px 0 0;
+  grid-template-columns: 1fr;
+  border-top: 0;
+  gap: 0;
+  margin-top: 0;
+  padding: 0;
 }
-.hill-analysis .hill-padding-analysis {
-  padding: 16px 0 0;
+.hill-analysis .hill-facts__matrices > div {
+  min-width: 0;
+  padding: 14px 16px 16px;
+}
+
+.hill-analysis .hill-facts__matrices > div > strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
 }
 .hill-analysis .hill-steps {
   margin: 0;
-  padding-top: 16px;
+  padding: 14px 16px 16px;
 }
 .hill-result__block {
   position: relative;
@@ -942,27 +952,6 @@ textarea,
   padding-left: 22px;
   line-height: 1.8;
   overflow-wrap: anywhere;
-}
-.hill-padding-analysis {
-  padding: 16px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-.hill-padding-analysis h3,
-.hill-padding-analysis p {
-  margin: 0;
-}
-.hill-padding-analysis h3 {
-  margin-bottom: 6px;
-  color: var(--text);
-  font-size: 14px;
-}
-.hill-padding-analysis p + p,
-.hill-padding-analysis small {
-  display: block;
-  margin-top: 6px;
 }
 .hill-facts__matrices span {
   color: var(--muted);
@@ -1164,6 +1153,60 @@ textarea,
   font-family: monospace;
   text-align: right;
 }
+.cipher-analysis .stats-list,
+.cipher-analysis.stats-list {
+  font-size: 16px;
+  line-height: normal;
+  min-height: 0;
+  margin: 0;
+  padding: 10px 16px;
+}
+.cipher-analysis .stats-list dd,
+.cipher-analysis.stats-list dd {
+  min-width: 0;
+  max-width: 60%;
+  overflow-wrap: anywhere;
+}
+.cipher-analysis .analysis-section {
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+.cipher-analysis .analysis-section > strong,
+.cipher-analysis .analysis-section h3 {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.cipher-analysis .analysis-section pre,
+.cipher-analysis .analysis-section > code,
+.cipher-analysis .hill-matrix-view {
+  max-width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 0;
+  background: var(--surface);
+  overflow-x: auto;
+  font:
+    12px/1.5 "SFMono-Regular",
+    Consolas,
+    monospace;
+}
+.cipher-analysis.des-analysis {
+  padding: 0;
+}
+.cipher-analysis.des-analysis .stats-list {
+  font-size: 16px;
+}
+.cipher-analysis .des-cipher-blocks li {
+  border-radius: 0;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+}
 .vigenere-analysis {
   min-height: 280px;
 }
@@ -1201,16 +1244,13 @@ textarea,
 }
 .playfair-analysis__details {
   display: grid;
-  grid-template-columns: minmax(150px, 0.65fr) minmax(0, 1.35fr);
-  border-top: 1px solid var(--border);
+  grid-template-columns: 1fr;
 }
 .playfair-analysis__details .key-stream {
   min-width: 0;
   padding-top: 14px;
 }
-.playfair-analysis__details .key-stream + .key-stream {
-  border-left: 1px solid var(--border);
-}
+
 .playfair-matrix {
   line-height: 1.8 !important;
   text-align: center;
@@ -1596,6 +1636,16 @@ textarea,
   gap: 8px;
   background: var(--surface);
 }
+.cipher-analysis-empty {
+  padding: 16px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.cipher-output-panel [role="tabpanel"]:has(.cipher-analysis-empty) {
+  background: var(--surface);
+}
 .analysis-empty strong {
   font-size: 15px;
 }
@@ -1742,6 +1792,10 @@ textarea,
   .hill-facts__matrices {
     grid-template-columns: 1fr;
   }
+  .hill-analysis .hill-facts__matrices > div + div {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
   .algorithm-pending {
     min-height: 240px;
     padding: 22px;
@@ -1871,6 +1925,12 @@ textarea,
 .des-options span:not(.section-label) {
   font-size: 12px;
 }
+.des-result-note {
+  margin-top: 12px;
+  padding: 0 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
 .des-warning {
   padding: 12px;
   border: 1px solid var(--border);
@@ -1883,6 +1943,16 @@ textarea,
   border-top: 1px solid var(--border);
   font-size: 13px;
   line-height: 1.6;
+}
+.playfair-output-panel > .panel > .padding-result,
+.hill-result > .panel > .padding-result {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+}
+.playfair-output-panel > .panel > .padding-result p,
+.hill-result > .panel > .padding-result p {
+  margin: 4px 0 0;
+  color: var(--muted);
 }
 .padding-result label {
   display: flex;

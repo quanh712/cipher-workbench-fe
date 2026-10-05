@@ -265,7 +265,10 @@ describe("Cipher Workbench", () => {
       await user.click(screen.getByRole("button", { name: "Giải mã" }));
 
       await waitFor(() =>
-        expect(screen.getByRole("tabpanel", { name: "Văn bản" }).textContent).toBe(expected),
+        expect(
+          screen.getByRole("tabpanel", { name: "Văn bản" }).querySelector("pre.output")
+            ?.textContent,
+        ).toBe(expected),
       );
       const resultPanel = screen.getByRole("tabpanel", { name: "Văn bản" });
       await user.click(
@@ -290,7 +293,9 @@ describe("Cipher Workbench", () => {
     await user.click(screen.getByRole("button", { name: "Giải mã" }));
 
     await waitFor(() =>
-      expect(screen.getByRole("tabpanel", { name: "Văn bản" }).textContent).toBe("ABX"),
+      expect(
+        screen.getByRole("tabpanel", { name: "Văn bản" }).querySelector("pre.output")?.textContent,
+      ).toBe("ABX"),
     );
     expect(vi.mocked(fetch)).toHaveBeenCalledWith(
       "/api/playfair/file",

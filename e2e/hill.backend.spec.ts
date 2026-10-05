@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 async function openHill(page: Page) {
   await page.goto("/");
   await page.getByRole("tab", { name: /Hill/ }).click();
-  await expect(page.getByRole("region", { name: "Phân tích khóa" })).toContainText(
+  await expect(page.getByRole("region", { name: "Khóa Hill", exact: true })).toContainText(
     "Khóa khả nghịch",
   );
 }

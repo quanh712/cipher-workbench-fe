@@ -1,3 +1,4 @@
+import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
 import type { CipherMode } from "../../../shared/types/cipher";
@@ -106,7 +107,7 @@ export function VigenereOutputPanel(props: VigenereOutputPanelProps) {
 
         <div
           id={`${id}-analysis-panel`}
-          className="vigenere-analysis"
+          className="cipher-analysis vigenere-analysis"
           role="tabpanel"
           aria-labelledby={`${id}-analysis-tab`}
           hidden={view !== "analysis"}
@@ -133,7 +134,7 @@ export function VigenereOutputPanel(props: VigenereOutputPanelProps) {
                   <dd>{analysis.unchangedCharacters}</dd>
                 </div>
               </dl>
-              <div className="key-stream" aria-label="Minh họa dòng khóa Vigenère">
+              <div className="key-stream analysis-section" aria-label="Minh họa dòng khóa Vigenère">
                 <div>
                   <strong>Đầu vào</strong>
                   <pre>{analysis.sample || "-"}</pre>
@@ -149,7 +150,7 @@ export function VigenereOutputPanel(props: VigenereOutputPanelProps) {
               </div>
             </>
           ) : (
-            <div className="analysis-empty">Chưa có kết quả để phân tích.</div>
+            <CipherAnalysisEmpty />
           )}
         </div>
 

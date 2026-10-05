@@ -1,6 +1,7 @@
+import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
+import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import { CipherActions } from "../../../shared/components/CipherActions";
 import {
-  useEffect,
   useId,
   useRef,
   useState,
@@ -9,7 +10,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react";
-import { PaddingResult } from "../../../shared/components/PaddingResult";
+import { PaddingDetails, PaddingResult } from "../../../shared/components/PaddingResult";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
@@ -60,12 +61,12 @@ function KeyFacts({ data }: { data: HillKeyAnalysis }) {
         </div>
       </dl>
       <div className="hill-facts__matrices">
-        <div>
-          <span>Ma trận phụ hợp K*</span>
+        <div className="analysis-section">
+          <strong>Ma trận phụ hợp K*</strong>
           <MatrixView matrix={data.adjugate} label="Ma trận phụ hợp" />
         </div>
-        <div>
-          <span>Ma trận nghịch đảo K⁻¹</span>
+        <div className="analysis-section">
+          <strong>Ma trận nghịch đảo K⁻¹</strong>
           <MatrixView matrix={data.inverse} label="Ma trận nghịch đảo" />
         </div>
       </div>
@@ -220,6 +221,23 @@ function KeyPanel({ cipher }: { cipher: Controller }) {
             </>
           )}
         </div>
+        {analysis.status === "invalid" && analysis.error?.code === "E04" && (
+          <p role="alert" className="hill-error">
+            {analysis.message}
+          </p>
+        )}
+        {analysis.status === "error" && (
+          <div role="alert" className="hill-error">
+            {analysis.message}{" "}
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={cipher.retryKeyRequest}
+            >
+              Thử lại
+            </button>
+          </div>
+        )}
         <div
           className={`status ${analysis.status === "valid" || data ? "status--success" : analysis.status === "invalid" || analysis.status === "error" || keyError ? "status--error" : ""}`}
           role={
@@ -232,7 +250,7 @@ function KeyPanel({ cipher }: { cipher: Controller }) {
           {analysis.status === "loading"
             ? "Đang phân tích khóa…"
             : analysis.status === "invalid" || analysis.status === "error"
-              ? "! Không thể phân tích khóa. Xem tab Phân tích để biết chi tiết."
+              ? "! Không thể phân tích khóa. Kiểm tra thông tin lỗi bên trên."
               : keyError
                 ? "! Khóa chưa hợp lệ. Kiểm tra trường được đánh dấu."
                 : data
@@ -301,7 +319,7 @@ function InputPanel({ cipher }: { cipher: Controller }) {
   );
 }
 
-function ResultBlocks({ result, expanded }: { result: HillResultSnapshot; expanded: boolean }) {
+function ResultBlocks({ result }: { result: HillResultSnapshot }) {
   function positionTooltip(event: SyntheticEvent<HTMLSpanElement>) {
     const block = event.currentTarget;
     const tooltip = block.querySelector<HTMLElement>(".hill-result__tooltip");
@@ -352,17 +370,13 @@ function ResultBlocks({ result, expanded }: { result: HillResultSnapshot; expand
   }
   if (pending) pieces.push(<ColorizedText key="tail" text={pending} />);
   return (
-    <pre
-      className="output hill-result__text"
-      aria-label="Kết quả"
-      style={expanded ? { height: "100%", minHeight: 0 } : undefined}
-    >
+    <pre className="output hill-result__text" aria-label="Kết quả">
       {pieces}
     </pre>
   );
 }
 
-function ResultPanel({ cipher, expanded }: { cipher: Controller; expanded: boolean }) {
+function ResultPanel({ cipher }: { cipher: Controller }) {
   const result = cipher.result;
   const [view, setView] = useState<"text" | "analysis">("text");
   const id = useId();
@@ -398,18 +412,7 @@ function ResultPanel({ cipher, expanded }: { cipher: Controller; expanded: boole
   return (
     <section className="hill-result cipher-output-panel" aria-labelledby={`${id}-title`}>
       <div className="section-label">Kết quả</div>
-      <div
-        className="panel"
-        style={
-          expanded
-            ? {
-                height: "var(--hill-result-panel-height, auto)",
-                display: "flex",
-                flexDirection: "column",
-              }
-            : undefined
-        }
-      >
+      <div className="panel">
         <div className="panel__header">
           <h2 id={`${id}-title`}>{cipher.mode === "encrypt" ? "Bản mã" : "Bản rõ"}</h2>
           <div className="panel-tabs" role="tablist" aria-label="Kiểu hiển thị kết quả Hill">
@@ -465,19 +468,9 @@ function ResultPanel({ cipher, expanded }: { cipher: Controller; expanded: boole
           role="tabpanel"
           aria-labelledby={`${id}-text-tab`}
           hidden={view !== "text"}
-          style={
-            expanded
-              ? { flex: "1 1 auto", minHeight: 0, overflow: "auto" }
-              : result
-                ? { height: "var(--hill-result-height, 280px)", overflow: "auto" }
-                : undefined
-          }
         >
           {result ? (
-            <ResultBlocks
-              result={{ ...result, result: cipher.displayResult }}
-              expanded={expanded}
-            />
+            <ResultBlocks result={{ ...result, result: cipher.displayResult }} />
           ) : (
             <pre className="output output--empty hill-result__text">
               Kết quả sẽ hiển thị ở đây sau khi xử lý.
@@ -489,16 +482,19 @@ function ResultPanel({ cipher, expanded }: { cipher: Controller; expanded: boole
           role="tabpanel"
           aria-labelledby={`${id}-analysis-tab`}
           hidden={view !== "analysis"}
-          style={
-            expanded
-              ? { flex: "1 1 auto", minHeight: 0, overflow: "auto" }
-              : result
-                ? { height: "var(--hill-result-height, 280px)", overflow: "auto" }
-                : undefined
-          }
         >
           <AnalysisPanel cipher={cipher} />
         </div>
+        {result?.mode === "decrypt" && (
+          <PaddingResult
+            raw={result.result}
+            padding={result.padding}
+            enabled={cipher.filterPadding}
+            onChange={cipher.setFilterPadding}
+            disabled={cipher.isBusy}
+            showDetails={false}
+          />
+        )}
         <div
           className={`status ${cipher.isProcessing ? "" : cipher.resultError ? "status--error" : result ? "status--success" : ""}`}
           role="status"
@@ -512,50 +508,40 @@ function ResultPanel({ cipher, expanded }: { cipher: Controller; expanded: boole
                 ? `✓ Xử lý thành công · ${cipher.displayResult.length} ký tự`
                 : "Chưa xử lý"}
         </div>
-        {result?.mode === "decrypt" && (
-          <PaddingResult
-            raw={result.result}
-            padding={result.padding}
-            enabled={cipher.filterPadding}
-            onChange={cipher.setFilterPadding}
-            disabled={cipher.isBusy}
-            size={result.key.m}
-          />
-        )}
-        {(Boolean(result?.warnings.length) ||
-          (cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code))) && (
-          <div className="hill-panel-body">
-            {cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code) && (
-              <div className="hill-error" role="alert">
-                {cipher.resultError.message}{" "}
-                {["NETWORK", "SYSTEM"].includes(cipher.resultError.code) && (
-                  <button
-                    className="button button--secondary"
-                    type="button"
-                    onClick={() => void cipher.processCipher()}
-                  >
-                    Thử lại
-                  </button>
-                )}
-              </div>
-            )}
-            {result?.warnings.map((warning) => (
-              <div className="hill-warning" role="status" key={warning.code}>
-                {warning.message}{" "}
-                {warning.code === "W02" && !cipher.stripDiacritics && (
-                  <button
-                    type="button"
-                    className="button button--secondary"
-                    onClick={cipher.enableStripAndRetry}
-                  >
-                    Bỏ dấu và thử lại
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+      {(Boolean(result?.warnings.length) ||
+        (cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code))) && (
+        <div className="hill-panel-body">
+          {cipher.resultError && !["E01", "E06", "E10"].includes(cipher.resultError.code) && (
+            <div className="hill-error" role="alert">
+              {cipher.resultError.message}{" "}
+              {["NETWORK", "SYSTEM"].includes(cipher.resultError.code) && (
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  onClick={() => void cipher.processCipher()}
+                >
+                  Thử lại
+                </button>
+              )}
+            </div>
+          )}
+          {result?.warnings.map((warning) => (
+            <div className="hill-warning" role="status" key={warning.code}>
+              {warning.message}{" "}
+              {warning.code === "W02" && !cipher.stripDiacritics && (
+                <button
+                  type="button"
+                  className="button button--secondary"
+                  onClick={cipher.enableStripAndRetry}
+                >
+                  Bỏ dấu và thử lại
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -563,10 +549,17 @@ function ResultPanel({ cipher, expanded }: { cipher: Controller; expanded: boole
 function AnalysisPanel({ cipher }: { cipher: Controller }) {
   const analysis = cipher.analysis;
   const result = cipher.result;
-  const data = result?.key ?? (analysis.status === "valid" ? analysis.data?.result : null);
+  if (!result) {
+    return (
+      <section className="cipher-analysis hill-analysis" aria-label="Phân tích khóa">
+        <CipherAnalysisEmpty />
+      </section>
+    );
+  }
+  const data = result.key;
   return (
     <section
-      className="hill-analysis"
+      className="cipher-analysis hill-analysis"
       aria-label="Phân tích khóa"
       style={result ? { minHeight: 0 } : undefined}
     >
@@ -576,56 +569,15 @@ function AnalysisPanel({ cipher }: { cipher: Controller }) {
             Đang phân tích khóa…
           </p>
         )}
-        {analysis.status === "invalid" && analysis.error?.code === "E04" && (
-          <p role="alert" className="hill-error">
-            {analysis.message}
-          </p>
-        )}
-        {analysis.status === "error" && (
-          <div role="alert" className="hill-error">
-            {analysis.message}{" "}
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={cipher.retryKeyRequest}
-            >
-              Thử lại
-            </button>
-          </div>
-        )}
-        {data ? (
-          <KeyFacts data={data} />
-        ) : analysis.status === "idle" ? (
-          <div className="analysis-empty">
-            Nhập khóa hợp lệ để xem định thức và ma trận nghịch đảo.
-          </div>
-        ) : null}
+        <KeyFacts data={data} />
         {analysis.status === "valid" &&
           analysis.data?.warnings.map((warning) => (
             <p key={warning.code} className="hill-warning" role="status">
               {warning.message}
             </p>
           ))}
-        {result?.mode === "decrypt" && result.padding && (
-          <div className="hill-padding-analysis">
-            <h3>Lọc ký tự đệm</h3>
-            <p>
-              Ký tự đệm: X · {result.padding.count} chữ ·{" "}
-              {cipher.filterPadding ? "Đang hiển thị bản đã lọc" : "Đang hiển thị bản thô"}.
-            </p>
-            <p>
-              {result.padding.positions
-                .map((p) => `Khối ${Math.floor(p / result.key.m) + 1}, ô ${(p % result.key.m) + 1}`)
-                .join("; ") || "Không nhận diện ký tự đệm."}
-            </p>
-            <small>
-              Bật/tắt lọc và xem hai bản bên dưới kết quả. Các vector dưới đây giữ bản thô của
-              backend.
-            </small>
-          </div>
-        )}
         {result && (
-          <details className="hill-steps">
+          <details className="hill-steps analysis-section">
             <summary>Xem từng bước ({result.blocks.length} khối)</summary>
             <ol>
               {result.blocks.map((block, index) => (
@@ -637,79 +589,17 @@ function AnalysisPanel({ cipher }: { cipher: Controller }) {
             </ol>
           </details>
         )}
+        {result?.mode === "decrypt" && (
+          <PaddingDetails raw={result.result} padding={result.padding} size={result.key.m} />
+        )}
       </div>
     </section>
   );
 }
 
 export function HillWorkspace({ cipher }: { cipher: Controller }) {
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  const [expandLongFile, setExpandLongFile] = useState(false);
-
-  useEffect(() => {
-    const workspace = workspaceRef.current;
-    const input = workspace?.querySelector(
-      ".hill-input .highlighted-input, .hill-input .file-picker, .hill-input .file-card",
-    );
-    const keyPanel = workspace?.querySelector<HTMLElement>(".hill-key .panel");
-    const resultPanel = workspace?.querySelector<HTMLElement>(".hill-result > .panel");
-    const output = workspace?.querySelector<HTMLElement>(".hill-result__text:not(.output--empty)");
-    if (!workspace || !input || !keyPanel || !resultPanel) return;
-
-    const updateHeights = () => {
-      const inputHeight = input.getBoundingClientRect().height;
-      workspace.style.setProperty("--hill-result-height", `${inputHeight}px`);
-      if (
-        window.innerWidth > 800 &&
-        cipher.inputType === "file" &&
-        cipher.file &&
-        cipher.result &&
-        output
-      ) {
-        const textPanel = output.parentElement;
-        const originalDisplay = textPanel?.style.display;
-        if (textPanel?.hidden) textPanel.style.display = "block";
-        const originalHeight = output.style.height;
-        output.style.height = `${inputHeight}px`;
-        const overflows = output.scrollHeight > output.clientHeight + 1;
-        output.style.height = originalHeight;
-        if (textPanel?.hidden && originalDisplay !== undefined)
-          textPanel.style.display = originalDisplay;
-        setExpandLongFile(overflows);
-      } else {
-        setExpandLongFile(false);
-      }
-      if (window.innerWidth > 800) {
-        const keyBottom = keyPanel.getBoundingClientRect().bottom;
-        const resultTop = resultPanel.getBoundingClientRect().top;
-        workspace.style.setProperty(
-          "--hill-result-panel-height",
-          `${Math.max(0, keyBottom - resultTop)}px`,
-        );
-      } else {
-        workspace.style.removeProperty("--hill-result-panel-height");
-      }
-    };
-    const observer = new ResizeObserver(updateHeights);
-    observer.observe(input);
-    observer.observe(keyPanel);
-    window.addEventListener("resize", updateHeights);
-    updateHeights();
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateHeights);
-    };
-  }, [
-    cipher.inputType,
-    cipher.file,
-    cipher.keyInputMode,
-    cipher.m,
-    cipher.result,
-    cipher.displayResult,
-  ]);
-
   return (
-    <div ref={workspaceRef} className="cipher-workspace hill-workspace">
+    <div className="cipher-workspace hill-workspace">
       <CipherModeSelector value={cipher.mode} disabled={cipher.isBusy} onChange={cipher.setMode} />
       <div className="helper-row">
         <span>
@@ -725,7 +615,7 @@ export function HillWorkspace({ cipher }: { cipher: Controller }) {
           Tạo ví dụ
         </button>
       </div>
-      <div className="workspace__columns">
+      <KeyAlignedColumns>
         <div className="workspace__input-column">
           <InputPanel cipher={cipher} />
           <KeyPanel cipher={cipher} />
@@ -762,8 +652,8 @@ export function HillWorkspace({ cipher }: { cipher: Controller }) {
             </button>
           </CipherActions>
         </div>
-        <ResultPanel cipher={cipher} expanded={expandLongFile} />
-      </div>
+        <ResultPanel cipher={cipher} />
+      </KeyAlignedColumns>
       {cipher.notice && (
         <Notification notice={cipher.notice} onClose={() => cipher.setNotice(null)} />
       )}

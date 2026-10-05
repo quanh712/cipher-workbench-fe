@@ -53,6 +53,14 @@ describe("Hill workspace", () => {
     ).toBe("HELLO!X");
     await user.click(output.getByRole("button", { name: "Sao chép" }));
     expect(writeText).toHaveBeenLastCalledWith("HELLO!X");
+    expect(screen.getByText("Xem bản thô và bản đã lọc")).not.toBeVisible();
+    await user.click(output.getByRole("tab", { name: "Phân tích" }));
+    expect(screen.getByRole("checkbox", { name: /Tự động lọc/ })).toBeVisible();
+    await user.click(screen.getByText("Xem bản thô và bản đã lọc"));
+    const analysis = screen.getByRole("region", { name: "Phân tích khóa" });
+    expect(within(analysis).getByText("Bản đã lọc", { exact: true })).toBeVisible();
+    expect(analysis.querySelector("mark")).toHaveTextContent("X");
+    expect(within(analysis).getByText(/khối 3, ô 2/)).toBeVisible();
     expect(gateway.process).toHaveBeenCalledTimes(1);
   });
   it("runs HELP through the gateway and shows backend blocks, key facts, copy and steps", async () => {
@@ -275,7 +283,7 @@ describe("Hill workspace", () => {
     render(<Harness gateway={gateway} />);
     await user.selectOptions(screen.getByLabelText("Cấp ma trận"), "3");
     await user.click(screen.getByRole("tab", { name: "Phân tích" }));
-    const analysis = screen.getByRole("region", { name: "Phân tích khóa" });
+    const analysis = screen.getByRole("region", { name: "Khóa Hill" });
     expect(
       await within(analysis).findByText("Không kết nối được máy chủ. Thử lại."),
     ).toBeInTheDocument();
@@ -295,11 +303,11 @@ describe("Hill workspace", () => {
     await waitFor(() => expect(gateway.analyze).toHaveBeenCalledTimes(1));
     await user.click(screen.getByRole("button", { name: "Khóa ngẫu nhiên" }));
     await user.click(screen.getByRole("tab", { name: "Phân tích" }));
-    const panel = screen.getByRole("region", { name: "Phân tích khóa" });
+    const panel = screen.getByRole("region", { name: "Khóa Hill" });
     await user.click(await within(panel).findByRole("button", { name: "Thử lại" }));
     await waitFor(() => expect(gateway.random).toHaveBeenCalledTimes(2));
     await waitFor(() =>
-      expect(within(panel).getByText("Ma trận nghịch đảo K⁻¹")).toBeInTheDocument(),
+      expect(within(panel).getByText("✓ Khóa khả nghịch modulo 26.")).toBeInTheDocument(),
     );
     expect(gateway.analyze).toHaveBeenCalledTimes(1);
   });

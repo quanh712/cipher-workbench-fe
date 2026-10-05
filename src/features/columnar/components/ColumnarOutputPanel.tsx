@@ -1,3 +1,4 @@
+import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
 import type { CipherMode } from "../../../shared/types/cipher";
@@ -135,7 +136,7 @@ export function ColumnarOutputPanel(props: ColumnarOutputPanelProps) {
 
         <div
           id={`${id}-analysis-panel`}
-          className="columnar-analysis"
+          className="cipher-analysis columnar-analysis"
           role="tabpanel"
           aria-labelledby={`${id}-analysis-tab`}
           hidden={view !== "analysis"}
@@ -172,7 +173,7 @@ export function ColumnarOutputPanel(props: ColumnarOutputPanelProps) {
                 </div>
               </dl>
 
-              <div className="columnar-analysis__order">
+              <div className="columnar-analysis__order analysis-section">
                 <strong>
                   {analysis.mode === "encrypt" ? "Thứ tự đọc cột" : "Phân bổ bản mã vào cột"}
                 </strong>
@@ -187,7 +188,7 @@ export function ColumnarOutputPanel(props: ColumnarOutputPanelProps) {
                 </ol>
               </div>
 
-              <div className="columnar-analysis__matrix">
+              <div className="columnar-analysis__matrix analysis-section">
                 <div className="columnar-analysis__matrix-heading">
                   <strong>Ma trận {analysis.permutation.length} cột</strong>
                   <span>
@@ -240,12 +241,12 @@ export function ColumnarOutputPanel(props: ColumnarOutputPanelProps) {
                 </small>
               </div>
             </>
-          ) : (
+          ) : props.result ? (
             <div className="analysis-empty">
-              {props.result
-                ? "Không thể dựng Phân tích từ kết quả này. Kết quả chính thức vẫn ở tab Văn bản."
-                : "Chưa có kết quả để phân tích."}
+              Không thể dựng Phân tích từ kết quả này. Kết quả chính thức vẫn ở tab Văn bản.
             </div>
+          ) : (
+            <CipherAnalysisEmpty />
           )}
         </div>
 

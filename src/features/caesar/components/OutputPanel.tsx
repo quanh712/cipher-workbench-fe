@@ -1,3 +1,4 @@
+import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import type { CipherMode, CipherResultSnapshot, ProcessingStatus } from "../types/cipher";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
@@ -110,56 +111,62 @@ export function OutputPanel(props: OutputPanelProps) {
             "Kết quả sẽ hiển thị ở đây sau khi xử lý."
           )}
         </pre>
-        <dl
+        <div
           id={`${id}-stats-panel`}
-          className="stats-list"
+          className="cipher-analysis"
           role="tabpanel"
           aria-labelledby={`${id}-stats-tab`}
           hidden={view !== "stats"}
         >
-          <div>
-            <dt>Chế độ</dt>
-            <dd>
-              {props.result?.mode === "encrypt"
-                ? "Mã hóa"
-                : props.result?.mode === "decrypt"
-                  ? "Giải mã"
-                  : "-"}
-            </dd>
-          </div>
-          <div>
-            <dt>Nguồn</dt>
-            <dd>
-              {props.result?.inputType === "text"
-                ? "Văn bản"
-                : props.result
-                  ? `File · ${props.result.fileName ?? "-"}`
-                  : "-"}
-            </dd>
-          </div>
-          <div>
-            <dt>Khóa nhập / chuẩn hóa</dt>
-            <dd>
-              {props.result?.keyValue || "-"} / {props.result?.normalizedKey ?? "-"}
-            </dd>
-          </div>
-          <div>
-            <dt>Tổng ký tự</dt>
-            <dd>{props.result?.source.length ?? 0}</dd>
-          </div>
-          <div>
-            <dt>Chữ hoa dịch chuyển</dt>
-            <dd>{stats.uppercase}</dd>
-          </div>
-          <div>
-            <dt>Chữ thường dịch chuyển</dt>
-            <dd>{stats.lowercase}</dd>
-          </div>
-          <div>
-            <dt>Ký tự giữ nguyên</dt>
-            <dd>{stats.unchanged}</dd>
-          </div>
-        </dl>
+          {props.result ? (
+            <dl className="stats-list">
+              <div>
+                <dt>Chế độ</dt>
+                <dd>
+                  {props.result?.mode === "encrypt"
+                    ? "Mã hóa"
+                    : props.result?.mode === "decrypt"
+                      ? "Giải mã"
+                      : "-"}
+                </dd>
+              </div>
+              <div>
+                <dt>Nguồn</dt>
+                <dd>
+                  {props.result?.inputType === "text"
+                    ? "Văn bản"
+                    : props.result
+                      ? `File · ${props.result.fileName ?? "-"}`
+                      : "-"}
+                </dd>
+              </div>
+              <div>
+                <dt>Khóa nhập / chuẩn hóa</dt>
+                <dd>
+                  {props.result?.keyValue || "-"} / {props.result?.normalizedKey ?? "-"}
+                </dd>
+              </div>
+              <div>
+                <dt>Tổng ký tự</dt>
+                <dd>{props.result?.source.length ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Chữ hoa dịch chuyển</dt>
+                <dd>{stats.uppercase}</dd>
+              </div>
+              <div>
+                <dt>Chữ thường dịch chuyển</dt>
+                <dd>{stats.lowercase}</dd>
+              </div>
+              <div>
+                <dt>Ký tự giữ nguyên</dt>
+                <dd>{stats.unchanged}</dd>
+              </div>
+            </dl>
+          ) : (
+            <CipherAnalysisEmpty />
+          )}
+        </div>
         <div
           className={`status ${props.processingStatus === "success" ? "status--success" : props.processingStatus === "error" ? "status--error" : ""}`}
           role="status"

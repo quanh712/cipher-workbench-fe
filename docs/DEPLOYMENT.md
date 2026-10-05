@@ -11,7 +11,7 @@ Internet :80/:443
         │
         ▼
 Nginx host + Let's Encrypt
-        │ 127.0.0.1:8080
+        │ 127.0.0.1:18081
         ▼
 Nginx FE container :8080
         ├── /, /assets/*          → React dist
@@ -29,7 +29,7 @@ metadata chung của toàn instance, không có tài khoản hay session.
 
 Yêu cầu Docker Engine, Docker Compose plugin, Nginx, Certbot, `envsubst` (gói
 `gettext-base`) và Git. Chỉ mở SSH, HTTP và HTTPS trên firewall; không mở `8000`
-hoặc `8080` ra Internet.
+hoặc `18081` ra Internet.
 
 Ví dụ với UFW:
 
@@ -99,7 +99,7 @@ docker compose --env-file .env.deploy ps
 ```
 
 `frontend` chỉ bind `${APP_BIND_ADDRESS}:${APP_HTTP_PORT}`, mặc định là
-`127.0.0.1:8080`. Backend chỉ tồn tại trong Docker network. Hai container dùng
+`127.0.0.1:18081`. Backend chỉ tồn tại trong Docker network. Hai container dùng
 `restart: unless-stopped`, log rotation `10 MiB × 3` và health check riêng.
 `db` dùng volume `postgres_data`; `migrate` chạy `alembic upgrade head` sau khi
 DB healthy, Backend chỉ chạy sau khi migration thành công. Không dùng
@@ -108,8 +108,8 @@ DB healthy, Backend chỉ chạy sau khi migration thành công. Không dùng
 ## 4. Kiểm tra local production stack
 
 ```bash
-./deploy/smoke-test.sh http://127.0.0.1:8080
-curl --fail --show-error http://127.0.0.1:8080/api/health
+./deploy/smoke-test.sh http://127.0.0.1:18081
+curl --fail --show-error http://127.0.0.1:18081/api/health
 ```
 
 Script kiểm tra UI, OpenAPI, Caesar/Affine/Columnar text transform, file preview, file download và

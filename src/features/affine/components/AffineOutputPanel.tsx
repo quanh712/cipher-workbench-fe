@@ -1,3 +1,4 @@
+import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { ColorizedText } from "../../../shared/components/ColorizedText";
 import type { CipherMode } from "../../../shared/types/cipher";
@@ -107,7 +108,7 @@ export function AffineOutputPanel(props: AffineOutputPanelProps) {
 
         <div
           id={`${id}-analysis-panel`}
-          className="affine-analysis"
+          className="cipher-analysis affine-analysis"
           role="tabpanel"
           aria-labelledby={`${id}-analysis-tab`}
           hidden={view !== "analysis"}
@@ -162,14 +163,14 @@ export function AffineOutputPanel(props: AffineOutputPanelProps) {
                   <dd>{analysis.unchangedCharacters}</dd>
                 </div>
               </dl>
-              <div className="affine-analysis__formula">
+              <div className="affine-analysis__formula analysis-section">
                 <strong>Công thức</strong>
                 <code>{analysis.formula}</code>
                 {analysis.isIdentity && <span>Khóa này không làm thay đổi nội dung.</span>}
               </div>
             </>
           ) : (
-            <div className="analysis-empty">Chưa có kết quả để phân tích.</div>
+            <CipherAnalysisEmpty />
           )}
         </div>
 
