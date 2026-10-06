@@ -3,18 +3,20 @@
 Giao diện web để mã hóa, giải mã và phân tích kết quả bằng Caesar, Vigenère, Playfair, Affine,
 Hệ mã hàng, Hill và DES. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
 Hill và DES được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
+RSA hiện chỉ có giao diện để xem và kiểm thử state; Backend chưa có contract RSA.
 
 ## Trạng thái tính năng
 
-| Thuật toán | Văn bản           | File `.txt`           | Trạng thái              |
-| ---------- | ----------------- | --------------------- | ----------------------- |
-| Caesar     | Mã hóa / giải mã  | Preview / tải kết quả | Đang sử dụng            |
-| Vigenère   | Mã hóa / giải mã  | Preview / tải kết quả | Đang sử dụng            |
-| Playfair   | Mã hóa / giải mã  | Preview / tải kết quả | Đang sử dụng            |
-| Affine     | Mã hóa / giải mã  | Preview / tải kết quả | Đang sử dụng            |
-| Hệ mã hàng | Mã hóa / giải mã  | Preview / tải kết quả | Đang sử dụng            |
-| Hill       | Mã hóa / giải mã  | Preview / tải kết quả | `VITE_ENABLE_HILL=true` |
-| DES        | Text/HEX, ECB/CBC | Preview / tải kết quả | `VITE_ENABLE_DES=true`  |
+| Thuật toán   | Văn bản                  | File `.txt`           | Trạng thái                           |
+| ------------ | ------------------------ | --------------------- | ------------------------------------ |
+| Caesar       | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
+| Vigenère     | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
+| Playfair     | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
+| Affine       | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
+| Hệ mã hàng   | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
+| Hill         | Mã hóa / giải mã         | Preview / tải kết quả | `VITE_ENABLE_HILL=true`              |
+| DES          | Text/HEX, ECB/CBC        | Preview / tải kết quả | `VITE_ENABLE_DES=true`               |
+| RSA minh họa | Giao diện học thuật toán | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true` chỉ để xem UI |
 
 Affine dùng hai khóa nguyên `a`, `b` (được thêm từ BE revision `c55278f`). Chi tiết hành vi
 giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã hàng dùng contract BE
@@ -23,6 +25,7 @@ giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã h
 ## Chức năng chính
 
 - Chuyển đổi giữa bảy thuật toán trong cùng một workspace khi đã bật Hill và DES.
+- Có thể xem trước workspace RSA bằng `VITE_ENABLE_RSA=true npm run dev`; các nút tính toán được khóa cho tới khi nối Backend.
 - Mã hóa hoặc giải mã nội dung nhập trực tiếp và file `.txt`.
 - Preview kết quả, sao chép, dán và tải file kết quả.
 - Tab **Phân tích** dùng bố cục thống nhất, giữ ô kết quả bằng kích thước ô đầu vào và cuộn bên trong.

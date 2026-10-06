@@ -48,6 +48,13 @@ const allCipherAlgorithms = [
     status: "Demo",
     available: false,
   },
+  {
+    value: "rsa",
+    name: "RSA minh họa",
+    description: "Sinh khóa và xem từng bước",
+    status: "Chờ API",
+    available: false,
+  },
 ] as const;
 
 export type CipherAlgorithm = (typeof allCipherAlgorithms)[number]["value"];
@@ -60,7 +67,8 @@ export const getCipherAlgorithms = () =>
         (value !== "hill" || import.meta.env.VITE_ENABLE_HILL === "true") &&
         (value !== "des" ||
           import.meta.env.VITE_ENABLE_DES === "true" ||
-          import.meta.env.VITE_ENABLE_DES_DEMO === "true"),
+          import.meta.env.VITE_ENABLE_DES_DEMO === "true") &&
+        (value !== "rsa" || import.meta.env.VITE_ENABLE_RSA === "true"),
     )
     .map((algorithm) =>
       algorithm.value === "des" && import.meta.env.VITE_ENABLE_DES === "true"

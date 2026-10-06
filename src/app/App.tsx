@@ -1,6 +1,8 @@
 import { desApi } from "../features/des/services/desApi";
 import { DesWorkspace } from "../features/des/components/DesWorkspace";
 import { useDesCipher } from "../features/des/hooks/useDesCipher";
+import { RsaWorkspace } from "../features/rsa/components/RsaWorkspace";
+import { useRsaCipher } from "../features/rsa/hooks/useRsaCipher";
 import { createDesDemoGateway } from "../features/des/demo/createDesDemoGateway";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AffineWorkspace } from "../features/affine/components/AffineWorkspace";
@@ -44,6 +46,7 @@ export function App() {
   const [showHistory, setShowHistory] = useState(false);
   const hill = useHillCipher(hillApi, algorithm === "hill" && !showHistory);
   const des = useDesCipher(desGateway, algorithm === "des" && !showHistory);
+  const rsa = useRsaCipher(null, algorithm === "rsa" && !showHistory);
   const hillOpened = useRef(false);
   const cipherAlgorithms = getCipherAlgorithms();
   const [historyAvailable, setHistoryAvailable] = useState(false);
@@ -78,6 +81,7 @@ export function App() {
     columnar.resetAll();
     hill.resetAll();
     des.resetAll();
+    rsa.resetAll();
     hillOpened.current = false;
   }
 
@@ -94,7 +98,7 @@ export function App() {
     des.clearResult();
     if (nextAlgorithm === "hill" && !hillOpened.current) {
       const drafts = { caesar: cipher, vigenere, playfair, affine, columnar, des };
-      const current = algorithm === "hill" ? null : drafts[algorithm];
+      const current = algorithm === "hill" || algorithm === "rsa" ? null : drafts[algorithm];
       hill.seedText(current?.inputType === "text" ? current.text : "");
       hillOpened.current = true;
     }
@@ -109,6 +113,7 @@ export function App() {
     columnar: <ColumnarWorkspace cipher={columnar} />,
     hill: <HillWorkspace cipher={hill} />,
     des: <DesWorkspace cipher={des} />,
+    rsa: <RsaWorkspace cipher={rsa} />,
   };
 
   return (
@@ -124,7 +129,11 @@ export function App() {
               <span>Mã hóa &amp; giải mã</span>
             </h1>
           </div>
-          <p>Chọn thuật toán, nhập văn bản hoặc tải file để bắt đầu.</p>
+          <p>
+            {algorithm === "rsa"
+              ? "Khám phá cách RSA sinh khóa và biến đổi từng khối số."
+              : "Chọn thuật toán, nhập văn bản hoặc tải file để bắt đầu."}
+          </p>
         </header>
         <div className="workspace">
           {historyAvailable && (
