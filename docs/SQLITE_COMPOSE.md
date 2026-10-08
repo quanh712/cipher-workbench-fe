@@ -11,7 +11,7 @@ env, kể cả khi chạy từ thư mục khác hoặc shell có `COMPOSE_PROJEC
 
 Frontend không mount DB; migrate/backend dùng cùng volume `/data`. Backend giữ
 image `c3332dd77a66c98e6dacb28666332501b6946f6414a36283347d95dd232677ae`,
-source `229c69d7c9af8413a780002b266bdb7651e79cb4`. FE đã cập nhật riêng ngày 08/10/2026 để nối API và đồng bộ giao diện RSA; image local `2aed784d107dae506c59870fedabb4f98cf6c1482546731be6b719c6759afb2d` bật Hill/DES/RSA. Image này build từ workspace chưa commit, label `working-tree-rsa-mode-spacing-20261008`.
+source `229c69d7c9af8413a780002b266bdb7651e79cb4`. FE đã cập nhật riêng ngày 08/10/2026 để nối API và đồng bộ giao diện RSA; image local `21fd5f2e9ebcc2056d9abb64957b484779831cfbc7f5aab7bd11ab3975e23dd5` bật Hill/DES/RSA. Image này build từ archive Git của commit `175219d5626414329645a8b40049c04c36ff0136`, label revision khớp commit đó; không lấy các file chưa commit trong workspace.
 
 ## Cài mới và cập nhật
 

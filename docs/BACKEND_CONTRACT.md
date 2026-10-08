@@ -5,14 +5,15 @@ Frontend tích hợp theo contract chính thức của repo
 
 ## Phiên bản được ghim
 
-- Contract SQLite hiện hành: checkout BE sibling tại
+- Contract SQLite runtime hiện hành: BE được pin tại
   `229c69d7c9af8413a780002b266bdb7651e79cb4`, đối chiếu ngày 07/10/2026 với
   [consumer guide](../../cipher-workbench-be/repo_docs/frontend-integration.md),
   [health route](../../cipher-workbench-be/app/api/routes_health.py),
   [history route](../../cipher-workbench-be/app/api/routes_history.py) và
   [config](../../cipher-workbench-be/app/config.py). Runtime history dùng SQLite local
   trên backend; các mốc PostgreSQL dưới đây là lịch sử. Mốc source này không chứng
-  minh image trong stack FE đang chạy đã được cập nhật.
+  minh image trong stack FE đang chạy đã được cập nhật. Checkout BE sibling hiện có thể mới
+  hơn pin runtime; regression production luôn kiểm image đang chạy, không tự rebuild BE.
 - Contract DES: [`31438eb`](https://github.com/kiendt2312/cipher_workbench-be/blob/31438eb49c94cdef570b3ca5afd2c2fff9e73501/repo_docs/frontend-integration.md),
   nhánh `docs/des-fe-guide`, mục 4.7, 8, 9.2; OpenSpec DES hiện hành và implementation
   cùng revision. Xem [DES_SPEC.md](DES_SPEC.md). Bật bằng `VITE_ENABLE_DES=true` sau khi
