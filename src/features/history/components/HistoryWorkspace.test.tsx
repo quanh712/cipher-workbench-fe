@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { HistoryWorkspace } from "./HistoryWorkspace";
@@ -12,6 +12,19 @@ vi.mock("../services/historyApi", async (importOriginal) => ({
 
 const statusMock = vi.mocked(getHealthStatus);
 const historyMock = vi.mocked(getHistory);
+const historyItem = {
+  id: 1,
+  createdAt: "2026-09-28T03:20:02Z",
+  cipher: "caesar" as const,
+  operation: "encrypt" as const,
+  source: "text" as const,
+  responseMode: null,
+  inputLength: 5,
+  outputLength: 5,
+  httpStatus: 200,
+  succeeded: true,
+  durationMs: 1,
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -87,6 +100,46 @@ it("does not read history when the database is unavailable", async () => {
   expect(historyMock).not.toHaveBeenCalled();
 });
 
+it("does not read history when the database is disabled even if history is enabled", async () => {
+  statusMock.mockResolvedValue({ database: "disabled", history: "enabled" });
+  render(<HistoryWorkspace />);
+  expect(await screen.findByText("Lịch sử chưa được bật trên máy chủ.")).toBeInTheDocument();
+  expect(historyMock).not.toHaveBeenCalled();
+});
+
+it("shows a history 503 as unavailable and retries through health", async () => {
+  historyMock
+    .mockRejectedValueOnce(new HistoryApiError("Lịch sử tạm thời không khả dụng.", 503))
+    .mockResolvedValueOnce({ items: [], nextCursor: null });
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Lịch sử tạm thời không khả dụng.");
+  expect(screen.queryByText("Chưa có thao tác nào khớp bộ lọc.")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Làm mới lịch sử" }));
+  expect(await screen.findByText("Chưa có thao tác nào khớp bộ lọc.")).toBeInTheDocument();
+  expect(statusMock).toHaveBeenCalledTimes(2);
+});
+
+it("keeps loaded rows and the cursor when pagination returns 503, allowing retry", async () => {
+  historyMock
+    .mockResolvedValueOnce({ items: [historyItem], nextCursor: "retry-cursor" })
+    .mockRejectedValueOnce(new HistoryApiError("Lịch sử tạm thời không khả dụng.", 503))
+    .mockResolvedValueOnce({ items: [], nextCursor: null });
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await user.click(await screen.findByRole("button", { name: "Tải thêm" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Lịch sử tạm thời không khả dụng.");
+  expect(screen.getByRole("list", { name: "Các thao tác gần đây" })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Tải thêm" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Tải thêm" })).not.toBeInTheDocument(),
+  );
+  expect(historyMock).toHaveBeenLastCalledWith(
+    { cipher: undefined, operation: undefined, cursor: "retry-cursor" },
+    expect.any(AbortSignal),
+  );
+});
+
 it("shows the server message and clears history when the gate closes after health", async () => {
   historyMock.mockRejectedValue(
     new HistoryApiError("Lịch sử không được bật trên máy chủ này.", 404),
@@ -131,15 +184,19 @@ it("does not misclassify a missing health endpoint as a disabled history gate", 
   expect(historyMock).not.toHaveBeenCalled();
 });
 
-it("starts at the first page when a filter changes", async () => {
-  historyMock.mockResolvedValue({ items: [], nextCursor: null });
+it.each([
+  ["Thuật toán", "affine", { cipher: "affine", operation: undefined }],
+  ["Thao tác", "decrypt", { cipher: undefined, operation: "decrypt" }],
+])("clears rows and the old cursor when %s changes", async (label, value, query) => {
+  historyMock
+    .mockResolvedValueOnce({ items: [historyItem], nextCursor: "old-cursor" })
+    .mockResolvedValueOnce({ items: [], nextCursor: null });
   const user = userEvent.setup();
   render(<HistoryWorkspace />);
+  await screen.findByRole("button", { name: "Tải thêm" });
+  await user.selectOptions(screen.getByLabelText(label), value);
   await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
-  await user.selectOptions(screen.getByLabelText("Thuật toán"), "affine");
-  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
-  expect(historyMock).toHaveBeenLastCalledWith(
-    { cipher: "affine", operation: undefined },
-    expect.any(AbortSignal),
-  );
+  expect(historyMock).toHaveBeenLastCalledWith(query, expect.any(AbortSignal));
+  expect(screen.queryByRole("list", { name: "Các thao tác gần đây" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Tải thêm" })).not.toBeInTheDocument();
 });

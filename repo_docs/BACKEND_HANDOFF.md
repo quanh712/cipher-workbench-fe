@@ -17,68 +17,22 @@ OpenSpec Backend trước, sau đó mới cập nhật reference phía FE.
 
 ## Runtime/deployment handoff
 
-Cập nhật ngày `2026-09-18`: Docker Compose production do repo FE quản lý và chạy cả
-hai service trong cùng Docker network:
+Cập nhật ngày `2026-10-08`: cấu hình runtime hiện hành nằm ở
+[SQLite operation](../docs/SQLITE_COMPOSE.md) và [deployment](../docs/DEPLOYMENT.md).
+Handoff LAN ngày 18/09/2026 đã được thay thế; không chạy lại Compose với `.env.deploy`
+hoặc build BE chỉ để cập nhật FE.
 
-```text
-Máy trong LAN
-  │ http://<server-lan-ip>:8080
-  ▼
-frontend (Nginx) 0.0.0.0:8080
-  ├── /, /assets/*, SPA fallback → React dist
-  └── /api/*, /docs, /openapi.json
-                         │ proxy nội bộ
-                         ▼
-                    backend:8000
-```
+- `docker-compose.yml` trỏ tới cấu hình SQLite; wrapper `deploy/sqlite-stack.sh` chọn
+  project và `.env.sqlite` cố định. Stack integration dùng `--integration`.
+- FE local bind `127.0.0.1:18081`, integration `127.0.0.1:18082`. BE chỉ expose
+  `8000` nội bộ; FE gọi `/api` same-origin qua Nginx. Không cần đổi API/CORS.
+- SQLite nằm trong volume `/data` của BE; frontend không mount DB. Backup đã kiểm
+  phục hồi nằm ngoài volume runtime. Giữ nguyên image/source BE khi chỉ cập nhật FE.
+- Health ứng dụng là `GET /api/health`; Compose xác nhận `result.database="ok"`.
+  `/openapi.json` dùng đối chiếu contract; không có `GET /health`.
+- `.env.deploy` chỉ dành cho Nginx host/HTTPS; không truyền cho Docker Compose.
+- Cập nhật FE bằng digest đã kiểm thử, rồi `./deploy/sqlite-stack.sh up --no-deps frontend`.
+  Không `down -v` hoặc rebuild toàn stack khi thay giao diện.
 
-Các boundary BE cần giữ:
-
-- Backend chỉ expose cổng `8000` trong Docker network, không publish cổng này ra host/LAN.
-- Frontend gọi API bằng đường dẫn same-origin tương đối `/api/...`; không cần bật CORS.
-- Nginx container chuyển tiếp `/api/*`, `/docs` và `/openapi.json` tới
-  `http://backend:8000`.
-- Health check của Compose hiện gọi `http://127.0.0.1:8000/openapi.json` bên trong
-  container BE. Chỉ đổi sang `/health` sau khi endpoint đó được accepted trong contract.
-- BE phải tiếp tục lắng nghe `0.0.0.0:8000` **bên trong container** để Nginx FE truy cập
-  được. Đây không phải là publish cổng `8000` ra máy host.
-
-### Cấu hình LAN hiện tại
-
-File `.env.deploy` của repo FE đang dùng:
-
-```env
-APP_BIND_ADDRESS=0.0.0.0
-APP_HTTP_PORT=8080
-BACKEND_CONTEXT=../caesar-cipher-be
-```
-
-Khởi động hoặc dựng lại toàn bộ stack từ repo FE:
-
-```bash
-docker compose down
-docker compose --env-file .env.deploy up -d --build
-docker compose --env-file .env.deploy ps
-```
-
-Trạng thái đã xác minh trên máy triển khai:
-
-- URL LAN: `http://192.168.100.229:8080`
-- Frontend: healthy, publish `0.0.0.0:8080->8080/tcp`
-- Backend: healthy, chỉ có `8000/tcp` nội bộ
-- Smoke test UI, OpenAPI, text API và file API: thành công
-
-IP `192.168.100.229` do DHCP cấp nên có thể thay đổi. Thiết bị truy cập phải cùng
-LAN/Wi-Fi; firewall nếu bật chỉ nên cho phép subnet hiện tại:
-
-```bash
-sudo ufw allow from 192.168.100.0/24 to any port 8080 proto tcp
-```
-
-Không dùng cấu hình LAN này để public trực tiếp lên Internet. Khi triển khai Internet,
-đổi lại `APP_BIND_ADDRESS=127.0.0.1` và đặt Nginx/Caddy HTTPS trên host ở phía trước;
-chỉ mở cổng `80` và `443`.
-
-Với topology trên, phía BE không cần thay đổi API, CORS hoặc publish port. Nếu BE đổi
-cổng, health endpoint, prefix `/api`, giới hạn upload hay response contract thì phải báo
-và cập nhật Compose/Nginx cùng tài liệu contract trước khi merge.
+Nếu BE đổi cổng, health endpoint, prefix `/api`, giới hạn upload hay response contract,
+cập nhật reference và kiểm regression trước khi thay image.

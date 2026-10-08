@@ -13,6 +13,10 @@ test-results
 !.env.mock
 !.env.production.example
 !.env.deploy.example
+!.env.sqlite.example
 .env.deploy
 *.log
 .DS_Store
+
+backups/
+__pycache__/

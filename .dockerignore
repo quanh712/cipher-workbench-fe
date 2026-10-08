@@ -15,3 +15,6 @@ skills-lock.json
 *.tsbuildinfo
 Caesar_Cipher_Tool_Demo.html
 FE Week 1 Scope – Caesar Cipher Tool UI.docx
+
+backups/
+__pycache__/

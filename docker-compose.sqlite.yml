@@ -1,0 +1,146 @@
+# Canonical SQLite runtime; docker-compose.yml is a symlink to this file.
+name: cipher-workbench-sqlite
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  migrate:
+    image: ${BACKEND_IMAGE:?Set pinned BACKEND_IMAGE in .env.sqlite}
+    pull_policy: never
+    command: ["alembic", "-c", "alembic_sqlite.ini", "upgrade", "head"]
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////data/cipher-history.sqlite3}
+    volumes:
+      - history-data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+    networks:
+      - application
+
+  backend:
+    image: ${BACKEND_IMAGE:?Set pinned BACKEND_IMAGE in .env.sqlite}
+    pull_policy: never
+    labels:
+      org.opencontainers.image.revision: ${BACKEND_REVISION:-unknown}
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////data/cipher-history.sqlite3}
+      HISTORY_API_ENABLED: ${HISTORY_API_ENABLED:-false}
+      HISTORY_RETENTION_DAYS: ${HISTORY_RETENTION_DAYS:-30}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
+    volumes:
+      - history-data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    cpus: ${BACKEND_CPUS:-1.0}
+    mem_limit: ${BACKEND_MEMORY:-512m}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          body = json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2));
+          assert body['result']['database'] == 'ok'
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    logging: *default-logging
+    networks:
+      - application
+
+  backup:
+    image: ${BACKEND_IMAGE:?Set pinned BACKEND_IMAGE in .env.sqlite}
+    pull_policy: never
+    user: "${SQLITE_BACKUP_UID:-1000}:${SQLITE_BACKUP_GID:-1000}"
+    restart: unless-stopped
+    read_only: true
+    network_mode: none
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPATH: /app
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////data/cipher-history.sqlite3}
+      SQLITE_BACKUP_INTERVAL_SECONDS: ${SQLITE_BACKUP_INTERVAL_SECONDS:-3600}
+      SQLITE_BACKUP_RETENTION_DAYS: ${SQLITE_BACKUP_RETENTION_DAYS:-7}
+    command: ["python", "/opt/sqlite-backup.py"]
+    volumes:
+      - type: volume
+        source: history-data
+        target: /data
+        read_only: true
+      - type: bind
+        source: ./deploy/sqlite-backup.py
+        target: /opt/sqlite-backup.py
+        read_only: true
+      - type: bind
+        source: ${SQLITE_BACKUP_DIRECTORY:-./backups/sqlite/local}
+        target: /backups
+        bind:
+          create_host_path: false
+    depends_on:
+      backend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "/opt/sqlite-backup.py", "--health-check"]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 2
+    logging: *default-logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set pinned FRONTEND_IMAGE in .env.sqlite}
+    pull_policy: never
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cpus: ${FRONTEND_CPUS:-0.5}
+    mem_limit: ${FRONTEND_MEMORY:-128m}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_HTTP_PORT:-18081}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    logging: *default-logging
+    networks:
+      - application
+
+networks:
+  application:
+    driver: bridge
+
+volumes:
+  history-data:

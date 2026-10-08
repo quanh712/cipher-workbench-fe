@@ -68,6 +68,8 @@ export function HistoryWorkspace() {
         if (controller.signal.aborted) return;
         if (readingHistory && caught instanceof HistoryApiError && caught.status === 404) {
           setStatus("disabled");
+        } else if (caught instanceof HistoryApiError && caught.status === 503) {
+          setStatus("unavailable");
         } else {
           setStatus("error");
         }
@@ -177,7 +179,7 @@ export function HistoryWorkspace() {
       )}
       {!loading && status === "unavailable" && (
         <p className="history__message history__message--error" role="alert">
-          Cơ sở dữ liệu tạm thời không khả dụng. Hãy thử lại sau.
+          {error ?? "Cơ sở dữ liệu tạm thời không khả dụng. Hãy thử lại sau."}
         </p>
       )}
       {!loading && status === "error" && (

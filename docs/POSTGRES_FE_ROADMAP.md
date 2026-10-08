@@ -1,3 +1,5 @@
+> Tài liệu lịch sử: PostgreSQL đã gỡ ngày 08/10/2026. Hướng dẫn hiện hành: [SQLite](SQLITE_COMPOSE.md).
+
 # Lộ trình FE cho nhánh PostgreSQL của BE
 
 > Tài liệu lưu lại kế hoạch theo BE `9b75d576`. Contract hiện hành ở

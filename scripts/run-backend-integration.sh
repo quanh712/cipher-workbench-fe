@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-backend_context="${BACKEND_CONTEXT:-../caesar-cipher-be}"
+backend_context="${BACKEND_CONTEXT:-../cipher-workbench-be}"
 image_name="cipher-workbench-backend:integration"
 container_name="cipher-workbench-backend-integration"
 backend_port="${BACKEND_INTEGRATION_PORT:-18000}"

@@ -11,7 +11,7 @@ curl --fail --show-error --silent "$base_url/openapi.json" > /dev/null
 health_result=$(curl --fail --show-error --silent "$base_url/api/health")
 case "$health_result" in
   *'"database":"ok"'*) ;;
-  *) echo "PostgreSQL chưa sẵn sàng: $health_result" >&2; exit 1 ;;
+  *) echo "SQLite chưa sẵn sàng: $health_result" >&2; exit 1 ;;
 esac
 
 text_result=$(

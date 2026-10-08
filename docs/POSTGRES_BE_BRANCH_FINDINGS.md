@@ -1,3 +1,5 @@
+> Tài liệu lịch sử: PostgreSQL đã gỡ ngày 08/10/2026. Hướng dẫn hiện hành: [SQLite](SQLITE_COMPOSE.md).
+
 # Đọc nhánh BE `feature/add-postgres-persistence`
 
 > Đây là ảnh chụp nhánh BE `9b75d576`, không phải contract hiện hành. BE `c314fa8`

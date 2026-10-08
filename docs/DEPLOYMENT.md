@@ -18,11 +18,11 @@ Nginx FE container :8080
         └── /api, /docs, OpenAPI  → FastAPI container :8000
                                       │
                                       ▼
-                                  PostgreSQL :5432
+                                  SQLite /data/cipher-history.sqlite3
 ```
 
-FastAPI và PostgreSQL chỉ ở trong Docker network; không publish cổng `8000` hoặc
-`5432`. Compose chạy migration Alembic trước khi Backend khởi động. Lịch sử là
+FastAPI chỉ ở trong Docker network; không publish cổng `8000`.
+SQLite là file local trong volume của Backend, không mở cổng database. Compose chạy migration Alembic trước khi Backend khởi động. Lịch sử là
 metadata chung của toàn instance, không có tài khoản hay session.
 
 ## 2. Chuẩn bị VPS
@@ -42,20 +42,20 @@ sudo ufw enable
 Tạo thư mục triển khai và clone hai repo cạnh nhau:
 
 ```text
-/opt/cipher-workbench/
-├── caesar-cipher-fe/
-└── caesar-cipher-be/
+/opt/Cipher-workbench/
+├── cipher-workbench-fe/
+└── cipher-workbench-be/
 ```
 
 Backend revision đã đối chiếu cho contract DB/history hiện tại:
 
 ```text
-c314fa87bb87ad42ea10cd4fd96889ca176bfe26
+229c69d7c9af8413a780002b266bdb7651e79cb4
 ```
 
 `GET /api/history` không có xác thực, nên trên instance public giữ
-`HISTORY_API_ENABLED=false` (giá trị mặc định trong Compose và `.env.deploy.example`). Backend mới cũng mặc định tắt
-API đọc lịch sử; PostgreSQL vẫn ghi metadata và tự xóa bản ghi quá 30 ngày.
+`HISTORY_API_ENABLED=false` (giá trị mặc định trong Compose; cấu hình public đặt flag trong `.env.sqlite`). Backend mới cũng mặc định tắt
+API đọc lịch sử; SQLite vẫn ghi metadata và tự xóa bản ghi quá 30 ngày.
 Chỉ bật API đọc trên stack dev/nội bộ được giới hạn truy cập.
 
 Để nghiệm thu lịch sử ở stack **nội bộ** với BE revision đã ghim, đặt
@@ -75,35 +75,29 @@ git diff --check
 
 ## 3. Cấu hình và chạy Compose
 
-Trong repo FE:
+Runtime chỉ dùng `.env.sqlite`, project `cipher-workbench-sqlite` và volume
+`cipher-workbench-sqlite_history-data`. `docker-compose.yml` là symlink tới
+`docker-compose.sqlite.yml`; không còn đường Compose riêng dùng `.env.deploy`.
+
+Máy mới cần load image FE/BE đã pin và tạo `.env.sqlite` từ mẫu. Stack hiện tại
+giữ env sẵn có. Instance public đặt `HISTORY_API_ENABLED=false` trong `.env.sqlite`.
 
 ```bash
-cp .env.deploy.example .env.deploy
+./deploy/sqlite-stack.sh prepare-backups
+./deploy/sqlite-stack.sh config --quiet
+./deploy/sqlite-stack.sh up
+./deploy/sqlite-stack.sh ps
 ```
 
-Điền domain thật, SHA FE/BE, đường dẫn `BACKEND_CONTEXT`, `POSTGRES_USER`,
-`POSTGRES_PASSWORD`, `POSTGRES_DB` và `DATABASE_URL`. Mật khẩu trong URL phải
-khớp `POSTGRES_PASSWORD` và được URL-encode nếu có ký tự đặc biệt. Dùng secret
-riêng của môi trường, không commit `.env.deploy`. Domain phải thuộc
-quyền quản lý DNS của người triển khai. Không dùng giá trị mẫu
-`cipher.example.com` ngoài tài liệu.
+Không build/restart BE khi chỉ cập nhật cấu hình FE. Migrate và Backend cùng mount
+`history-data:/data`; migration là `alembic -c alembic_sqlite.ini upgrade head`.
+Chạy đúng một Backend process. Backup service đọc DB và lưu mỗi giờ ngoài volume,
+restore-verify từng snapshot và giữ 7 ngày; chi tiết ở
+[SQLite operation](SQLITE_COMPOSE.md#backup-tự-động).
 
-Kiểm tra và khởi động:
-
-```bash
-./deploy/verify-revisions.sh .env.deploy
-docker compose --env-file .env.deploy config
-docker compose --env-file .env.deploy build --pull
-docker compose --env-file .env.deploy up -d
-docker compose --env-file .env.deploy ps
-```
-
-`frontend` chỉ bind `${APP_BIND_ADDRESS}:${APP_HTTP_PORT}`, mặc định là
-`127.0.0.1:18081`. Backend chỉ tồn tại trong Docker network. Hai container dùng
-`restart: unless-stopped`, log rotation `10 MiB × 3` và health check riêng.
-`db` dùng volume `postgres_data`; `migrate` chạy `alembic upgrade head` sau khi
-DB healthy, Backend chỉ chạy sau khi migration thành công. Không dùng
-`docker compose down -v` trên môi trường có dữ liệu cần giữ.
+`.env.deploy` chỉ chứa `APP_DOMAIN` và `APP_HTTP_PORT` cho Nginx host/HTTPS.
+Tạo từ `.env.deploy.example`, đặt domain thật và port bằng port runtime trong
+`.env.sqlite`; không truyền file này cho Docker Compose.
 
 ## 4. Kiểm tra local production stack
 
@@ -191,9 +185,9 @@ Chỉ cấu hình HTTPS mới bật HSTS. Không bật HSTS trong bước bootst
 ## 7. Logs và chẩn đoán
 
 ```bash
-docker compose --env-file .env.deploy ps
-docker compose --env-file .env.deploy logs --tail=200 frontend
-docker compose --env-file .env.deploy logs --tail=200 backend
+./deploy/sqlite-stack.sh ps
+./deploy/sqlite-stack.sh logs --tail=200 frontend
+./deploy/sqlite-stack.sh logs --tail=200 backend
 sudo journalctl -u nginx --since '30 minutes ago'
 ```
 
@@ -203,19 +197,14 @@ Khi DB tạm lỗi, cipher vẫn xử lý nhưng lịch sử có thể thiếu b
 
 ## 8. Update và rollback
 
-Week 1 chấp nhận gián đoạn ngắn khi thay container. Quy trình update:
+Cập nhật riêng image digest đã kiểm chứng trong `.env.sqlite`, giữ project và
+volume hiện hành, rồi chạy `./deploy/sqlite-stack.sh up`. Chỉ thay image BE nếu
+đó là phạm vi đã được yêu cầu. Không dùng `build --pull` khi vận hành stack đã pin.
 
-1. Xác nhận working tree hai repo sạch.
-2. Fetch và checkout đúng SHA đã duyệt cho FE và BE.
-3. Cập nhật `FRONTEND_REVISION`, `BACKEND_REVISION` và image tag trong
-   `.env.deploy`.
-4. Chạy lại `build --pull`, `up -d` và toàn bộ smoke test.
-5. Ghi lại hai SHA đang chạy trong nhật ký release.
-
-Rollback ứng dụng bằng cách checkout lại cặp SHA release trước, phục hồi các giá
-trị trong `.env.deploy`, rebuild và chạy `up -d`. Không chạy Alembic downgrade
-tự động khi rollback: kiểm tra schema tương thích với BE cũ trước. Sao lưu volume
-PostgreSQL theo lịch và thử phục hồi định kỳ; restart container không thay thế backup.
+Rollback image bằng digest trước đó trong cùng env/project, sau khi kiểm tra
+schema tương thích; giữ nguyên dữ liệu mới. Snapshot nằm ngoài runtime volume
+và đã restore-verified, xem [hướng dẫn recovery](SQLITE_COMPOSE.md#phục-hồi).
+Không tự chạy Alembic downgrade hoặc `down -v`.
 
 ## 9. Ngoài phạm vi
 
