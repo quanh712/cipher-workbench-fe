@@ -16,17 +16,15 @@ export function validateParameters(parameters: RsaParameters): RsaFieldErrors {
   if (p === null) errors.p = "p phải là số nguyên không âm.";
   if (q === null) errors.q = "q phải là số nguyên không âm.";
   if (e === null) errors.e = "e phải là số nguyên không âm.";
-  if (p === null || q === null || e === null) return errors;
-
-  const pValue = BigInt(p);
-  const qValue = BigInt(q);
-  const eValue = BigInt(e);
-  if (pValue < 2n || pValue > MAX_PRIME) errors.p = "p phải từ 2 đến 10¹².";
-  if (qValue < 2n || qValue > MAX_PRIME) errors.q = "q phải từ 2 đến 10¹².";
-  if (pValue === qValue) {
+  const pValue = p === null ? null : BigInt(p);
+  const qValue = q === null ? null : BigInt(q);
+  const eValue = e === null ? null : BigInt(e);
+  if (pValue !== null && (pValue < 2n || pValue > MAX_PRIME)) errors.p = "p phải từ 2 đến 10¹².";
+  if (qValue !== null && (qValue < 2n || qValue > MAX_PRIME)) errors.q = "q phải từ 2 đến 10¹².";
+  if (pValue !== null && qValue !== null && pValue === qValue) {
     errors.q = "p và q phải khác nhau.";
   }
-  if (!errors.p && !errors.q) {
+  if (!errors.p && !errors.q && pValue !== null && qValue !== null && eValue !== null) {
     const phi = (pValue - 1n) * (qValue - 1n);
     if (eValue <= 1n || eValue >= phi) errors.e = `e phải thỏa 1 < e < φ(n) = ${phi}.`;
   }

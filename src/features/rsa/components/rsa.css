@@ -13,7 +13,6 @@
 
 .rsa__intro h2 {
   margin: 0 0 6px;
-  font-family: "Barlow Condensed", "Barlow", sans-serif;
   font-size: clamp(28px, 4vw, 36px);
   letter-spacing: -0.025em;
 }
@@ -23,16 +22,6 @@
   margin: 0;
   color: var(--muted);
   line-height: 1.55;
-}
-
-.rsa__education-badge {
-  flex: none;
-  padding: 5px 10px;
-  border: 1px solid var(--control-border);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .rsa__flow {
@@ -98,7 +87,7 @@
 }
 
 .rsa__section .panel__header h2 {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .rsa__section .panel__header code {
@@ -129,6 +118,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.rsa__presets [aria-pressed="true"] {
+  border-color: var(--focus);
+  box-shadow: inset 0 0 0 1px var(--focus);
 }
 
 .rsa__fields {
@@ -320,6 +314,7 @@
 }
 
 .rsa__explanation {
+  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
@@ -327,21 +322,25 @@
 
 .rsa__explanation > div {
   min-width: 0;
-  padding: 16px 18px;
+  padding: 20px 22px;
   border-left: 3px solid var(--accent);
   background: var(--surface);
   border-radius: 0 8px 8px 0;
 }
 
 .rsa__explanation h2 {
-  margin: 0 0 7px;
+  margin: 0 0 12px;
   font-size: 16px;
 }
 
 .rsa__explanation p {
   margin: 0;
   color: var(--muted);
-  line-height: 1.55;
+  line-height: 1.75;
+}
+
+.rsa__explanation p + p {
+  margin-top: 12px;
 }
 
 @media (max-width: 800px) {
@@ -369,10 +368,6 @@
     gap: 10px;
   }
 
-  .rsa__education-badge {
-    justify-self: start;
-  }
-
   .rsa__flow,
   .rsa__fields,
   .rsa__facts,
@@ -397,4 +392,40 @@
   .rsa__section-body {
     padding: 16px;
   }
+}
+
+.rsa__section-body > .mode-section,
+.rsa__key-form {
+  width: 100%;
+}
+.rsa__key-form {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  min-width: 0;
+}
+.rsa .button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rsa__section-body .status {
+  width: 100%;
+}
+.rsa__flow {
+  margin-top: 12px;
+}
+.rsa__field textarea[readonly] {
+  background: var(--surface);
+}
+
+.rsa__section-body > .mode-section {
+  margin-bottom: 4px;
+}
+
+.rsa__mode-help {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 4px;
+  line-height: 1.75;
 }

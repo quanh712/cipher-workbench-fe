@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from "react";
+import { useId, useRef, type KeyboardEvent } from "react";
 import type { CipherMode } from "../types/cipher";
 
 interface CipherModeSelectorProps {
@@ -8,6 +8,7 @@ interface CipherModeSelectorProps {
 }
 
 export function CipherModeSelector({ value, disabled, onChange }: CipherModeSelectorProps) {
+  const titleId = useId();
   const modes: CipherMode[] = ["encrypt", "decrypt"];
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -29,11 +30,11 @@ export function CipherModeSelector({ value, disabled, onChange }: CipherModeSele
   }
 
   return (
-    <section className="mode-section" aria-labelledby="mode-title">
-      <div className="section-label" id="mode-title">
+    <section className="mode-section" aria-labelledby={titleId}>
+      <div className="section-label" id={titleId}>
         Chế độ
       </div>
-      <div className="mode-selector" role="radiogroup" aria-labelledby="mode-title">
+      <div className="mode-selector" role="radiogroup" aria-labelledby={titleId}>
         {modes.map((mode, index) => (
           <button
             ref={(button) => {

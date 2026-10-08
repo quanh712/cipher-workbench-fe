@@ -1,6 +1,7 @@
 import { desApi } from "../features/des/services/desApi";
 import { DesWorkspace } from "../features/des/components/DesWorkspace";
 import { useDesCipher } from "../features/des/hooks/useDesCipher";
+import { rsaApi } from "../features/rsa/services/rsaApi";
 import { RsaWorkspace } from "../features/rsa/components/RsaWorkspace";
 import { useRsaCipher } from "../features/rsa/hooks/useRsaCipher";
 import { createDesDemoGateway } from "../features/des/demo/createDesDemoGateway";
@@ -46,7 +47,7 @@ export function App() {
   const [showHistory, setShowHistory] = useState(false);
   const hill = useHillCipher(hillApi, algorithm === "hill" && !showHistory);
   const des = useDesCipher(desGateway, algorithm === "des" && !showHistory);
-  const rsa = useRsaCipher(null, algorithm === "rsa" && !showHistory);
+  const rsa = useRsaCipher(rsaApi, algorithm === "rsa" && !showHistory);
   const hillOpened = useRef(false);
   const cipherAlgorithms = getCipherAlgorithms();
   const [historyAvailable, setHistoryAvailable] = useState(false);

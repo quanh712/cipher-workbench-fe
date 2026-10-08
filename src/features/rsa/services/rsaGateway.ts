@@ -1,16 +1,20 @@
-import type { RsaKeyResult, RsaNumberResult, RsaParameters, RsaTextResult } from "../types/cipher";
+import type {
+  RsaKeyResult,
+  RsaParameters,
+  RsaTransformRequest,
+  RsaTransformResult,
+} from "../types/cipher";
 
-// UI contract only. The API adapter will map this to the official Backend DTO when available.
+/**
+ * Backend boundary for the RSA workspace. All integer DTO fields are decimal strings.
+ * The API adapter validates Backend DTOs and maps them to the workspace model.
+ * Implementations must respect AbortSignal; the controller also discards stale responses.
+ * Use RsaGatewayError for displayable business errors; other failures get a generic UI message.
+ * UI code consumes results/traces as returned and never computes a local fallback.
+ */
 export interface RsaGateway {
+  transform(parameters: RsaTransformRequest, signal: AbortSignal): Promise<RsaTransformResult>;
   generateKey(parameters: RsaParameters, signal: AbortSignal): Promise<RsaKeyResult>;
-  roundTripNumber(
-    parameters: RsaParameters & { plaintext: string },
-    signal: AbortSignal,
-  ): Promise<RsaNumberResult>;
-  roundTripText(
-    parameters: RsaParameters & { text: string },
-    signal: AbortSignal,
-  ): Promise<RsaTextResult>;
 }
 
 export class RsaGatewayError extends Error {

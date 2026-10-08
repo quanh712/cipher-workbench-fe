@@ -1,31 +1,23 @@
+import { useState } from "react";
+import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
+import { saveBlob } from "../../../shared/utils/download";
 import type { RsaCipherController } from "../hooks/useRsaCipher";
-import type { EuclidRow, ModPowRow, RsaParameters, RsaTask } from "../types/cipher";
+import type { EuclidRow, ModPowRow, RsaInputType, RsaTask } from "../types/cipher";
 import "./rsa.css";
 
-const presets: { label: string; parameters: RsaParameters }[] = [
-  { label: "Giáo trình · 17, 11, 7", parameters: { p: "17", q: "11", e: "7" } },
-  { label: "61, 53, 17", parameters: { p: "61", q: "53", e: "17" } },
-  {
-    label: "Tiếng Việt · 101, 113, 3533",
-    parameters: { p: "101", q: "113", e: "3533" },
-  },
-];
-
 function TaskMessage({ cipher, task }: { cipher: RsaCipherController; task: RsaTask }) {
-  if (cipher.taskErrors[task]) {
+  if (cipher.taskErrors[task])
     return (
       <p className="rsa__message rsa__message--error" role="alert">
         {cipher.taskErrors[task]}
       </p>
     );
-  }
-  if (cipher.statuses[task] === "loading") {
+  if (cipher.statuses[task] === "loading")
     return (
       <p className="rsa__message" role="status">
         Đang xử lý…
       </p>
     );
-  }
   return null;
 }
 
@@ -92,298 +84,413 @@ function ModPowTable({ rows, title }: { rows: ModPowRow[]; title: string }) {
   );
 }
 
-export function RsaWorkspace({ cipher }: { cipher: RsaCipherController }) {
-  const { draft, key, numberResult, textResult, fieldErrors, statuses } = cipher;
-  const numberRecovered = Boolean(
-    numberResult?.plaintextInRange && numberResult.decrypted === numberResult.plaintext,
+function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: RsaInputType }) {
+  const [notice, setNotice] = useState("");
+  const mode = cipher.modes[task];
+  const encrypt = mode === "encrypt";
+  const input = cipher.inputs[task][mode];
+  const result = cipher.results[task];
+  const busy = cipher.statuses[task] === "loading";
+  const characters = Array.from(encrypt ? input : (result?.output ?? ""));
+  const inputLabel = encrypt
+    ? task === "number"
+      ? "Bản rõ P (số)"
+      : "Thông điệp"
+    : "Bản mã (JSON)";
+  const ready = cipher.hasGateway && (cipher.keySource === "manual" || Boolean(cipher.key));
+  async function copy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setNotice("Đã sao chép.");
+    } catch {
+      setNotice("Không thể sao chép. Hãy chọn nội dung và sao chép thủ công.");
+    }
+  }
+  async function paste() {
+    try {
+      const value = await navigator.clipboard.readText();
+      cipher.setInput(task, value);
+      setNotice("Đã dán.");
+    } catch {
+      setNotice("Không thể đọc clipboard. Hãy dán trực tiếp vào ô nhập.");
+    }
+  }
+  return (
+    <section className="rsa__section panel" aria-labelledby={`rsa-${task}-title`}>
+      <div className="panel__header">
+        <h2 id={`rsa-${task}-title`}>
+          {task === "number" ? "Mã hóa và giải mã một khối số" : "Văn bản: mỗi ký tự là một khối"}
+        </h2>
+      </div>
+      <form
+        className="rsa__section-body"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (ready && !busy) cipher.process(task);
+        }}
+      >
+        <CipherModeSelector
+          value={mode}
+          disabled={false}
+          onChange={(value) => {
+            setNotice("");
+            cipher.setMode(task, value);
+          }}
+        />
+        <p className="rsa__help rsa__mode-help">
+          <span>{encrypt ? "Dùng khóa công khai {e, n}." : "Dùng khóa riêng {d, n}."}</span>
+          <span>
+            {task === "number"
+              ? "Mỗi số phải thỏa 0 ≤ P < n."
+              : "Chế độ char: mỗi Unicode code point là một khối và phải nhỏ hơn n."}
+          </span>
+        </p>
+        <label className="rsa__field rsa__field--text">
+          <span>{inputLabel}</span>
+          <textarea
+            value={input}
+            rows={task === "number" ? 2 : 4}
+            spellCheck={false}
+            placeholder={encrypt ? undefined : '["11","76"]'}
+            onChange={(event) => {
+              setNotice("");
+              cipher.setInput(task, event.target.value);
+            }}
+          />
+        </label>
+        <div className="button-group" role="group" aria-label="Thao tác đầu vào">
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={busy}
+            onClick={() => void paste()}
+          >
+            Dán
+          </button>
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={!input}
+            onClick={() => void copy(input)}
+          >
+            Sao chép
+          </button>
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={() => {
+              setNotice("");
+              cipher.setInput(task, "");
+            }}
+          >
+            Xóa
+          </button>
+        </div>
+        <button className="button button--primary" type="submit" disabled={!ready || busy}>
+          {busy ? "Đang xử lý…" : encrypt ? "Mã hóa" : "Giải mã"}
+        </button>
+        {!ready && <p className="rsa__help">Hãy sinh khóa hoặc chọn nhập khóa trước khi xử lý.</p>}
+        <TaskMessage cipher={cipher} task={task} />
+        <label className="rsa__field rsa__field--text">
+          <span>Kết quả {encrypt ? "bản mã (JSON)" : "bản rõ"}</span>
+          <textarea
+            readOnly
+            rows={3}
+            value={result?.output ?? ""}
+            placeholder="Kết quả sẽ hiển thị tại đây"
+          />
+        </label>
+        <div className="button-group" role="group" aria-label="Thao tác kết quả">
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={!result}
+            onClick={() => void copy(result!.output)}
+          >
+            Sao chép
+          </button>
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={!result}
+            onClick={() =>
+              saveBlob(
+                new Blob([result!.output], {
+                  type: encrypt ? "application/json;charset=utf-8" : "text/plain;charset=utf-8",
+                }),
+                `rsa-${task}-${mode}.${encrypt ? "json" : "txt"}`,
+              )
+            }
+          >
+            Tải kết quả
+          </button>
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={() => {
+              setNotice("");
+              cipher.clearTask(task);
+            }}
+          >
+            Xóa
+          </button>
+        </div>
+        {notice && (
+          <p role="status" className="rsa__help">
+            {notice}
+          </p>
+        )}
+        {result && (
+          <>
+            <p className="status status--success" role="status">
+              ✓ Xử lý thành công · {result.blocks.length} khối
+            </p>
+            <details className="rsa__details">
+              <summary>
+                {encrypt ? "Bảng tính C = Pᵉ mod n" : "Bảng tính P = Cᵈ mod n"}
+                {task === "text" ? " · khối đầu tiên" : ""}
+              </summary>
+              <ModPowTable
+                rows={result.rows}
+                title={encrypt ? "Các bước mã hóa" : "Các bước giải mã"}
+              />
+            </details>
+            {task === "text" && (
+              <details className="rsa__details">
+                <summary>Xem từng khối ký tự</summary>
+                <div className="rsa__table-wrap">
+                  <table className="rsa__table">
+                    <caption>Kết quả từng khối ký tự</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Khối</th>
+                        <th scope="col">Ký tự</th>
+                        <th scope="col">P (mã)</th>
+                        <th scope="col">C</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.blocks.map((block, index) => (
+                        <tr key={index}>
+                          <td>{index + 1}</td>
+                          <td>{characters[index] === " " ? "␣" : characters[index]}</td>
+                          <td>{block}</td>
+                          <td>{result.cipher[index]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </>
+        )}
+      </form>
+    </section>
   );
-  const keyDisabled = !cipher.hasGateway || statuses.key === "loading";
-  const numberDisabled = !cipher.hasGateway || !key || statuses.number === "loading";
-  const textDisabled = !cipher.hasGateway || !key || statuses.text === "loading";
+}
 
+export function RsaWorkspace({ cipher }: { cipher: RsaCipherController }) {
+  const { draft, key, fieldErrors } = cipher;
   return (
     <div className="cipher-workspace rsa" aria-busy={cipher.isBusy}>
       <header className="rsa__intro">
         <div>
           <h2>RSA từng bước</h2>
-          <p>
-            Tạo khóa của người nhận, mã hóa bằng khóa công khai rồi giải mã bằng khóa riêng. Các
-            phép tính ở đây dùng số nhỏ để bạn thấy từng bước.
-          </p>
+          <p>Sinh khóa hoặc nhập khóa có sẵn, rồi chọn mã hóa hay giải mã cho số và văn bản.</p>
         </div>
-        <span className="rsa__education-badge">Minh họa thuật toán</span>
       </header>
-
-      <ol className="rsa__flow" aria-label="Luồng mã hóa RSA">
-        <li>
-          <strong>Bob sinh khóa</strong>
-          <span>
-            Công bố {"{e, n}"}, giữ {"{d, n}"}
-          </span>
-        </li>
-        <li>
-          <strong>Alice mã hóa</strong>
-          <span>Dùng khóa công khai của Bob</span>
-        </li>
-        <li>
-          <strong>Gửi bản mã</strong>
-          <span>Truyền C qua kênh liên lạc</span>
-        </li>
-        <li>
-          <strong>Bob giải mã</strong>
-          <span>Dùng khóa riêng của mình</span>
-        </li>
-      </ol>
-
-      {!cipher.hasGateway && (
-        <p className="rsa__message rsa__message--pending" role="status">
-          Giao diện RSA đã sẵn sàng. Chức năng tính toán sẽ mở sau khi Backend RSA được kết nối.
-        </p>
-      )}
-
+      <details className="rsa__details">
+        <summary>Luồng mã hóa RSA · Alice và Bob</summary>
+        <ol className="rsa__flow" aria-label="Luồng mã hóa RSA">
+          <li>
+            <strong>Bob sinh khóa</strong>
+            <span>
+              Công bố {"{e, n}"}, giữ {"{d, n}"}
+            </span>
+          </li>
+          <li>
+            <strong>Alice mã hóa</strong>
+            <span>Dùng khóa công khai của Bob</span>
+          </li>
+          <li>
+            <strong>Gửi bản mã</strong>
+            <span>Truyền C qua kênh liên lạc</span>
+          </li>
+          <li>
+            <strong>Bob giải mã</strong>
+            <span>Dùng khóa riêng của mình</span>
+          </li>
+        </ol>
+      </details>
+      <div className="helper-row">
+        <span>RSA biến đổi từng khối số bằng lũy thừa modulo n.</span>
+        <div className="button-group">
+          <button className="button button--secondary" type="button" onClick={cipher.loadExample}>
+            Tạo ví dụ
+          </button>
+          <button className="button button--secondary" type="button" onClick={cipher.resetAll}>
+            Đặt lại
+          </button>
+        </div>
+      </div>
       <section className="rsa__section panel" aria-labelledby="rsa-key-title">
         <div className="panel__header">
-          <h2 id="rsa-key-title">Sinh khóa</h2>
-          <code>n = p·q · φ(n) = (p−1)(q−1)</code>
+          <h2 id="rsa-key-title">Khóa RSA</h2>
         </div>
         <div className="rsa__section-body">
-          <p className="rsa__help">
-            Chọn hai số nguyên tố khác nhau và số mũ e nguyên tố cùng nhau với φ(n). d là nghịch đảo
-            của e theo modulo φ(n).
-          </p>
-          <div className="rsa__presets" role="group" aria-label="Bộ tham số mẫu RSA">
-            {presets.map((preset) => (
+          <div className="rsa__presets" role="group" aria-label="Cách nhập khóa RSA">
+            {(["generate", "manual"] as const).map((source) => (
               <button
                 className="button button--secondary"
-                key={preset.label}
                 type="button"
-                disabled={!cipher.hasGateway}
-                onClick={() => cipher.choosePreset(preset.parameters)}
+                key={source}
+                aria-pressed={cipher.keySource === source}
+                onClick={() => cipher.setKeySource(source)}
               >
-                {preset.label}
+                {source === "generate" ? "Sinh khóa" : "Nhập khóa"}
               </button>
             ))}
           </div>
-          <div className="rsa__fields">
-            {(["p", "q", "e"] as const).map((field) => (
-              <label className="rsa__field" key={field}>
-                <span>{field === "e" ? "e · số mũ công khai" : `${field} · số nguyên tố`}</span>
-                <input
-                  value={draft[field]}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  spellCheck={false}
-                  aria-invalid={Boolean(fieldErrors[field])}
-                  onChange={(event) => cipher.setParameter(field, event.target.value)}
-                />
-                {fieldErrors[field] && <small role="alert">{fieldErrors[field]}</small>}
-              </label>
-            ))}
-          </div>
-          <button
-            className="button button--primary"
-            type="button"
-            disabled={keyDisabled}
-            onClick={() => void cipher.generateKey()}
-          >
-            Sinh khóa
-          </button>
-          <TaskMessage cipher={cipher} task="key" />
-          {key && (
-            <>
-              <dl className="rsa__facts">
-                <div>
-                  <dt>n = p·q</dt>
-                  <dd>{key.n}</dd>
-                </div>
-                <div>
-                  <dt>φ(n)</dt>
-                  <dd>{key.phi}</dd>
-                </div>
-                <div className="rsa__fact--public">
-                  <dt>Khóa công khai của Bob</dt>
-                  <dd>{`{${key.e}, ${key.n}}`}</dd>
-                </div>
-                <div className="rsa__fact--private">
-                  <dt>Khóa riêng của Bob</dt>
-                  <dd>{`{${key.d}, ${key.n}}`}</dd>
-                </div>
-              </dl>
-              <p className="rsa__message rsa__message--success" role="status">
-                Kiểm tra: e·d mod φ(n) = {key.verification}
-              </p>
-              <details className="rsa__details">
-                <summary>Xem từng bước Euclid mở rộng tìm d</summary>
-                <EuclidTable rows={key.euclidRows} />
-              </details>
-            </>
-          )}
-        </div>
-      </section>
-
-      <section className="rsa__section panel" aria-labelledby="rsa-number-title">
-        <div className="panel__header">
-          <h2 id="rsa-number-title">Mã hóa và giải mã một khối số</h2>
-          <code>0 ≤ P &lt; n</code>
-        </div>
-        <div className="rsa__section-body">
-          <p className="rsa__help">
-            Alice tính C = Pᵉ mod n. Bob dùng khóa riêng để tính P′ = Cᵈ mod n.
-          </p>
-          <div className="rsa__action-line">
-            <label className="rsa__field">
-              <span>Bản rõ P (số)</span>
-              <input
-                value={draft.plaintext}
-                inputMode="numeric"
-                autoComplete="off"
-                spellCheck={false}
-                aria-invalid={Boolean(fieldErrors.plaintext)}
-                onChange={(event) => cipher.setPlaintext(event.target.value)}
-              />
-              {fieldErrors.plaintext && <small role="alert">{fieldErrors.plaintext}</small>}
-            </label>
-            <button
-              className="button button--primary"
-              type="button"
-              disabled={numberDisabled}
-              onClick={cipher.processNumber}
+          {cipher.keySource === "generate" ? (
+            <form
+              className="rsa__key-form"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                void cipher.generateKey();
+              }}
             >
-              Mã hóa rồi giải mã
-            </button>
-          </div>
-          {!key && cipher.hasGateway && (
-            <p className="rsa__help">Hãy sinh khóa trước khi xử lý một khối số.</p>
-          )}
-          <TaskMessage cipher={cipher} task="number" />
-          {numberResult && (
-            <>
-              <dl className="rsa__facts rsa__facts--three">
-                <div>
-                  <dt>Bản rõ P</dt>
-                  <dd>{numberResult.plaintext}</dd>
-                </div>
-                <div className="rsa__fact--public">
-                  <dt>Bản mã C</dt>
-                  <dd>{numberResult.ciphertext}</dd>
-                </div>
-                <div className="rsa__fact--private">
-                  <dt>Giải mã P′</dt>
-                  <dd>{numberResult.decrypted}</dd>
-                </div>
-              </dl>
-              <p
-                className={`rsa__message ${numberRecovered ? "rsa__message--success" : "rsa__message--error"}`}
-                role="status"
-              >
-                {numberRecovered
-                  ? `Giải mã khôi phục đúng P = ${numberResult.plaintext}.`
-                  : numberResult.plaintextInRange
-                    ? "Kết quả giải mã không khớp P. Hãy thử lại."
-                    : `P ≥ n nên chỉ khôi phục được P mod n = ${numberResult.decrypted}.`}
+              <p className="rsa__help">
+                Chọn hai số nguyên tố khác nhau. n = p·q, φ(n) = (p−1)(q−1), d là nghịch đảo của e
+                modulo φ(n).
               </p>
-              <details className="rsa__details" open>
-                <summary>Bảng tính C = Pᵉ mod n</summary>
-                <ModPowTable rows={numberResult.encryptRows} title="Các bước mã hóa" />
-              </details>
-              <details className="rsa__details">
-                <summary>Bảng tính P′ = Cᵈ mod n</summary>
-                <ModPowTable rows={numberResult.decryptRows} title="Các bước giải mã" />
-              </details>
-            </>
-          )}
-        </div>
-      </section>
-
-      <section className="rsa__section panel" aria-labelledby="rsa-text-title">
-        <div className="panel__header">
-          <h2 id="rsa-text-title">Văn bản: mỗi ký tự là một khối</h2>
-        </div>
-        <div className="rsa__section-body">
-          <p className="rsa__help">
-            Mỗi Unicode code point được đổi thành một số P. Để khôi phục đúng, mã của từng ký tự
-            phải nhỏ hơn n.
-          </p>
-          <label className="rsa__field rsa__field--text">
-            <span>Thông điệp</span>
-            <textarea
-              value={draft.text}
-              rows={3}
-              aria-invalid={Boolean(fieldErrors.text)}
-              onChange={(event) => cipher.setText(event.target.value)}
-            />
-            {fieldErrors.text && <small role="alert">{fieldErrors.text}</small>}
-          </label>
-          <button
-            className="button button--primary"
-            type="button"
-            disabled={textDisabled}
-            onClick={cipher.processText}
-          >
-            Mã hóa văn bản
-          </button>
-          {!key && cipher.hasGateway && <p className="rsa__help">Hãy sinh khóa trước.</p>}
-          <TaskMessage cipher={cipher} task="text" />
-          {textResult && (
-            <>
-              <p
-                className={`rsa__message ${textResult.invalidCount ? "rsa__message--error" : "rsa__message--success"}`}
-                role="status"
+              <div className="rsa__presets" role="group" aria-label="Bộ tham số mẫu RSA">
+                {[
+                  { label: "Giáo trình · 17, 11, 7", p: "17", q: "11", e: "7" },
+                  { label: "61, 53, 17", p: "61", q: "53", e: "17" },
+                  { label: "Tiếng Việt · 101, 113, 3533", p: "101", q: "113", e: "3533" },
+                ].map((preset) => (
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    key={preset.label}
+                    onClick={() => cipher.choosePreset(preset)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="rsa__fields">
+                {(["p", "q", "e"] as const).map((field) => (
+                  <label className="rsa__field" key={field}>
+                    <span>{field === "e" ? "e · số mũ công khai" : `${field} · số nguyên tố`}</span>
+                    <input
+                      value={draft[field]}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-invalid={Boolean(fieldErrors[field])}
+                      aria-describedby={fieldErrors[field] ? `rsa-${field}-error` : undefined}
+                      onChange={(event) => cipher.setParameter(field, event.target.value)}
+                    />
+                    {fieldErrors[field] && (
+                      <small id={`rsa-${field}-error`} role="alert">
+                        {fieldErrors[field]}
+                      </small>
+                    )}
+                  </label>
+                ))}
+              </div>
+              <button
+                className="button button--primary"
+                type="submit"
+                disabled={!cipher.hasGateway || cipher.statuses.key === "loading"}
               >
-                {textResult.invalidCount
-                  ? `${textResult.invalidCount} ký tự có mã ≥ n nên không khôi phục được. Hãy dùng n lớn hơn.`
-                  : `Bản mã gửi đi: ${textResult.rows.map((row) => row.ciphertext).join(" ")}`}
-              </p>
-              <div className="rsa__table-wrap">
-                <table className="rsa__table">
-                  <caption>Kết quả mã hóa từng ký tự</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Ký tự</th>
-                      <th scope="col">P (mã)</th>
-                      <th scope="col">C</th>
-                      <th scope="col">Cᵈ mod n</th>
-                      <th scope="col">Giải ra</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {textResult.rows.map((row, index) => (
-                      <tr key={index} className={!row.recovered ? "rsa__table-row--error" : ""}>
-                        <td>{row.character === " " ? "␣" : row.character}</td>
-                        <td>{row.plaintext}</td>
-                        <td>{row.ciphertext}</td>
-                        <td>{row.decrypted}</td>
-                        <td>
-                          {row.recovered ? (row.character === " " ? "␣" : row.character) : "✗ sai"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                Tạo khóa
+              </button>
+              <TaskMessage cipher={cipher} task="key" />
+              {key && (
+                <>
+                  <dl className="rsa__facts">
+                    <div>
+                      <dt>n = p·q</dt>
+                      <dd>{key.n}</dd>
+                    </div>
+                    <div>
+                      <dt>φ(n)</dt>
+                      <dd>{key.phi}</dd>
+                    </div>
+                    <div>
+                      <dt>Khóa công khai của Bob</dt>
+                      <dd>{`{${key.e}, ${key.n}}`}</dd>
+                    </div>
+                    <div>
+                      <dt>Khóa riêng của Bob</dt>
+                      <dd>{`{${key.d}, ${key.n}}`}</dd>
+                    </div>
+                  </dl>
+                  <details className="rsa__details">
+                    <summary>Xem từng bước Euclid mở rộng tìm d</summary>
+                    <EuclidTable rows={key.euclidRows} />
+                  </details>
+                </>
+              )}
+            </form>
+          ) : (
+            <>
+              <p className="rsa__help">Mã hóa chỉ cần e và n; giải mã chỉ cần d và n.</p>
+              <div className="rsa__fields">
+                {(["n", "e", "d"] as const).map((field) => (
+                  <label className="rsa__field" key={field}>
+                    <span>
+                      {field === "n"
+                        ? "n · modulo"
+                        : field === "e"
+                          ? "e · khóa công khai"
+                          : "d · khóa riêng"}
+                    </span>
+                    <input
+                      value={cipher.manualKey[field]}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      spellCheck={false}
+                      onChange={(event) => cipher.setManualKey(field, event.target.value)}
+                    />
+                  </label>
+                ))}
               </div>
             </>
           )}
         </div>
       </section>
-
-      <section className="rsa__explanation" aria-labelledby="rsa-why-title">
-        <div>
-          <h2 id="rsa-why-title">Vì sao giải mã đúng?</h2>
-          <p>
-            Vì e·d ≡ 1 (mod φ(n)), ta có e·d = 1 + k·φ(n). Khi P nguyên tố cùng nhau với n, định lý
-            Euler cho P<sup>φ(n)</sup> ≡ 1 (mod n), nên Cᵈ ≡ P (mod n). Trường hợp P chia hết cho p
-            hoặc q cần xét riêng theo từng số nguyên tố. Điều kiện P &lt; n giúp lấy lại đúng P.
-          </p>
+      <TransformPanel key={`number-${cipher.resetVersion}`} cipher={cipher} task="number" />
+      <TransformPanel key={`text-${cipher.resetVersion}`} cipher={cipher} task="text" />
+      <details className="rsa__details">
+        <summary>Vì sao giải mã đúng?</summary>
+        <div className="rsa__explanation">
+          <div>
+            <p>Vì e·d ≡ 1 (mod φ(n)), ta có e·d = 1 + k·φ(n).</p>
+            <p>
+              Khi P nguyên tố cùng nhau với n, định lý Euler cho P<sup>φ(n)</sup> ≡ 1 (mod n), nên
+              Cᵈ ≡ P (mod n).
+            </p>
+            <p>
+              Trường hợp P chia hết cho p hoặc q cần xét riêng theo từng số nguyên tố. Điều kiện P
+              &lt; n giúp lấy lại đúng P.
+            </p>
+          </div>
+          <div>
+            <h2>Giới hạn của ví dụ</h2>
+            <p>
+              Các số nguyên tố ở đây rất nhỏ và phép mã hóa không có padding. Mỗi ký tự luôn cho
+              cùng một kết quả với cùng khóa. Đây là bài minh họa, không dùng để bảo vệ thông tin
+              nhạy cảm.
+            </p>
+          </div>
         </div>
-        <div>
-          <h2>Giới hạn của ví dụ</h2>
-          <p>
-            Các số nguyên tố ở đây rất nhỏ và phép mã hóa không có padding. Mã hóa từng ký tự luôn
-            cho cùng một kết quả với cùng khóa. Đây là bài minh họa, không dùng để bảo vệ thông tin
-            nhạy cảm.
-          </p>
-        </div>
-      </section>
+      </details>
     </div>
   );
 }

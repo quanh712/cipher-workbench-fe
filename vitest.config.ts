@@ -5,6 +5,14 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    // Local dev flags must not change the baseline assumed by unit tests.
+    // Feature registration tests opt in explicitly with vi.stubEnv.
+    env: {
+      VITE_ENABLE_HILL: "false",
+      VITE_ENABLE_DES: "false",
+      VITE_ENABLE_DES_DEMO: "false",
+      VITE_ENABLE_RSA: "false",
+    },
     globals: true,
     setupFiles: "./src/test/setup.ts",
     css: true,

@@ -52,8 +52,8 @@ const allCipherAlgorithms = [
     value: "rsa",
     name: "RSA minh họa",
     description: "Sinh khóa và xem từng bước",
-    status: "Chờ API",
-    available: false,
+    status: "Khả dụng",
+    available: true,
   },
 ] as const;
 
