@@ -57,7 +57,21 @@ test("keyword sends m, renders normalized matrix, and has the row-vector result"
   const request = page.waitForRequest((r) => r.url().endsWith("/api/hill/encrypt"));
   expect((await process(page, "encrypt", "HILLCIPHER")).result).toBe("HOQBYAAPHL");
   expect((await request).postDataJSON()).toMatchObject({ keyword: "HILL", m: 2 });
-  await expect(page.getByRole("textbox", { name: "Khóa hàng 1 cột 1" })).toHaveValue("7");
+  await expect(page.getByRole("textbox", { name: /Từ khóa/ })).toHaveValue("HILL");
+  await page.getByRole("tab", { name: "Phân tích", exact: true }).click();
+  const analysis = page.getByRole("region", { name: "Phân tích khóa" });
+  await expect(analysis.locator('[aria-label="Ma trận phụ hợp"] span')).toHaveText([
+    "11",
+    "18",
+    "15",
+    "7",
+  ]);
+  await expect(analysis.locator('[aria-label="Ma trận nghịch đảo"] span')).toHaveText([
+    "25",
+    "22",
+    "1",
+    "23",
+  ]);
 });
 
 test("shows E04 and E05 messages verbatim and validates matrix input locally", async ({ page }) => {
@@ -73,7 +87,9 @@ test("shows E04 and E05 messages verbatim and validates matrix input locally", a
   await page.getByRole("textbox", { name: "Khóa hàng 2 cột 2" }).fill("3");
   const error = await (await response).json();
   expect(error.code).toBe("E04");
-  await expect(page.getByRole("region", { name: "Phân tích khóa" })).toContainText(error.message);
+  await expect(page.getByRole("region", { name: "Khóa Hill", exact: true })).toContainText(
+    error.message,
+  );
   await expect(page.getByRole("button", { name: "Mã hóa", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Tạo ví dụ" }).click();
   const decryptError = await process(page, "decrypt", "DPL");
@@ -113,7 +129,7 @@ test("random m=3/4 returns full analysis without a second analyze request", asyn
     await expect(page.getByRole("textbox", { name: `Khóa hàng ${m} cột ${m}` })).toHaveValue(
       String(generated.result.matrix[m - 1][m - 1]),
     );
-    await expect(page.getByRole("region", { name: "Phân tích khóa" })).toContainText(
+    await expect(page.getByRole("region", { name: "Khóa Hill", exact: true })).toContainText(
       "Khóa khả nghịch",
     );
     const plain = "HELP TEST";
@@ -211,7 +227,7 @@ test("rapid key edits debounce and a disconnected transform can retry against th
     await page.getByRole("textbox", { name: "Khóa hàng 1 cột 1" }).fill(value);
   }
   expect((await (await analyzed).json()).success).toBe(true);
-  await expect(page.getByRole("region", { name: "Phân tích khóa" })).toContainText(
+  await expect(page.getByRole("region", { name: "Khóa Hill", exact: true })).toContainText(
     "Khóa khả nghịch",
   );
   expect(calls).toBe(1);

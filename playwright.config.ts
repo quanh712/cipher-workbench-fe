@@ -9,6 +9,8 @@ export default defineConfig({
     "hill.backend.spec.ts",
     "des.mock.spec.ts",
     "des.backend.spec.ts",
+    "rsa.spec.ts",
+    "rsa.backend.spec.ts",
   ],
   fullyParallel: true,
   reporter: "html",

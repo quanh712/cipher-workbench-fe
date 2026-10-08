@@ -6,8 +6,11 @@ Tài liệu này mô tả kế hoạch và trạng thái Frontend. Nó không đ
 Contract có thẩm quyền được ghim tại [`BACKEND_CONTRACT.md`](BACKEND_CONTRACT.md);
 nếu có khác biệt, completed OpenSpec và runtime Backend được ưu tiên.
 
-Backend implementation `1792a29a8925dc7122ebbe62fe55caef14a00a18` cung cấp đủ 9 endpoint
-cho Caesar, Vigenère và Playfair. Consumer guide tương ứng là commit `82c09f4`.
+Backend SQLite hiện hành được ghim tại `229c69d7c9af8413a780002b266bdb7651e79cb4`.
+Đối chiếu Playfair ngày 08/10/2026 với `routes_additional_text.py`,
+`routes_additional_file.py` và `app/core/playfair.py` trong checkout BE sibling.
+Mốc `1792a29` / consumer guide `82c09f4` là checkpoint tích hợp cũ, không mô tả
+semantics padding hiện hành.
 
 ## 2. Kiến trúc và state dùng chung
 
@@ -41,30 +44,39 @@ Vigenère là vertical slice đầu tiên sau Caesar:
 
 Playfair dùng Backend thật cho text và file. UI luôn giải thích semantics đã chốt:
 
-> Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I, loại định dạng; khi giải mã giữ filler X
-> giữa chuỗi và bỏ filler cuối; kết quả không khôi phục nguyên văn đầu vào.
+> Playfair chuẩn hóa thành chữ hoa ASCII, gộp J/I và loại định dạng. Khi giải mã,
+> Backend giữ mọi filler trong bản thô và trả thêm thông tin lọc ký tự đệm. Bộ lọc có thể
+> bỏ nhầm X/Q thật; kết quả không khôi phục nguyên văn đầu vào.
 
 Luồng Playfair tuân theo:
 
-- endpoint text/file tương ứng dưới `/api/playfair/...`;
-- key và input normalize ASCII, `J→I`, matrix 5×5 bỏ `J`;
-- encrypt dùng filler `X`, fallback `Q` khi va chạm với `X`;
-- decrypt không pad, giữ filler ở giữa chuỗi và bỏ đúng một filler cuối theo quy tắc Backend
-  (`XQ` → bỏ `Q`, nếu không thì `X` → bỏ `X`); từ chối ciphertext lẻ hoặc digraph trùng;
-- vì không phân biệt được filler với chữ thật, plaintext có số chữ chẵn kết thúc bằng `X` có thể
-  mất `X` cuối khi giải mã (`AX` → `A`); FE không tự phục hồi ký tự này;
-- response chỉ có `success,result`; không chờ `matrix`, `digraphs` hoặc `normalizedInput` từ API;
-- analysis matrix/digraph nếu có phải được tính như visualization, không thay result server.
-- khi giải mã, analysis chỉ có thể gợi ý bỏ `X/Q` nằm giữa hai chữ giống nhau nếu tái chuẩn bị bản
-  rõ gợi ý tạo lại đúng chuỗi digraph; không bỏ thêm ký tự cuối trên FE. Gợi ý không chắc chắn và
-  không thay kết quả/copy/download từ BE.
+- Endpoint text/file tương ứng dưới `/api/playfair/...`; key và input normalize ASCII,
+  `J→I`, matrix 5×5 bỏ `J`.
+- Encrypt dùng filler `X`, fallback `Q` khi ký tự trước là `X`.
+- Decrypt không pad hoặc tự xóa filler khỏi `result`; từ chối ciphertext lẻ hoặc digraph trùng.
+- Encrypt trả `{success,result}`. Decrypt text và file preview trả
+  `{success,result,padding:{count,positions,filtered}}`; `result` là bản thô đủ cặp chữ.
+  `positions` là chỉ số bắt đầu từ 0 trong bản thô, không phải ciphertext.
+- BE chỉ đánh dấu ký tự thứ hai của cặp: `X` (hoặc `Q` sau `X`) khi ở cuối chuỗi hoặc
+  nằm giữa hai ký tự giống nhau. Đây là nhận dạng theo mẫu, không chứng minh ký tự đó
+  đã được chèn khi mã hóa. Ví dụ bản thô `AX` có thể được lọc thành `A` dù `X` là chữ thật.
+- FE mặc định bật **Tự động lọc ký tự đệm** và hiển thị `padding.filtered`; tắt lọc để
+  hiển thị nguyên `result`. Tab Phân tích cho xem bản thô, bản đã lọc và ánh xạ digraph
+  bằng bản thô. Matrix/digraph chỉ là visualization, không thay kết quả server.
+- Copy và download text dùng đúng bản đang chọn hiển thị. File preview luôn nhận bản thô
+  cùng `padding`; download gửi lại file gốc với `response_mode=file` và `strip_padding`
+  dưới dạng chuỗi `"true"` / `"false"` theo checkbox. BE mặc định `strip_padding=false`
+  nếu field bị bỏ qua. Attachment giữ BOM theo input.
+- FE không tự đoán hoặc tính một bộ lọc X/Q khác, không chờ `matrix`, `digraphs` hay
+  `normalizedInput` trong response.
 
 ## 5. File và lỗi dùng chung
 
 - Giới hạn file: `5 * 1024 * 1024 = 5.242.880` byte.
 - Chỉ `.txt`, UTF-8 thường hoặc có BOM; attachment giữ BOM iff input có BOM.
 - Filename do server tạo: `.encrypted.txt` hoặc `.decrypted.txt`.
-- Success JSON đúng hai trường `success,result`; error JSON đúng hai trường `success,message`.
+- Success Vigenère và Playfair encrypt có `success,result`. Playfair decrypt text/preview
+  có thêm `padding` như mục 4; error JSON dùng `success,message`.
 - FE hiển thị nguyên văn Backend `message` hợp lệ nhưng không branch business theo message.
 - Trong loading, khóa mọi control có thể đổi/gửi request; lỗi request hoặc download xóa result cũ.
 
@@ -77,4 +89,4 @@ Luồng Playfair tuân theo:
 - Format, lint, TypeScript, unit/component test và production build đạt.
 - Playwright integration đạt với Backend thật được khởi động từ sibling repo bằng Docker trên cổng
   riêng, không tái sử dụng service dev không xác định ở cổng 8000.
-- Sau checkpoint, dừng để review trước khi bật action Playfair.
+- Checkpoint Vigenère đã hoàn tất; Playfair hiện đã bật và dùng contract padding tại mục 4.

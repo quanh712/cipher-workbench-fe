@@ -183,23 +183,26 @@ test("wraps long normalized Playfair input inside its analysis panel", async ({ 
   }
 });
 
-test("suggests only internal Playfair fillers after the Backend trims the terminal filler", async ({
-  page,
-}) => {
+test("uses Playfair padding metadata and preserves access to the raw result", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("tab", { name: /Playfair/ }).click();
   await page.getByRole("radio", { name: /Giải mã/ }).click();
   await page.getByRole("textbox", { name: "Nội dung đầu vào" }).fill("BOFTFT");
   await page.getByRole("textbox", { name: "Khóa Playfair" }).fill("MATMA");
-  await page.getByRole("button", { name: "Giải mã" }).click();
+  const response = page.waitForResponse("**/api/playfair/decrypt");
+  await page.getByRole("button", { name: "Giải mã", exact: true }).click();
 
-  await expect(page.locator("pre.output")).toHaveText("CNTXT");
-  await page.getByRole("tab", { name: "Phân tích" }).click();
-  await expect(page.locator(".playfair-filler-suggestion pre")).toHaveText("CNTT");
-  await expect(page.locator(".playfair-filler-suggestion small")).toContainText(
-    "Có thể bỏ 1 ký tự X/Q",
-  );
-  await expect(page.locator("pre.output")).toHaveText("CNTXT");
+  const body = await (await response).json();
+  expect(body.result).toBe("CNTXTX");
+  expect(body.padding).toEqual({ count: 2, positions: [3, 5], filtered: "CNTT" });
+  await expect(page.locator("pre.output")).toHaveText("CNTT");
+
+  const filter = page.getByRole("checkbox", { name: /Tự động lọc ký tự đệm/ });
+  await expect(filter).toBeChecked();
+  await filter.uncheck();
+  await expect(page.locator("pre.output")).toHaveText("CNTXTX");
+  await filter.check();
+  await expect(page.locator("pre.output")).toHaveText("CNTT");
 });
 
 test("keeps Playfair padding details in the scrollable analysis tab", async ({ page }) => {
@@ -312,9 +315,7 @@ test("keeps a long Playfair decrypt panel aligned and resets text scroll when fi
   expect(analysisBounds.scrollHeight).toBeGreaterThan(analysisBounds.clientHeight);
 });
 
-test("uses the Backend's terminal-filler rule for Playfair text and file decrypt", async ({
-  page,
-}) => {
+test("uses Backend padding filtering for Playfair text and file decrypt", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("tab", { name: /Playfair/ }).click();
   await page.getByRole("radio", { name: /Giải mã/ }).click();
@@ -323,7 +324,7 @@ test("uses the Backend's terminal-filler rule for Playfair text and file decrypt
   for (const [ciphertext, expected] of [
     ["PDGW", "ABX"],
     ["BMODZBXDNAGE", "HIDETHEGOLD"],
-    ["GWGW", "XQX"],
+    ["GWGW", "XX"],
   ]) {
     await page.getByRole("textbox", { name: "Nội dung đầu vào" }).fill(ciphertext);
     await page.getByRole("button", { name: "Giải mã" }).click();
@@ -514,7 +515,7 @@ test("previews and downloads a Vigenère file with two requests", async ({ page 
   expect((await downloadEvent).suggestedFilename()).toBe("attack.encrypted.txt");
 });
 
-test("keeps a long Vigenère file result within the key panel and scrolls its text", async ({
+test("keeps a long Vigenère file result within the input panel and scrolls its text", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -534,22 +535,22 @@ test("keeps a long Vigenère file result within the key panel and scrolls its te
   const bounds = await page.evaluate(() => {
     const output = document.querySelector<HTMLElement>(".cipher-output-panel .output")!;
     const resultPanel = document.querySelector<HTMLElement>(".cipher-output-panel > .panel")!;
-    const keyPanel = document.querySelector<HTMLElement>(
-      ".workspace__input-column .config-section .panel",
-    )!;
+    const inputPanel = document.querySelector<HTMLElement>(".workspace__input-column .panel")!;
     return {
       resultBottom: resultPanel.getBoundingClientRect().bottom,
-      keyBottom: keyPanel.getBoundingClientRect().bottom,
+      inputBottom: inputPanel.getBoundingClientRect().bottom,
       scrollHeight: output.scrollHeight,
       clientHeight: output.clientHeight,
     };
   });
-  expect(Math.abs(bounds.resultBottom - bounds.keyBottom)).toBeLessThanOrEqual(2);
+  expect(Math.abs(bounds.resultBottom - bounds.inputBottom)).toBeLessThanOrEqual(2);
   expect(bounds.scrollHeight).toBeGreaterThan(bounds.clientHeight);
 });
 
 for (const algorithm of ["Caesar", "Affine"] as const) {
-  test(`keeps a long ${algorithm} result beside its key and scrolls its text`, async ({ page }) => {
+  test(`keeps a long ${algorithm} result beside its input and scrolls its text`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/");
     await page.getByRole("tab", { name: new RegExp(algorithm) }).click();
@@ -566,17 +567,15 @@ for (const algorithm of ["Caesar", "Affine"] as const) {
     const bounds = await columns.evaluate((element) => {
       const output = element.querySelector<HTMLElement>(".cipher-output-panel .output")!;
       const resultPanel = element.querySelector<HTMLElement>(".cipher-output-panel > .panel")!;
-      const keyPanel = element.querySelector<HTMLElement>(
-        ".workspace__input-column .config-section .panel",
-      )!;
+      const inputPanel = element.querySelector<HTMLElement>(".workspace__input-column .panel")!;
       return {
         resultBottom: resultPanel.getBoundingClientRect().bottom,
-        keyBottom: keyPanel.getBoundingClientRect().bottom,
+        inputBottom: inputPanel.getBoundingClientRect().bottom,
         scrollHeight: output.scrollHeight,
         clientHeight: output.clientHeight,
       };
     });
-    expect(Math.abs(bounds.resultBottom - bounds.keyBottom)).toBeLessThanOrEqual(2);
+    expect(Math.abs(bounds.resultBottom - bounds.inputBottom)).toBeLessThanOrEqual(2);
     expect(bounds.scrollHeight).toBeGreaterThan(bounds.clientHeight);
   });
 }

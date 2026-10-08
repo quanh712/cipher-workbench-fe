@@ -1,22 +1,22 @@
 # Cipher Workbench Frontend
 
 Giao diện web để mã hóa, giải mã và phân tích kết quả bằng Caesar, Vigenère, Playfair, Affine,
-Hệ mã hàng, Hill và DES. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
+Hệ mã hàng, Hill, DES và RSA. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
 Hill và DES được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
-RSA hiện chỉ có giao diện để xem và kiểm thử state; Backend chưa có contract RSA.
+RSA đã nối API BE `229c69d`: sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace. Fake gateway chỉ dùng trong test.
 
 ## Trạng thái tính năng
 
-| Thuật toán   | Văn bản                  | File `.txt`           | Trạng thái                           |
-| ------------ | ------------------------ | --------------------- | ------------------------------------ |
-| Caesar       | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
-| Vigenère     | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
-| Playfair     | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
-| Affine       | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
-| Hệ mã hàng   | Mã hóa / giải mã         | Preview / tải kết quả | Đang sử dụng                         |
-| Hill         | Mã hóa / giải mã         | Preview / tải kết quả | `VITE_ENABLE_HILL=true`              |
-| DES          | Text/HEX, ECB/CBC        | Preview / tải kết quả | `VITE_ENABLE_DES=true`               |
-| RSA minh họa | Giao diện học thuật toán | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true` chỉ để xem UI |
+| Thuật toán   | Văn bản                      | File `.txt`           | Trạng thái              |
+| ------------ | ---------------------------- | --------------------- | ----------------------- |
+| Caesar       | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
+| Vigenère     | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
+| Playfair     | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
+| Affine       | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
+| Hệ mã hàng   | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
+| Hill         | Mã hóa / giải mã             | Preview / tải kết quả | `VITE_ENABLE_HILL=true` |
+| DES          | Text/HEX, ECB/CBC            | Preview / tải kết quả | `VITE_ENABLE_DES=true`  |
+| RSA minh họa | Mã hóa / giải mã số, văn bản | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true`  |
 
 Affine dùng hai khóa nguyên `a`, `b` (được thêm từ BE revision `c55278f`). Chi tiết hành vi
 giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã hàng dùng contract BE
@@ -24,8 +24,10 @@ giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã h
 
 ## Chức năng chính
 
-- Chuyển đổi giữa bảy thuật toán trong cùng một workspace khi đã bật Hill và DES.
-- Có thể xem trước workspace RSA bằng `VITE_ENABLE_RSA=true npm run dev`; các nút tính toán được khóa cho tới khi nối Backend.
+- Chuyển đổi giữa tám thuật toán trong cùng một workspace khi đã bật Hill, DES và RSA.
+- Chạy `npm run dev:rsa` để dùng RSA với API thật qua `BACKEND_DEV_URL`; build production bằng `VITE_ENABLE_RSA=true npm run build`.
+- `RsaGateway` là ranh giới cho sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace; fake gateway nằm trong thư mục test, không được App import.
+- Chạy `npm run test:e2e:rsa` để kiểm tra UI RSA với fixture test riêng trên desktop, 375 px và light/dark theme. `npm run test:e2e:rsa:integration` kiểm Backend thật trên stack SQLite integration cổng 18082; không build hoặc cập nhật BE.
 - Mã hóa hoặc giải mã nội dung nhập trực tiếp và file `.txt`.
 - Preview kết quả, sao chép, dán và tải file kết quả.
 - Tab **Phân tích** dùng bố cục thống nhất, giữ ô kết quả bằng kích thước ô đầu vào và cuộn bên trong.
@@ -34,7 +36,7 @@ giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã h
 - DES hỗ trợ ECB/CBC, IV và phân tích các vòng xử lý từ Backend.
 - Giao diện responsive, hỗ trợ bàn phím, screen reader và light/dark theme có ghi nhớ.
 - Giữ Backend làm nguồn dữ liệu có thẩm quyền cho mọi kết quả runtime.
-- Xem lịch sử metadata của các request cipher khi PostgreSQL và quyền đọc lịch sử đều được bật
+- Xem lịch sử metadata của các request cipher khi SQLite và quyền đọc lịch sử đều được bật
   ở Backend; không lưu input hoặc khóa trong lịch sử của trình duyệt.
 
 ## Kiến trúc kết nối
@@ -48,7 +50,7 @@ Browser -> Vite :5173 -> /api proxy -> FastAPI Backend :8000
 Khi chạy bằng Docker Compose:
 
 ```text
-Browser -> localhost :18081 -> Frontend/Nginx :8080 -> Backend :8000 -> PostgreSQL :5432
+Browser -> localhost :18081 -> Frontend/Nginx :8080 -> Backend :8000 -> SQLite /data/cipher-history.sqlite3
 ```
 
 Frontend chỉ gọi các URL tương đối `/api/...`. Vì vậy code runtime không ghi cứng địa chỉ Backend và
@@ -63,9 +65,9 @@ không cần cấu hình CORS trong mô hình triển khai same-origin.
 Theo cấu hình mặc định, repo Backend nằm cùng cấp với repo này:
 
 ```text
-workspace/
-├── caeser_cipher-fe/
-└── caesar-cipher-be/
+Cipher-workbench/
+├── cipher-workbench-fe/
+└── cipher-workbench-be/
 ```
 
 Có thể đặt Backend ở vị trí khác thông qua `BACKEND_CONTEXT` khi chạy integration test hoặc Docker
@@ -85,8 +87,8 @@ schema đang chạy tại:
 chỉ có Affine sẽ trả `404` cho `/api/columnar/*`. Repo Backend sibling trên máy cần được cập nhật
 riêng trước khi chạy stack cục bộ.
 
-Để nghiệm thu lịch sử máy chủ theo contract mới nhất đã đối chiếu, dùng BE revision `c314fa8`, PostgreSQL,
-migration Alembic và `HISTORY_API_ENABLED=true` **chỉ ở môi trường dev/nội bộ**. FE chỉ gọi
+Để nghiệm thu lịch sử máy chủ theo contract mới nhất đã đối chiếu, dùng Backend SQLite,
+migration `alembic -c alembic_sqlite.ini upgrade head` và `HISTORY_API_ENABLED=true` **chỉ ở môi trường dev/nội bộ**. FE chỉ gọi
 `/api/history` khi `/api/health` báo đồng thời `database: "ok"` và `history: "enabled"`;
 BE cũ thiếu trường `history` sẽ không tải dữ liệu lịch sử. Không bật API lịch sử trên
 Funnel/public vì endpoint này chưa có xác thực. Nếu BE Compose chạy trên host `8080`, khởi động
@@ -107,8 +109,17 @@ npm run dev
 VITE_ENABLE_HILL=true VITE_ENABLE_DES=true npm run dev
 ```
 
-Mở <http://localhost:5173>. Vite sẽ chuyển tiếp mọi request `/api` đến
-`http://localhost:8000`.
+Mở <http://localhost:5173>. Vite chuyển tiếp `/api` tới `BACKEND_DEV_URL`
+từ shell hoặc file `.env.local`; mặc định là `http://127.0.0.1:8000`.
+Nếu dùng stack local đang chạy ở `18081`, đặt trong `.env.local`:
+
+```dotenv
+BACKEND_DEV_URL=http://127.0.0.1:18081
+```
+
+Restart Vite sau khi đổi file env. Stack SQLite thử riêng dùng cổng `18082` khi
+đã khởi động. `ECONNREFUSED` tại `8000` nghĩa là target proxy chưa có backend lắng nghe;
+chọn đúng cổng đang phục vụ `/api/health`.
 
 Nếu Backend dev chạy ở địa chỉ khác, truyền target khi khởi động Vite:
 
@@ -151,7 +162,7 @@ bản mã để giải mã đúng. Chi tiết ở [spec DES](docs/DES_SPEC.md).
 | `npm run test:watch`           | Chạy Vitest ở watch mode                                         |
 | `npm run test:e2e`             | Chạy toàn bộ browser E2E trên desktop và mobile với Backend thật |
 | `npm run test:e2e:integration` | Chạy riêng bộ kiểm tra contract tích hợp Backend                 |
-| `npm run test:e2e:production`  | Kiểm tra production stack đang chạy tại `127.0.0.1:18081`        |
+| `npm run test:e2e:production`  | Regression 8 cipher và history trên production `127.0.0.1:18081` |
 | `npm run check`                | Format check, lint, type-check, unit test và build               |
 | `npm run check:all`            | Chạy `check` rồi chạy toàn bộ browser E2E                        |
 
@@ -167,8 +178,8 @@ VITE_ENABLE_HILL=true VITE_ENABLE_DES=true npm run dev
 BACKEND_CONTEXT=/path/to/backend-at-31438eb npm run test:e2e:des:integration
 ```
 
-BE phải có DES trước khi bật cờ FE; checkout sibling cũ không tự cập nhật. PostgreSQL cần
-migration `0003`. Docker/Compose nhận build arg `VITE_ENABLE_DES` (mặc định false).
+BE phải có DES trước khi bật cờ FE; checkout sibling cũ không tự cập nhật. SQLite cần
+baseline `sqlite_0001`. Docker/Compose nhận build arg `VITE_ENABLE_DES` (mặc định false).
 
 Demo độc lập vẫn dùng `VITE_ENABLE_DES_DEMO=true npm run dev` và `npm run test:e2e:des`.
 Demo có nhãn mô phỏng, dùng fixture cố định và không gọi API. Nếu bật cả hai cờ, API thật
@@ -205,35 +216,39 @@ BACKEND_CONTEXT=../path-to-backend BACKEND_INTEGRATION_PORT=18001 npm run test:e
 
 Script integration sẽ dọn container Backend khi Playwright kết thúc.
 
+Regression production cần stack đang chạy với Hill/DES/RSA đã bật; không build hoặc
+khởi động lại BE. Bộ kiểm tra gồm 74 kịch bản: năm cipher cũ và history trên desktop,
+Hill/DES/RSA trên desktop và 375 px. Để yêu cầu history bật và kiểm stack integration:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test:e2e:production
+```
+
 ## Chạy production stack cục bộ
 
-Tạo file cấu hình deploy từ mẫu:
+Stack hiện hành dùng project `cipher-workbench-sqlite`, volume
+`cipher-workbench-sqlite_history-data` và `.env.sqlite`. `docker-compose.yml` là
+symlink tới `docker-compose.sqlite.yml`, nên cả hai dùng cùng một cấu hình.
+
+Chỉ tạo `.env.sqlite` từ `.env.sqlite.example` khi cài mới; giữ env hiện tại khi
+cập nhật. Image FE/BE được pin, không tự build hoặc đổi Backend.
 
 ```bash
-cp .env.deploy.example .env.deploy
+./deploy/sqlite-stack.sh prepare-backups
+./deploy/sqlite-stack.sh config --quiet
+./deploy/sqlite-stack.sh up
+./deploy/sqlite-stack.sh ps
+./deploy/smoke-test.sh http://127.0.0.1:18081
 ```
 
-Cập nhật ít nhất `FRONTEND_REVISION`, `BACKEND_REVISION` và các giá trị môi trường cần thiết, sau đó
-khởi động stack:
+Backup chạy mỗi giờ, giữ 7 ngày tại `backups/sqlite/local/` trên host, ngoài
+volume DB. Mỗi snapshot được restore thử và đối soát trước khi retention dọn
+snapshot hết hạn. Xem [backup SQLite](docs/SQLITE_COMPOSE.md#backup-tự-động).
 
-```bash
-docker compose --env-file .env.deploy up -d --build
-```
-
-Mặc định ứng dụng chỉ bind tại <http://127.0.0.1:18081>; cổng Backend không được public ra host.
-Kiểm tra stack đang chạy bằng:
-
-```bash
-./deploy/smoke-test.sh
-npm run test:e2e:production
-```
-
-Cổng `18081` là cổng host; `8080` vẫn là cổng Nginx bên trong container. Khi dùng Tailscale,
-trỏ Serve/Funnel tới `http://127.0.0.1:18081`. Sau khi đổi proxy và xác nhận bản mới hoạt động,
-có thể dừng frontend cũ ở `8080` và Vite dev ở `5173` nếu không còn dùng.
-
-Quy trình VPS, HTTPS, rate limit, kiểm tra và rollback được mô tả tại
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+Ứng dụng bind <http://127.0.0.1:18081>; Nginx trong container dùng `8080`.
+Stack integration dùng `./deploy/sqlite-stack.sh --integration ...`, cổng `18082`
+và volume/backup riêng. `.env.deploy` chỉ dùng cho Nginx host/HTTPS, không dùng
+để khởi động Compose. VPS/HTTPS xem [deployment](docs/DEPLOYMENT.md).
 
 ## Cấu trúc dự án
 
