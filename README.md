@@ -2,8 +2,16 @@
 
 Giao diện web để mã hóa, giải mã và phân tích kết quả bằng Caesar, Vigenère, Playfair, Affine,
 Hệ mã hàng, Hill, DES và RSA. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
-Hill và DES được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
+Hill, DES và RSA được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
 RSA đã nối API BE `229c69d`: sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace. Fake gateway chỉ dùng trong test.
+
+## Bản đã kiểm thử — 08/10/2026
+
+FE đang chạy tại <http://127.0.0.1:18081> từ commit `175219d`, bật đủ tám thuật toán,
+kết nối API thật và dùng lịch sử SQLite. Bản này đã đạt **318 unit/component test**,
+**74 kịch bản regression production** và **6 kiểm tra backup/restore/retention**.
+Thông tin image, phạm vi thay đổi và rollback nằm trong [báo cáo release](docs/FE_RELEASE_20261008.md).
+Backend runtime ghim revision `229c69d`; cập nhật FE bằng wrapper bên dưới giữ nguyên Backend.
 
 ## Trạng thái tính năng
 
@@ -103,10 +111,10 @@ npm install
 npm run dev
 ```
 
-Để bật cả Hill và DES với Backend có đủ endpoint:
+Để bật đủ tám thuật toán với Backend có đủ endpoint:
 
 ```bash
-VITE_ENABLE_HILL=true VITE_ENABLE_DES=true npm run dev
+VITE_ENABLE_HILL=true VITE_ENABLE_DES=true VITE_ENABLE_RSA=true npm run dev
 ```
 
 Mở <http://localhost:5173>. Vite chuyển tiếp `/api` tới `BACKEND_DEV_URL`
@@ -160,11 +168,11 @@ bản mã để giải mã đúng. Chi tiết ở [spec DES](docs/DES_SPEC.md).
 | `npm run format:check`         | Kiểm tra format mà không sửa file                                |
 | `npm test`                     | Chạy unit/component test một lần                                 |
 | `npm run test:watch`           | Chạy Vitest ở watch mode                                         |
-| `npm run test:e2e`             | Chạy toàn bộ browser E2E trên desktop và mobile với Backend thật |
+| `npm run test:e2e`             | E2E mặc định với Backend thật; Hill/DES/RSA có bộ riêng          |
 | `npm run test:e2e:integration` | Chạy riêng bộ kiểm tra contract tích hợp Backend                 |
 | `npm run test:e2e:production`  | Regression 8 cipher và history trên production `127.0.0.1:18081` |
 | `npm run check`                | Format check, lint, type-check, unit test và build               |
-| `npm run check:all`            | Chạy `check` rồi chạy toàn bộ browser E2E                        |
+| `npm run check:all`            | Chạy `check` rồi chạy E2E mặc định                               |
 
 ## Kiểm thử
 
@@ -245,6 +253,14 @@ Backup chạy mỗi giờ, giữ 7 ngày tại `backups/sqlite/local/` trên hos
 volume DB. Mỗi snapshot được restore thử và đối soát trước khi retention dọn
 snapshot hết hạn. Xem [backup SQLite](docs/SQLITE_COMPOSE.md#backup-tự-động).
 
+Khi cập nhật image FE đã ghim trong `.env.sqlite`, chỉ thay container Frontend:
+
+```bash
+./deploy/sqlite-stack.sh up --no-deps frontend
+```
+
+Xem [cấu hình SQLite](docs/SQLITE_COMPOSE.md) để chuẩn bị image và env cho máy mới.
+
 Ứng dụng bind <http://127.0.0.1:18081>; Nginx trong container dùng `8080`.
 Stack integration dùng `./deploy/sqlite-stack.sh --integration ...`, cổng `18082`
 và volume/backup riêng. `.env.deploy` chỉ dùng cho Nginx host/HTTPS, không dùng
@@ -262,7 +278,8 @@ src/
 │   ├── affine/          # Affine workspace và API adapter
 │   ├── columnar/        # Hệ mã hàng, validation, Phân tích và API adapter
 │   ├── hill/            # Khóa ma trận, phân tích khối và API Hill
-│   └── des/             # ECB/CBC, IV, trace DES và API adapter
+│   ├── des/             # ECB/CBC, IV, trace DES và API adapter
+│   └── rsa/             # Sinh/nhập khóa, mã hóa/giải mã số và văn bản, trace RSA
 ├── shared/              # UI, hook, service và utility dùng chung
 └── test/                # Thiết lập và helper dùng trong test
 e2e/                     # Playwright scenarios
@@ -279,7 +296,8 @@ chịu trách nhiệm ghép các feature đã sẵn sàng vào ứng dụng.
 Các điểm quan trọng khi sửa luồng API:
 
 - Contract chính thức được ghim tại [`docs/BACKEND_CONTRACT.md`](docs/BACKEND_CONTRACT.md).
-- Success response có `success`, `result`; error response có `success`, `message`.
+- Năm cipher cổ điển dùng success response có `success`, `result`; Playfair giải mã thêm
+  `padding`. Hill/DES/RSA có DTO riêng được mô tả trong contract; lỗi cipher có `success`, `message`.
 - FE phải kiểm tra cả HTTP status và response body, đồng thời giữ nguyên thông báo lỗi hợp lệ từ
   Backend.
 - Giới hạn file là đúng `5 MiB`.
@@ -305,7 +323,9 @@ Khi tài liệu FE khác completed OpenSpec hoặc consumer guide đã ghim củ
 | [`docs/HILL_SPEC.md`](docs/HILL_SPEC.md)                           | Khóa ma trận và tích hợp Hill              |
 | [`docs/DES_SPEC.md`](docs/DES_SPEC.md)                             | ECB/CBC, IV và tích hợp DES                |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)                         | Hướng dẫn production deployment            |
-| [`docs/POSTGRES_FE_ROADMAP.md`](docs/POSTGRES_FE_ROADMAP.md)       | Phạm vi lịch sử PostgreSQL của FE          |
+| [`docs/RSA_SPEC.md`](docs/RSA_SPEC.md)                             | Sinh/nhập khóa, API và giao diện RSA       |
+| [`docs/SQLITE_COMPOSE.md`](docs/SQLITE_COMPOSE.md)                 | Runtime SQLite, image pin và backup        |
+| [`docs/FE_RELEASE_20261008.md`](docs/FE_RELEASE_20261008.md)       | Bản FE đã kiểm thử và rollback             |
 | [`AGENTS.md`](AGENTS.md)                                           | Quy ước làm việc dành cho coding agent     |
 
 ## Giới hạn hiện tại
