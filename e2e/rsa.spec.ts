@@ -6,6 +6,8 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto(fixture);
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await expect(page.getByText("{7, 187}", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("");
+    await page.getByRole("button", { name: "Tạo ví dụ" }).click();
     await page.getByRole("button", { name: "Tạo khóa", exact: true }).click();
     await expect(page.getByText("{7, 187}", { exact: true })).toBeVisible();
     const number = page.getByRole("region", { name: "Mã hóa và giải mã một khối số" });
@@ -30,6 +32,7 @@ for (const theme of ["light", "dark"] as const) {
 }
 test("keyboard modes, explicit errors and retry", async ({ page }) => {
   await page.goto(`${fixture}?failure=number`);
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
   await page.getByRole("button", { name: "Tạo khóa", exact: true }).click();
   await expect(page.getByText("{7, 187}", { exact: true })).toBeVisible();
   const number = page.getByRole("region", { name: "Mã hóa và giải mã một khối số" });

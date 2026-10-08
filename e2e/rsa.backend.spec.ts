@@ -10,6 +10,9 @@ test("explicit key generation, independent number operations and trace", async (
   page.on("request", (request) => {
     if (request.url().includes("/api/rsa/")) calls++;
   });
+  await expect(page.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Bản rõ P (số)" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("");
   await page.getByRole("button", { name: "Tạo ví dụ" }).click();
   await page.getByRole("button", { name: "61, 53, 17" }).click();
   await expect(page.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("61");
@@ -111,6 +114,7 @@ test("manual half-keys, Unicode JSON roundtrip, download and independent modes",
 });
 
 test("Backend errors, input validation and reset remain usable", async ({ page }) => {
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
   await page.getByRole("button", { name: "Tạo khóa", exact: true }).click();
   await expect(page.getByText("{7, 187}", { exact: true })).toBeVisible();
   const text = page.getByRole("region", { name: "Văn bản: mỗi ký tự là một khối" });
@@ -122,6 +126,6 @@ test("Backend errors, input validation and reset remain usable", async ({ page }
   await expect(page.getByRole("alert")).toHaveText("p = 15 không phải số nguyên tố.");
   await page.getByRole("button", { name: "Đặt lại" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(text.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("Xin chao");
+  await expect(text.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("");
   await expect(text.getByRole("button", { name: "Mã hóa", exact: true })).toBeDisabled();
 });

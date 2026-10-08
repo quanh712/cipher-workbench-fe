@@ -14,12 +14,13 @@ import type {
 } from "../types/cipher";
 import { decimal, validateParameters } from "../utils/validation";
 
-const initialDraft: RsaDraft = { p: "17", q: "11", e: "7", plaintext: "88", text: "Xin chao" };
+const initialDraft: RsaDraft = { p: "", q: "", e: "", plaintext: "", text: "" };
+const exampleDraft: RsaDraft = { p: "17", q: "11", e: "7", plaintext: "88", text: "Xin chao" };
 const initialStatuses: Record<RsaTask, RsaStatus> = { key: "idle", number: "idle", text: "idle" };
 const emptyManualKey = { e: "", d: "", n: "" };
 const initialInputs = {
-  number: { encrypt: "88", decrypt: "" },
-  text: { encrypt: "Xin chao", decrypt: "" },
+  number: { encrypt: "", decrypt: "" },
+  text: { encrypt: "", decrypt: "" },
 };
 
 export function parseRsaCipher(value: string, inputType: RsaInputType): string[] {
@@ -235,6 +236,11 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
   }
   function loadExample() {
     resetAll();
+    setDraft(exampleDraft);
+    setInputs({
+      number: { encrypt: exampleDraft.plaintext, decrypt: "" },
+      text: { encrypt: exampleDraft.text, decrypt: "" },
+    });
   }
   return {
     resetVersion,

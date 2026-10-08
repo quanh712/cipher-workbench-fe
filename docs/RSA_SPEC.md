@@ -12,8 +12,8 @@ Workspace giữ bố cục dọc: luồng Alice/Bob có thể thu gọn → khó
 - **Nhập khóa**: dùng n/e để mã hóa hoặc n/d để giải mã. Không yêu cầu cả hai số mũ. Khóa nhập tay và khóa sinh được lưu riêng trong state bộ nhớ.
 - Khu số và khu văn bản có chế độ **Mã hóa / Giải mã độc lập**, mỗi chế độ giữ đầu vào riêng. Mỗi lần submit gửi đúng một API transform.
 - Đầu vào có Dán / Sao chép / Xóa. Kết quả có Sao chép / Tải kết quả / Xóa. Clipboard thất bại có hướng dẫn thao tác thủ công.
-- **Tạo ví dụ**, preset và lần đầu mở RSA chỉ điền dữ liệu, không gửi API. Mặc định p=17, q=11, e=7, P=88, text="Xin chao". Hai preset còn lại là (61,53,17) và (101,113,3533).
-- **Đặt lại** trả về dữ liệu ví dụ và chế độ mã hóa, xóa khóa nhập tay, snapshot khóa, kết quả và lỗi. Header **Làm mới** reset mọi cipher và trở về Caesar.
+- Lần đầu mở RSA, các ô p/q/e, bản rõ số và văn bản đều trống. **Tạo ví dụ** mới điền p=17, q=11, e=7, P=88, text="Xin chao"; không gửi API. Preset chỉ điền p/q/e, không gửi API. Hai preset còn lại là (61,53,17) và (101,113,3533).
+- **Đặt lại** xóa dữ liệu đầu vào và trở về chế độ mã hóa, xóa khóa nhập tay, snapshot khóa, kết quả và lỗi. Header **Làm mới** reset mọi cipher và trở về Caesar.
 
 ## Định dạng dữ liệu
 

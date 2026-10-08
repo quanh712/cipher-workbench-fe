@@ -24,7 +24,7 @@ Trang RSA là một workspace trong selector hiện có, không mở route riên
 
 ## 3. Luồng và trạng thái
 
-1. Khi mở RSA lần đầu, điền preset `(17,11,7)`, `P=88`, thông điệp `Xin chao`. Có thể tự hiển thị kết quả mặc định sau khi Backend sẵn sàng, tương đương prototype.
+1. Khi mở RSA lần đầu, để trống p/q/e, bản rõ số và thông điệp. Chỉ bấm **Tạo ví dụ** mới điền `(17,11,7)`, `P=88`, thông điệp `Xin chao`; không tự gửi API. **Đặt lại** đưa các ô về trống.
 2. Đổi preset chỉ thay `p`, `q`, `e`, rồi sinh lại khóa. Đổi `p`, `q` hoặc `e` thủ công làm khóa và mọi kết quả phụ thuộc khóa hết hiệu lực cho tới khi sinh khóa lại.
 3. Sau khi sinh khóa thành công, có thể xử lý một khối số hoặc văn bản độc lập. Sửa `P` chỉ xóa kết quả số; sửa thông điệp chỉ xóa kết quả văn bản.
 4. Khi chưa có khóa hợp lệ, các thao tác phụ thuộc khóa báo cần sinh khóa trước hoặc ở trạng thái disabled có giải thích.

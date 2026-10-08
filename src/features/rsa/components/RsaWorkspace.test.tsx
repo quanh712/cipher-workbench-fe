@@ -14,7 +14,7 @@ import { parseRsaCipher, useRsaCipher } from "../hooks/useRsaCipher";
 import { createRsaGateway } from "../test/createRsaGateway";
 import type { RsaTransformResult } from "../types/cipher";
 
-function setup() {
+function setup(example = true) {
   const gateway = createRsaGateway();
   vi.spyOn(gateway, "generateKey");
   vi.spyOn(gateway, "transform");
@@ -26,6 +26,7 @@ function setup() {
       <Fixture />
     </StrictMode>,
   );
+  if (example) fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
   const number = within(screen.getByRole("region", { name: "Mã hóa và giải mã một khối số" }));
   const text = within(screen.getByRole("region", { name: "Văn bản: mỗi ký tự là một khối" }));
   return { gateway, number, text };
@@ -39,8 +40,21 @@ function manual() {
 
 describe("RSA independent operations", () => {
   it("never auto-runs, including examples, presets and StrictMode mounting", async () => {
-    const { gateway, number } = setup();
+    const { gateway } = setup(false);
+    let number = within(screen.getByRole("region", { name: "Mã hóa và giải mã một khối số" }));
+    let text = within(screen.getByRole("region", { name: "Văn bản: mỗi ký tự là một khối" }));
+    for (const name of ["p · số nguyên tố", "q · số nguyên tố", "e · số mũ công khai"])
+      expect(screen.getByRole("textbox", { name })).toHaveValue("");
+    expect(number.getByRole("textbox", { name: "Bản rõ P (số)" })).toHaveValue("");
+    expect(text.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
+    number = within(screen.getByRole("region", { name: "Mã hóa và giải mã một khối số" }));
+    text = within(screen.getByRole("region", { name: "Văn bản: mỗi ký tự là một khối" }));
+    expect(screen.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("17");
+    expect(screen.getByRole("textbox", { name: "q · số nguyên tố" })).toHaveValue("11");
+    expect(screen.getByRole("textbox", { name: "e · số mũ công khai" })).toHaveValue("7");
+    expect(number.getByRole("textbox", { name: "Bản rõ P (số)" })).toHaveValue("88");
+    expect(text.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("Xin chao");
     fireEvent.click(screen.getByRole("button", { name: "61, 53, 17" }));
     await act(async () => {});
     expect(gateway.generateKey).not.toHaveBeenCalled();
@@ -112,6 +126,11 @@ describe("RSA independent operations", () => {
         { name: "Kết quả bản mã (JSON)" },
       ),
     ).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "q · số nguyên tố" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "e · số mũ công khai" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Bản rõ P (số)" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("");
     manual();
     expect(screen.getByRole("textbox", { name: "e · khóa công khai" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "d · khóa riêng" })).toHaveValue("");
@@ -150,6 +169,7 @@ describe("RSA independent operations", () => {
       return <RsaWorkspace cipher={useRsaCipher(gateway, true)} />;
     }
     render(<Fixture />);
+    fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     manual();
     fireEvent.change(screen.getByRole("textbox", { name: "e · khóa công khai" }), {
       target: { value: "7" },
@@ -187,6 +207,7 @@ it.each(["input", "mode", "key", "reset", "inactive", "unmount"])(
     const hook = renderHook(({ active }) => useRsaCipher(gateway, active), {
       initialProps: { active: true },
     });
+    act(() => hook.result.current.loadExample());
     act(() => hook.result.current.setKeySource("manual"));
     act(() => {
       hook.result.current.setManualKey("n", "187");
