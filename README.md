@@ -5,13 +5,14 @@ Hệ mã hàng, Hill, DES và RSA. Dự án dùng React, TypeScript và Vite; k�
 Hill, DES và RSA được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
 RSA đã nối API BE `229c69d`: sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace. Fake gateway chỉ dùng trong test.
 
-## Bản đã kiểm thử — 08/10/2026
+## Mốc release đã kiểm thử — 08/10/2026
 
-FE đang chạy tại <http://127.0.0.1:18081> từ commit `175219d`, bật đủ tám thuật toán,
-kết nối API thật và dùng lịch sử SQLite. Bản này đã đạt **318 unit/component test**,
+Báo cáo release ghi nhận FE tại <http://127.0.0.1:18081> từ commit `175219d`, bật đủ tám thuật toán,
+kết nối API thật và dùng lịch sử SQLite. Mốc release này đã đạt **318 unit/component test**,
 **74 kịch bản regression production** và **6 kiểm tra backup/restore/retention**.
 Thông tin image, phạm vi thay đổi và rollback nằm trong [báo cáo release](docs/FE_RELEASE_20261008.md).
-Backend runtime ghim revision `229c69d`; cập nhật FE bằng wrapper bên dưới giữ nguyên Backend.
+Backend của mốc release ghim revision `229c69d`; cập nhật FE bằng wrapper bên dưới giữ nguyên Backend.
+Các thay đổi Diffie–Hellman sau mốc này được kiểm thử riêng trong [báo cáo UI DH](docs/DIFFIE_HELLMAN_UI_QA.md); số kiểm thử release trên không mô tả toàn bộ trạng thái hiện tại.
 
 ## Trạng thái tính năng
 
@@ -33,9 +34,11 @@ giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã h
 ## Chức năng chính
 
 - Chuyển đổi giữa tám thuật toán trong cùng một workspace khi đã bật Hill, DES và RSA.
+- Diffie–Hellman dùng contract BE `/api/dh/*` sau cờ `VITE_ENABLE_DIFFIE_HELLMAN=true` (mặc định false, cả Docker build). Entry đã nối HTTP adapter; bật bằng `VITE_ENABLE_DIFFIE_HELLMAN=true npm run dev`. Có exchange A/B, trace trái→phải, kiểm/sinh tham số, tạo khóa, khóa chung và Caesar text/file. Xem [hướng dẫn DH](src/features/diffieHellman/README.md).
 - Chạy `npm run dev:rsa` để dùng RSA với API thật qua `BACKEND_DEV_URL`; build production bằng `VITE_ENABLE_RSA=true npm run build`.
 - `RsaGateway` là ranh giới cho sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace; fake gateway nằm trong thư mục test, không được App import.
 - Chạy `npm run test:e2e:rsa` để kiểm tra UI RSA với fixture test riêng trên desktop, 375 px và light/dark theme. `npm run test:e2e:rsa:integration` kiểm Backend thật trên stack SQLite integration cổng 18082; không build hoặc cập nhật BE.
+- Nghiệm thu DH: `DH_BACKEND_URL=http://127.0.0.1:18084 npm run test:integration:diffie-hellman` với BE DH và DB integration riêng, history bật. Đã pass 43/43 ca với BE thật; năm endpoint tham số/khóa không ghi history, Caesar chỉ ghi metadata. Xem [bằng chứng nghiệm thu](docs/DIFFIE_HELLMAN_BE_INTEGRATION.md).
 - Mã hóa hoặc giải mã nội dung nhập trực tiếp và file `.txt`.
 - Preview kết quả, sao chép, dán và tải file kết quả.
 - Tab **Phân tích** dùng bố cục thống nhất, giữ ô kết quả bằng kích thước ô đầu vào và cuộn bên trong.

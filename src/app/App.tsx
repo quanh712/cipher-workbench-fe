@@ -1,3 +1,6 @@
+import { DiffieHellmanWorkspace } from "../features/diffieHellman/components/DiffieHellmanWorkspace";
+import { useDiffieHellman } from "../features/diffieHellman/hooks/useDiffieHellman";
+import type { DiffieHellmanGateway } from "../features/diffieHellman/services/diffieHellmanGateway";
 import { desApi } from "../features/des/services/desApi";
 import { DesWorkspace } from "../features/des/components/DesWorkspace";
 import { useDesCipher } from "../features/des/hooks/useDesCipher";
@@ -37,7 +40,9 @@ const desGateway =
       ? createDesDemoGateway()
       : null;
 
-export function App() {
+export function App({
+  diffieHellmanGateway = null,
+}: { diffieHellmanGateway?: DiffieHellmanGateway | null } = {}) {
   const cipher = useCaesarCipher();
   const vigenere = useVigenereCipher();
   const playfair = usePlayfairCipher();
@@ -48,6 +53,10 @@ export function App() {
   const hill = useHillCipher(hillApi, algorithm === "hill" && !showHistory);
   const des = useDesCipher(desGateway, algorithm === "des" && !showHistory);
   const rsa = useRsaCipher(rsaApi, algorithm === "rsa" && !showHistory);
+  const diffieHellman = useDiffieHellman(
+    import.meta.env.VITE_ENABLE_DIFFIE_HELLMAN === "true" ? diffieHellmanGateway : null,
+    algorithm === "diffie-hellman" && !showHistory,
+  );
   const hillOpened = useRef(false);
   const cipherAlgorithms = getCipherAlgorithms();
   const [historyAvailable, setHistoryAvailable] = useState(false);
@@ -83,6 +92,7 @@ export function App() {
     hill.resetAll();
     des.resetAll();
     rsa.resetAll();
+    diffieHellman.resetAll();
     hillOpened.current = false;
   }
 
@@ -97,9 +107,13 @@ export function App() {
     columnar.clearResult();
     hill.clearResult();
     des.clearResult();
+    diffieHellman.clearResults();
     if (nextAlgorithm === "hill" && !hillOpened.current) {
       const drafts = { caesar: cipher, vigenere, playfair, affine, columnar, des };
-      const current = algorithm === "hill" || algorithm === "rsa" ? null : drafts[algorithm];
+      const current =
+        algorithm === "hill" || algorithm === "rsa" || algorithm === "diffie-hellman"
+          ? null
+          : drafts[algorithm];
       hill.seedText(current?.inputType === "text" ? current.text : "");
       hillOpened.current = true;
     }
@@ -115,6 +129,7 @@ export function App() {
     hill: <HillWorkspace cipher={hill} />,
     des: <DesWorkspace cipher={des} />,
     rsa: <RsaWorkspace cipher={rsa} />,
+    "diffie-hellman": <DiffieHellmanWorkspace cipher={diffieHellman} />,
   };
 
   return (
@@ -126,14 +141,16 @@ export function App() {
           <WorkbenchBackground variant="hex" />
           <div className="hero__title">
             <h1 className="brand-lockup">
-              <CipherMark busy={isLoading} />
+              <CipherMark busy={isLoading || diffieHellman.isBusy} />
               <span>Mã hóa &amp; giải mã</span>
             </h1>
           </div>
           <p>
-            {algorithm === "rsa"
-              ? "Khám phá cách RSA sinh khóa và biến đổi từng khối số."
-              : "Chọn thuật toán, nhập văn bản hoặc tải file để bắt đầu."}
+            {algorithm === "diffie-hellman"
+              ? "Khám phá cách hai bên thiết lập cùng một bí mật chung với Diffie–Hellman."
+              : algorithm === "rsa"
+                ? "Khám phá cách RSA sinh khóa và biến đổi từng khối số."
+                : "Chọn thuật toán, nhập văn bản hoặc tải file để bắt đầu."}
           </p>
         </header>
         <div className="workspace">

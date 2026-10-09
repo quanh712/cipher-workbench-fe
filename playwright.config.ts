@@ -11,6 +11,8 @@ export default defineConfig({
     "des.backend.spec.ts",
     "rsa.spec.ts",
     "rsa.backend.spec.ts",
+    "diffie-hellman-*.spec.ts",
+    "diffie-hellman.backend.spec.ts",
   ],
   fullyParallel: true,
   reporter: "html",

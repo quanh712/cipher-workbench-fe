@@ -22,9 +22,11 @@
     "check:all": "npm run check && npm run test:e2e",
     "test:e2e:hill:integration": "playwright test --config playwright.hill-integration.config.ts",
     "test:e2e:rsa": "playwright test --config playwright.rsa.config.ts",
+    "test:e2e:diffie-hellman": "playwright test --config playwright.diffie-hellman.config.ts",
     "test:e2e:des": "playwright test --config playwright.des.config.ts",
     "test:e2e:des:integration": "playwright test --config playwright.des-integration.config.ts",
-    "test:e2e:rsa:integration": "playwright test --config playwright.rsa-integration.config.ts"
+    "test:e2e:rsa:integration": "playwright test --config playwright.rsa-integration.config.ts",
+    "test:integration:diffie-hellman": "playwright test --config playwright.diffie-hellman-integration.config.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

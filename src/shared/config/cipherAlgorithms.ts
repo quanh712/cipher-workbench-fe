@@ -55,6 +55,13 @@ const allCipherAlgorithms = [
     status: "Khả dụng",
     available: true,
   },
+  {
+    value: "diffie-hellman",
+    name: "Diffie–Hellman minh họa",
+    description: "Thiết lập bí mật chung giữa A và B",
+    status: "Khả dụng",
+    available: true,
+  },
 ] as const;
 
 export type CipherAlgorithm = (typeof allCipherAlgorithms)[number]["value"];
@@ -68,7 +75,8 @@ export const getCipherAlgorithms = () =>
         (value !== "des" ||
           import.meta.env.VITE_ENABLE_DES === "true" ||
           import.meta.env.VITE_ENABLE_DES_DEMO === "true") &&
-        (value !== "rsa" || import.meta.env.VITE_ENABLE_RSA === "true"),
+        (value !== "rsa" || import.meta.env.VITE_ENABLE_RSA === "true") &&
+        (value !== "diffie-hellman" || import.meta.env.VITE_ENABLE_DIFFIE_HELLMAN === "true"),
     )
     .map((algorithm) =>
       algorithm.value === "des" && import.meta.env.VITE_ENABLE_DES === "true"
