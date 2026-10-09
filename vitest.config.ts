@@ -12,6 +12,7 @@ export default defineConfig({
       VITE_ENABLE_DES: "false",
       VITE_ENABLE_DES_DEMO: "false",
       VITE_ENABLE_RSA: "false",
+      VITE_ENABLE_DIFFIE_HELLMAN: "false",
     },
     globals: true,
     setupFiles: "./src/test/setup.ts",

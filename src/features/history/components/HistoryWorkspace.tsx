@@ -149,11 +149,13 @@ export function HistoryWorkspace() {
             onChange={(event) => setCipher(event.target.value as CipherAlgorithm | "")}
           >
             <option value="">Tất cả</option>
-            {cipherAlgorithms.map(({ value, name }) => (
-              <option key={value} value={value}>
-                {name}
-              </option>
-            ))}
+            {cipherAlgorithms
+              .filter(({ value }) => value !== "diffie-hellman")
+              .map(({ value, name }) => (
+                <option key={value} value={value}>
+                  {name}
+                </option>
+              ))}
           </select>
         </label>
         <label>

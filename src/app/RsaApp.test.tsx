@@ -19,13 +19,19 @@ describe("RSA app registration", () => {
     expect(screen.queryByRole("tab", { name: /RSA minh họa/ })).not.toBeInTheDocument();
   });
 
-  it("connects the workspace to the gateway behind the release flag", async () => {
+  it("connects the workspace behind the release flag and loads an example only on demand", async () => {
     vi.stubEnv("VITE_ENABLE_RSA", "true");
     vi.resetModules();
     const { App: FlaggedApp } = await import("./App");
     render(<FlaggedApp />);
     fireEvent.click(screen.getByRole("tab", { name: /RSA minh họa.*Khả dụng/ }));
     expect(screen.getByRole("heading", { name: "RSA từng bước" })).toBeVisible();
+    for (const input of screen.getAllByRole("textbox")) expect(input).toHaveValue("");
+    expect(screen.queryByText("{7, 187}", { exact: true })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
+    expect(screen.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("17");
+    expect(screen.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("Xin chao");
+    expect(screen.queryByText("{7, 187}", { exact: true })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Tạo khóa" }));
     expect(await screen.findByText("{7, 187}", { exact: true })).toBeVisible();
     expect(screen.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("Xin chao");
@@ -51,8 +57,12 @@ describe("RSA app registration", () => {
     fireEvent.click(screen.getByRole("button", { name: "Làm mới" }));
     expect(screen.getByRole("tab", { name: /Caesar/ })).toHaveAttribute("aria-selected", "true");
     fireEvent.click(rsaTab);
+    for (const input of screen.getAllByRole("textbox")) expect(input).toHaveValue("");
+    expect(screen.queryByText("{7, 187}", { exact: true })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     expect(screen.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("Xin chao");
-    expect(screen.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("17");
+    fireEvent.click(screen.getByRole("button", { name: "Đặt lại" }));
+    for (const input of screen.getAllByRole("textbox")) expect(input).toHaveValue("");
   });
 
   it("never enables local computation through the removed mock flag", async () => {
@@ -67,6 +77,8 @@ describe("RSA app registration", () => {
     vi.stubEnv("VITE_ENABLE_RSA", "true");
     render(<PreviewApp />);
     fireEvent.click(screen.getByRole("tab", { name: /RSA minh họa.*Khả dụng/ }));
+    expect(screen.getByRole("textbox", { name: "p · số nguyên tố" })).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     fireEvent.click(screen.getByRole("button", { name: "Tạo khóa" }));
     expect(await screen.findByText("{7, 187}", { exact: true })).toBeVisible();
   });
