@@ -7,7 +7,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 
-COPY . .
+COPY index.html vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY src ./src
+COPY public ./public
+# The application TypeScript project also checks the browser fixtures.
+COPY e2e/fixtures ./e2e/fixtures
 
 ARG VITE_ENABLE_HILL=false
 ARG VITE_ENABLE_DES=false

@@ -1,0 +1,23 @@
+name: cipher-workbench-demo
+
+services:
+  frontend:
+    image: cipher-workbench-frontend:local-playfair-button-20261008
+    pull_policy: never
+    restart: unless-stopped
+    volumes:
+      - ./nginx.demo.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${APP_BIND_ADDRESS:?Set APP_BIND_ADDRESS}:${APP_HTTP_PORT:?Set APP_HTTP_PORT}:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - demo_backend
+
+networks:
+  demo_backend:
+    external: true
+    name: cipher-workbench-be_default

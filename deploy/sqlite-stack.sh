@@ -8,6 +8,13 @@ if [[ ${1:-} == --integration ]]; then
   env_file="$root/.env.sqlite.integration"
   shift
 fi
+source "$root/deploy/frontend-ports.env"
+export APP_BIND_ADDRESS="$FRONTEND_BIND_ADDRESS"
+if [[ $project == cipher-workbench-sqlite-integration ]]; then
+  export APP_HTTP_PORT="$FRONTEND_INTEGRATION_PORT"
+else
+  export APP_HTTP_PORT="$FRONTEND_LOCAL_PORT"
+fi
 if [[ ! -f "$env_file" ]]; then
   echo "Missing $env_file; create it from .env.sqlite.example before setup." >&2
   exit 1

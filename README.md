@@ -248,6 +248,27 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test
 
 ## Chạy production stack cục bộ
 
+### Trạng thái triển khai — 10/10/2026
+
+Frontend chính đang chạy tại <http://127.0.0.1:18081> với image
+`cipher-workbench-frontend:local-dh-docker-optimized-20261010`.
+Container healthy; giao diện và `/api/health` trả HTTP 200, SQLite báo `database: "ok"`.
+Các container frontend integration/demo đã được xóa sau kiểm thử;
+cổng `18082` và `18084` đã đóng. Cấu hình vẫn được giữ để khởi động lại khi cần.
+Backend, cổng Backend `8080`, database và backup được giữ nguyên.
+
+Docker build chỉ gửi các đầu vào frontend cần thiết, dùng cache `npm ci` và
+tách stage build/runtime. Nginx bật gzip, cache asset và tái sử dụng kết nối
+upstream, kể cả tuyến DH. Cập nhật riêng frontend đang chạy bằng:
+
+```bash
+./deploy/frontend.sh local config
+./deploy/frontend.sh local up
+./deploy/frontend.sh local ps
+```
+
+### Cài mới stack SQLite
+
 Stack hiện hành dùng project `cipher-workbench-sqlite`, volume
 `cipher-workbench-sqlite_history-data` và `.env.sqlite`. `docker-compose.yml` là
 symlink tới `docker-compose.sqlite.yml`, nên cả hai dùng cùng một cấu hình.
@@ -280,6 +301,11 @@ Stack integration dùng `./deploy/sqlite-stack.sh --integration ...`, cổng `18
 và volume/backup riêng. `.env.deploy` chỉ dùng cho Nginx host/HTTPS, không dùng
 để khởi động Compose. VPS/HTTPS xem [deployment](docs/DEPLOYMENT.md).
 
+Cổng frontend local/integration/demo được quản lý tại `deploy/frontend-ports.env`.
+Dùng `./deploy/frontend.sh local up` để cập nhật riêng FE local và giữ routing DH;
+dùng `integration` hoặc `demo` khi cần mở lại frontend thử nghiệm tương ứng. Xem
+[quản lý cổng frontend](docs/SQLITE_COMPOSE.md#quản-lý-cổng-frontend).
+
 ### Bản local 18081 với Backend DH riêng
 
 Bản local ngày 10/10 dùng override để chuyển riêng `/api/dh/*` tới container Backend
@@ -287,8 +313,8 @@ Bản local ngày 10/10 dùng override để chuyển riêng `/api/dh/*` tới c
 Cần có network Docker `cipher-workbench-be_default` và container BE DH đang chạy.
 
 ```bash
-docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION=local-dh-ui-20261010 -t cipher-workbench-frontend:local-dh-ui-20261010 .
-docker compose --env-file .env.sqlite -f docker-compose.yml -f deploy/docker-compose.18081-dh.yml up -d --no-deps frontend
+docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:local-dh-docker-optimized-20261010 .
+./deploy/frontend.sh local up
 ```
 
 Override này dành cho máy local; không thay đổi image BE hay volume lịch sử.
