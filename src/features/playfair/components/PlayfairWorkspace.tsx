@@ -1,3 +1,4 @@
+import { CipherIntro } from "../../../shared/components/CipherIntro";
 import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
@@ -43,6 +44,10 @@ export function PlayfairWorkspace({ cipher }: PlayfairWorkspaceProps) {
 
   return (
     <div className="cipher-workspace">
+      <CipherIntro
+        title="Playfair"
+        description="Mã hóa và giải mã từng cặp chữ cái với bảng khóa 5×5."
+      />
       <CipherModeSelector
         value={cipher.mode}
         disabled={cipher.isLoading}

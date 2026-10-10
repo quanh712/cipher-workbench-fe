@@ -1,7 +1,7 @@
 # Cipher Workbench Frontend
 
 Giao diện web để mã hóa, giải mã và phân tích kết quả bằng Caesar, Vigenère, Playfair, Affine,
-Hệ mã hàng, Hill, DES và RSA. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
+Hệ mã hàng, Hill, DES, RSA và Diffie–Hellman. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
 Hill, DES và RSA được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
 RSA đã nối API BE `229c69d`: sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace. Fake gateway chỉ dùng trong test.
 
@@ -14,18 +14,29 @@ Thông tin image, phạm vi thay đổi và rollback nằm trong [báo cáo rele
 Backend của mốc release ghim revision `229c69d`; cập nhật FE bằng wrapper bên dưới giữ nguyên Backend.
 Các thay đổi Diffie–Hellman sau mốc này được kiểm thử riêng trong [báo cáo UI DH](docs/DIFFIE_HELLMAN_UI_QA.md); số kiểm thử release trên không mô tả toàn bộ trạng thái hiện tại.
 
+## Cập nhật giao diện — 10/10/2026
+
+- Sao chép/dán dùng popup chung như Caesar, có nút đóng và tự tắt sau 2,5 giây; áp dụng cả kết quả thiết lập bí mật chung DH và RSA. DES có thông báo khi dán thành công.
+- RSA có tab **Chữ ký số** dùng chung phần khóa; tab này dùng ví dụ cố định có nhãn **Dữ liệu minh họa** trong lúc chờ contract Backend, không gọi API ký/kiểm tra và không ghi lịch sử.
+- Hill hiển thị popup “Mã hóa thành công.” hoặc “Giải mã thành công.” sau khi Backend xử lý thành công.
+- RSA khối số và văn bản dùng thanh trạng thái ở đáy ô đầu vào/kết quả: chưa có dữ liệu, hợp lệ sơ bộ, đang xử lý, thất bại hoặc thành công kèm số khối. Kiểm tra sơ bộ số/JSON không thay thế xác thực của Backend.
+- Caesar bằng khóa chung nhận khóa từ thao tác tính bí mật chung thành công của bên A/B đang chọn hoặc từ kết quả trao đổi DH. Đổi tham số sẽ vô hiệu hóa kết quả cũ.
+- Bảng trace trong phân tích DH dùng cùng kiểu bảng desktop và thẻ mobile như phần thực hành. Hai dòng cuối phân tích Caesar bằng khóa chung được căn lề thống nhất.
+- Phần thiết lập DH đã bỏ hai dòng hướng dẫn “Mô phỏng học tập…” và “Nhập tham số hoặc bấm Tạo ví dụ…”. Các cảnh báo trong phản hồi Backend vẫn được hiển thị.
+
 ## Trạng thái tính năng
 
-| Thuật toán   | Văn bản                      | File `.txt`           | Trạng thái              |
-| ------------ | ---------------------------- | --------------------- | ----------------------- |
-| Caesar       | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
-| Vigenère     | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
-| Playfair     | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
-| Affine       | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
-| Hệ mã hàng   | Mã hóa / giải mã             | Preview / tải kết quả | Đang sử dụng            |
-| Hill         | Mã hóa / giải mã             | Preview / tải kết quả | `VITE_ENABLE_HILL=true` |
-| DES          | Text/HEX, ECB/CBC            | Preview / tải kết quả | `VITE_ENABLE_DES=true`  |
-| RSA minh họa | Mã hóa / giải mã số, văn bản | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true`  |
+| Thuật toán     | Văn bản                                | File `.txt`           | Trạng thái                        |
+| -------------- | -------------------------------------- | --------------------- | --------------------------------- |
+| Caesar         | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
+| Vigenère       | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
+| Playfair       | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
+| Affine         | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
+| Hệ mã hàng     | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
+| Hill           | Mã hóa / giải mã                       | Preview / tải kết quả | `VITE_ENABLE_HILL=true`           |
+| DES            | Text/HEX, ECB/CBC                      | Preview / tải kết quả | `VITE_ENABLE_DES=true`            |
+| RSA minh họa   | Mã hóa / giải mã số, văn bản           | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true`            |
+| Diffie–Hellman | Trao đổi khóa / Caesar bằng khóa chung | Caesar text/file      | `VITE_ENABLE_DIFFIE_HELLMAN=true` |
 
 Affine dùng hai khóa nguyên `a`, `b` (được thêm từ BE revision `c55278f`). Chi tiết hành vi
 giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã hàng dùng contract BE
@@ -269,6 +280,19 @@ Stack integration dùng `./deploy/sqlite-stack.sh --integration ...`, cổng `18
 và volume/backup riêng. `.env.deploy` chỉ dùng cho Nginx host/HTTPS, không dùng
 để khởi động Compose. VPS/HTTPS xem [deployment](docs/DEPLOYMENT.md).
 
+### Bản local 18081 với Backend DH riêng
+
+Bản local ngày 10/10 dùng override để chuyển riêng `/api/dh/*` tới container Backend
+`cipher-workbench-be-app-1:8000`. Các API khác vẫn dùng Backend SQLite hiện hành.
+Cần có network Docker `cipher-workbench-be_default` và container BE DH đang chạy.
+
+```bash
+docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION=local-dh-ui-20261010 -t cipher-workbench-frontend:local-dh-ui-20261010 .
+docker compose --env-file .env.sqlite -f docker-compose.yml -f deploy/docker-compose.18081-dh.yml up -d --no-deps frontend
+```
+
+Override này dành cho máy local; không thay đổi image BE hay volume lịch sử.
+
 ## Cấu trúc dự án
 
 ```text
@@ -282,6 +306,7 @@ src/
 │   ├── columnar/        # Hệ mã hàng, validation, Phân tích và API adapter
 │   ├── hill/            # Khóa ma trận, phân tích khối và API Hill
 │   ├── des/             # ECB/CBC, IV, trace DES và API adapter
+│   ├── diffieHellman/   # Trao đổi khóa, thực hành DH và Caesar bằng khóa chung
 │   └── rsa/             # Sinh/nhập khóa, mã hóa/giải mã số và văn bản, trace RSA
 ├── shared/              # UI, hook, service và utility dùng chung
 └── test/                # Thiết lập và helper dùng trong test

@@ -199,7 +199,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.evaluate(() =>
       window.dispatchEvent(new CustomEvent("dh-test:copy", { detail: false })),
     );
-    await expect(result(page).getByRole("status")).toHaveText("Đã sao chép Y_A.");
+    await expect(result(page).getByRole("status").locator("span")).toHaveText("Đã sao chép Y_A.");
     await expect(newCopy).toBeEnabled();
     await expect(page.locator("html")).toHaveAttribute("data-copy-count", "2");
   });

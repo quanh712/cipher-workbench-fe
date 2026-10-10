@@ -69,18 +69,17 @@ for (const theme of ["light", "dark"] as const) {
       await summary.focus();
       await summary.press("Enter");
       const scroll = analysis.getByRole("region", { name: `Bảng trace ${symbol}` });
-      await expect(scroll.getByRole("table")).toBeVisible();
-      await scroll.focus();
-      await expect(scroll).toBeFocused();
       if (testInfo.project.name === "375px") {
-        expect(await scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+        await expect(scroll.locator("table")).toBeHidden();
+        await expect(scroll.locator(".dh__trace-cards")).toBeVisible();
+        expect(await scroll.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
           true,
         );
-        await scroll.press("ArrowRight");
-        await expect
-          .poll(() => scroll.evaluate((element) => element.scrollLeft))
-          .toBeGreaterThan(0);
+      } else {
+        await expect(scroll.getByRole("table")).toBeVisible();
       }
+      await scroll.focus();
+      await expect(scroll).toBeFocused();
       await summary.focus();
       await summary.press("Space");
       await expect(scroll).not.toBeVisible();
@@ -115,7 +114,9 @@ for (const theme of ["light", "dark"] as const) {
       const copy = result.getByRole("button", { name: `Sao chép ${symbol}` });
       await copy.focus();
       await copy.press("Enter");
-      await expect(result.getByRole("status")).toHaveText(`Đã sao chép ${symbol}.`);
+      const popup = result.getByRole("status");
+      await expect(popup).toHaveClass(/notice--success/);
+      await expect(popup.locator("span")).toHaveText(`Đã sao chép ${symbol}.`);
       await expect(page.locator("html")).toHaveAttribute("data-copied", value);
     }
     await result.screenshot({ path: testInfo.outputPath("result.png"), animations: "disabled" });

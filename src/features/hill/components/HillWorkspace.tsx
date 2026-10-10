@@ -1,3 +1,4 @@
+import { CipherIntro } from "../../../shared/components/CipherIntro";
 import { CipherAnalysisEmpty } from "../../../shared/components/CipherAnalysisEmpty";
 import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import { CipherActions } from "../../../shared/components/CipherActions";
@@ -600,6 +601,10 @@ function AnalysisPanel({ cipher }: { cipher: Controller }) {
 export function HillWorkspace({ cipher }: { cipher: Controller }) {
   return (
     <div className="cipher-workspace hill-workspace">
+      <CipherIntro
+        title="Hill"
+        description="Mã hóa và giải mã các khối chữ cái bằng ma trận khóa."
+      />
       <CipherModeSelector value={cipher.mode} disabled={cipher.isBusy} onChange={cipher.setMode} />
       <div className="helper-row">
         <span>

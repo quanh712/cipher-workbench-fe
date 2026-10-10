@@ -1,3 +1,4 @@
+import { CipherIntro } from "../../../shared/components/CipherIntro";
 import { CipherActions } from "../../../shared/components/CipherActions";
 import { useEffect, useRef, useState } from "react";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
@@ -58,6 +59,7 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
   async function pasteInput() {
     try {
       cipher.setText(await navigator.clipboard.readText());
+      cipher.setNotice({ kind: "success", message: "Đã dán nội dung từ clipboard." });
     } catch {
       cipher.setNotice({ kind: "error", message: "Không thể đọc nội dung clipboard." });
     }
@@ -78,6 +80,10 @@ export function DesWorkspace({ cipher }: { cipher: DesCipherController }) {
 
   return (
     <div className="cipher-workspace" ref={workspace} aria-busy={cipher.isBusy}>
+      <CipherIntro
+        title="DES"
+        description="Mã hóa và giải mã theo khối 64 bit với cấu trúc Feistel 16 vòng."
+      />
       {cipher.isDemo && (
         <p className="des-demo-banner" role="note">
           Dữ liệu mô phỏng — kết quả không được tính từ nội dung hoặc khóa bạn nhập.

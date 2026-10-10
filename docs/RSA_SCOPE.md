@@ -6,7 +6,7 @@ Nguồn yêu cầu: file `rsa-giai-thich.html` do người dùng cung cấp. Đ�
 
 Thêm một workspace **RSA minh họa** vào Cipher Workbench để người học tự nhập tham số, theo dõi quá trình sinh khóa, mã hóa và giải mã, rồi hiểu điều kiện giới hạn của bản rõ. Giao diện dùng ngôn ngữ, theme, điều hướng bằng bàn phím và bố cục responsive của Workbench hiện tại.
 
-**Quy tắc tích hợp:** kết quả runtime của Workbench lấy từ Backend. Việc đưa RSA vào ứng dụng chính chỉ được phát hành khi Backend có contract tương ứng và đã kiểm thử tích hợp. Mã JavaScript trong prototype là tài liệu tham chiếu hành vi, không đưa nguyên vào FE production hoặc dùng làm fallback khi API lỗi.
+**Quy tắc tích hợp:** kết quả tính toán runtime của Workbench lấy từ Backend. Việc đưa tính toán RSA vào ứng dụng chính chỉ được phát hành khi Backend có contract tương ứng và đã kiểm thử tích hợp. Mã JavaScript trong prototype là tài liệu tham chiếu hành vi, không đưa nguyên vào FE production hoặc dùng làm fallback khi API lỗi. Ngoại lệ giao diện chữ ký với fixture cố định, có nhãn, được chốt ở mục 2a; không mở rộng quy tắc fake gateway chỉ dùng trong test. Contract và trạng thái tích hợp hiện tại xem [RSA_SPEC.md](RSA_SPEC.md).
 
 ## 2. Phạm vi chức năng
 
@@ -21,6 +21,17 @@ Thêm một workspace **RSA minh họa** vào Cipher Workbench để người h�
 | Giao diện            | Có trạng thái loading, lỗi, thành công; bảng dài cuộn trong khung; dùng được ở desktop và màn hình 375 px; hỗ trợ sáng/tối theo theme chung.                                                         |
 
 Trang RSA là một workspace trong selector hiện có, không mở route riêng. Tên và mô tả cần thể hiện rõ đây là **minh họa**, tránh nhầm với công cụ mã hóa an toàn cho dữ liệu thật.
+
+## 2a. Bổ sung giao diện chữ ký số trong lúc chờ Backend
+
+Phạm vi được người dùng xác nhận ngày 08/10/2026:
+
+- Hai tab **Mã hóa / Chữ ký số**, phần khóa dùng chung với nhãn **Khóa công khai / Khóa riêng**. Giữ bộ khóa khi chuyển tab; giữ theme hiện tại, dùng được ở 375 px.
+- Chữ ký số có chế độ **Ký / Kiểm tra** cho một số. Ký dùng `n,d`; kiểm tra dùng `n,e`, thông điệp gốc và chữ ký nhập riêng.
+- Giải thích thu gọn được: `s = mᵈ mod n`, `m′ = sᵉ mod n`, so sánh `m′` với `m`. Ghi rõ đây là RSA học thuật không băm/padding; kết quả hợp lệ chỉ khớp khóa/thông điệp đã nhập, không xác lập danh tính ngoài đời.
+- Cho phép ngoại lệ runtime rất hẹp: fixture cố định ở lớp UI, có nhãn **Dữ liệu minh họa**, cho ký thành công, chữ ký hợp lệ, chữ ký không hợp lệ và lỗi dịch vụ. Không tính RSA trên FE, không fake gateway runtime, không thay thế lỗi API bằng kết quả local.
+- Sửa dữ liệu hoặc khóa xóa kết quả phụ thuộc; ký/kiểm tra dữ liệu tự nhập ở trạng thái **Chờ backend**. Chọn kịch bản chỉ điền dữ liệu; bấm **Ký minh họa / Kiểm tra minh họa** mới hiển thị demo. Reset xóa demo và đầu vào, giữ tab đang mở, đưa chế độ số/văn bản về Mã hóa và chữ ký về Ký. Phân biệt kết quả chữ ký không hợp lệ với lỗi nhập liệu và lỗi dịch vụ.
+- Chưa có thực thi ký/kiểm tra thật, ký văn bản, băm, padding, hoặc lịch sử chữ ký. Endpoint/DTO/validation BE vẫn cần thống nhất; không suy ra từ công thức giáo trình.
 
 ## 3. Luồng và trạng thái
 
@@ -61,7 +72,7 @@ Khóa riêng, `p`, `q` và `φ(n)` trong màn hình này được cố ý hiển
 
 - Mã hóa file `.txt`, tải file kết quả, chia thông điệp thành các khối byte thực sự hoặc tự động tìm kích thước khối.
 - Nhập riêng bản mã để giải mã độc lập, nhập/xuất khóa, sinh cặp số nguyên tố ngẫu nhiên.
-- RSA-OAEP, chữ ký số, quản lý khóa, AES/mã hóa lai, TLS hoặc tính năng bảo mật production.
+- RSA-OAEP, thực thi chữ ký số qua Backend (ngoài UI minh họa mục 2a), ký văn bản/băm/padding, quản lý khóa, AES/mã hóa lai, TLS hoặc tính năng bảo mật production.
 - Lưu lịch sử chứa bản rõ, bản mã, `p`, `q`, `d` hay khóa riêng.
 - Tự tính RSA trong FE production hoặc chuyển sang phép tính local khi Backend lỗi.
 
@@ -80,7 +91,7 @@ Khóa riêng, `p`, `q` và `φ(n)` trong màn hình này được cố ý hiển
 | RSA-09 | Dùng bàn phím, screen reader, theme tối và viewport 375 px                   | Các control có nhãn, thông báo đọc được, bảng không gây cuộn ngang toàn trang.                     |
 | RSA-10 | Backend lỗi hoặc trả response sai schema                                     | Hiển thị lỗi và cho thử lại; không dùng kết quả tính local.                                        |
 
-Các vector trong file HTML chỉ là oracle để kiểm thử. Bộ kiểm thử tích hợp phải xác nhận response từ Backend thật trước khi bật RSA trong bản phát hành.
+Các vector trong file HTML chỉ là oracle để kiểm thử tính toán. Bộ kiểm thử tích hợp phải xác nhận response từ Backend thật trước khi bật tính toán RSA trong bản phát hành. Fixture chữ ký ở mục 2a chỉ phục vụ duyệt giao diện; kiểm tra riêng nhãn demo, bốn kịch bản, giữ khóa khi đổi tab, xóa kết quả khi sửa đầu vào/khóa, reset, trạng thái Chờ backend và không gửi request ký/kiểm tra hoặc ghi lịch sử.
 
 ## 8. Công việc đề xuất và điều kiện phát hành
 

@@ -28,6 +28,11 @@ describe("Diffie–Hellman analysis", () => {
       await user.click(summary);
       expect(disclosures[i].open).toBe(true);
       const table = within(disclosures[i]).getByRole("table");
+      expect(
+        within(table)
+          .getAllByRole("columnheader")
+          .map((cell) => cell.textContent),
+      ).toEqual(["Bước", "Bit", "Số mũ", "Bình phương", "Nhân", "Kết quả"]);
       const rows = within(table).getAllByRole("row").slice(1);
       expect(rows).toHaveLength(trace.steps.length);
       for (const [index, row] of rows.entries()) {
@@ -41,7 +46,10 @@ describe("Diffie–Hellman analysis", () => {
           step.result,
         ]);
       }
-      expect(within(disclosures[i]).getByRole("region")).toHaveAttribute("tabindex", "0");
+      expect(within(disclosures[i]).getByRole("region", { name: /^Bảng trace/ })).toHaveAttribute(
+        "tabindex",
+        "0",
+      );
     }
   });
 

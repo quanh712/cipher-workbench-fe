@@ -35,6 +35,7 @@ const idleAnalysis = (): AnalysisState => ({
   data: null,
   message: null,
 });
+const emptyMatrix = () => Array.from({ length: 2 }, () => ["", ""]);
 const defaultMatrix = () => DEFAULT_HILL_MATRIX.map((row) => [...row]);
 const NETWORK_MESSAGE = "Không kết nối được máy chủ. Thử lại.";
 
@@ -55,7 +56,7 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [m, setM] = useState<HillSize>(2);
   const [keyInputMode, setKeyInputMode] = useState<HillKeyInputMode>("grid");
-  const [matrix, setMatrix] = useState<string[][]>(defaultMatrix);
+  const [matrix, setMatrix] = useState<string[][]>(emptyMatrix);
   const [keyword, setKeywordRaw] = useState("");
   const [stripDiacritics, setStripDiacriticsState] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisState>(idleAnalysis);
@@ -314,6 +315,10 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
         mode: snapshot.mode,
         source: snapshot.text,
       });
+      setNotice({
+        kind: "success",
+        message: snapshot.mode === "encrypt" ? "Mã hóa thành công." : "Giải mã thành công.",
+      });
     } catch (error) {
       const mapped = errorMessage(error);
       if (KEY_ERRORS.has(mapped.code)) {
@@ -390,7 +395,7 @@ export function useHillCipher(gateway: HillGateway, active: boolean) {
     setIsRandomizing(false);
     setM(2);
     setKeyInputMode("grid");
-    setMatrix(defaultMatrix());
+    setMatrix(emptyMatrix());
     setKeywordRaw("");
     setStripDiacriticsState(false);
     setAnalysis(idleAnalysis());

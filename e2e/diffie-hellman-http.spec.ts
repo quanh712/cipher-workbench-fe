@@ -142,11 +142,13 @@ for (const theme of ["light", "dark"] as const) {
       await expect(summary.locator("..")).not.toHaveAttribute("open", "");
       await summary.focus();
       await summary.press("Enter");
-      await expect(
-        analysis(page)
-          .getByRole("region", { name: `Bảng trace ${symbol}` })
-          .getByRole("table"),
-      ).toBeVisible();
+      const trace = analysis(page).getByRole("region", { name: `Bảng trace ${symbol}` });
+      if (testInfo.project.name === "375px") {
+        await expect(trace.locator("table")).toBeHidden();
+        await expect(trace.locator(".dh__trace-cards")).toBeVisible();
+      } else {
+        await expect(trace.getByRole("table")).toBeVisible();
+      }
     }
     expect(http.calls).toHaveLength(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
@@ -393,7 +395,7 @@ for (const theme of ["light", "dark"] as const) {
     await panel.screenshot({ path: testInfo.outputPath("practice.png"), animations: "disabled" });
     await caesar.getByRole("button", { name: "Tạo ví dụ văn bản", exact: true }).click();
     const run = caesar.getByRole("button", { name: "Mã hóa bằng khóa chung", exact: true });
-    await expect(run).toBeDisabled();
+    await expect(run).toBeEnabled();
     await form.getByRole("button", { name: "Thiết lập bí mật chung", exact: true }).click();
     await expect(page.getByRole("status", { name: "Trạng thái trao đổi DH" })).toContainText(
       "Hai bên đã thiết lập",

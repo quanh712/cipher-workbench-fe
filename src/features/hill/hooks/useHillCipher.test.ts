@@ -7,6 +7,7 @@ describe("useHillCipher analysis state", () => {
   it("debounces rapid key edits and blocks submit until the matching analysis arrives", async () => {
     const gateway = createHillGateway();
     const { result } = renderHook(() => useHillCipher(gateway, true));
+    act(() => result.current.loadExample());
     await waitFor(() => expect(gateway.analyze).toHaveBeenCalledTimes(1));
     act(() => result.current.setText("HELP"));
     await waitFor(() => expect(result.current.canSubmit).toBe(true));
@@ -41,6 +42,7 @@ describe("useHillCipher analysis state", () => {
       .mockResolvedValue({ success: true, result: exampleKey, warnings: [] });
     const gateway = createHillGateway({ analyze });
     const { result } = renderHook(() => useHillCipher(gateway, true));
+    act(() => result.current.loadExample());
     await waitFor(() => expect(analyze).toHaveBeenCalledTimes(1));
     const oldSignal = analyze.mock.calls[0][1] as AbortSignal;
     act(() => result.current.setMatrixCell(0, 0, "5"));
@@ -65,5 +67,23 @@ describe("useHillCipher analysis state", () => {
         ],
       }),
     );
+  });
+});
+
+describe("Hill processing notifications", () => {
+  it.each(["encrypt", "decrypt"] as const)("announces successful %s", async (mode) => {
+    const { result } = renderHook(() => useHillCipher(createHillGateway(), true));
+    act(() => result.current.loadExample());
+    await waitFor(() => expect(result.current.canSubmit).toBe(true));
+    act(() => {
+      result.current.setMode(mode);
+      result.current.setText("HELP");
+    });
+    await waitFor(() => expect(result.current.canSubmit).toBe(true));
+    await act(async () => result.current.processCipher());
+    expect(result.current.notice).toEqual({
+      kind: "success",
+      message: mode === "encrypt" ? "Mã hóa thành công." : "Giải mã thành công.",
+    });
   });
 });

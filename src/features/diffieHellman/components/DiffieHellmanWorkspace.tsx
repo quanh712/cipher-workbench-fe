@@ -76,10 +76,6 @@ export function DiffieHellmanWorkspace({ cipher }: { cipher: DiffieHellmanContro
         <h2>Diffie–Hellman minh họa</h2>
         <p>Nhập tham số để hai bên A và B thiết lập cùng một bí mật chung.</p>
       </header>
-      <p className="dh__notice">
-        Mô phỏng học tập; Backend biết cả hai số mũ riêng. Tham số nhỏ và DH chưa xác thực không
-        dùng để bảo vệ dữ liệu thực tế.
-      </p>
       <form
         ref={form}
         className="dh__form"
@@ -92,7 +88,6 @@ export function DiffieHellmanWorkspace({ cipher }: { cipher: DiffieHellmanContro
         }}
       >
         <div className="dh__preset-bar">
-          <p className="dh__help">Nhập tham số hoặc bấm Tạo ví dụ để điền dữ liệu mẫu.</p>
           <div className="button-group" role="group" aria-label="Dữ liệu mẫu Diffie–Hellman">
             <button className="button button--secondary" type="button" onClick={cipher.loadExample}>
               Tạo ví dụ

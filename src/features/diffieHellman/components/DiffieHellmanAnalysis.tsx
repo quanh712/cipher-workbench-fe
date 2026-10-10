@@ -28,17 +28,28 @@ const calculations: { key: DhTraceKey; symbol: string; formula: string; explanat
   },
 ];
 
-export function TraceTable({ symbol, trace }: { symbol: string; trace: DhTrace }) {
+export function TraceTable({
+  symbol,
+  trace,
+  compact = false,
+}: {
+  symbol: string;
+  trace: DhTrace;
+  compact?: boolean;
+}) {
   const id = useId();
   return (
-    <details className="dh__trace">
+    <details className={`dh__trace${compact ? " dh__trace--compact" : ""}`}>
       <summary>
         Trace {symbol} · {trace.steps.length} bước
       </summary>
       <div className="dh__trace-body">
         <p id={`${id}-hint`} className="dh__help">
           Đọc bit số mũ từ trái sang phải. Mỗi dòng bình phương kết quả rồi nhân với cơ số nếu bit
-          là 1. Nếu bảng rộng hơn màn hình, chọn vùng bảng và dùng phím mũi tên để cuộn.
+          là 1.
+          {!compact && " Nếu bảng rộng hơn màn hình, chọn vùng bảng và dùng phím mũi tên để cuộn."}
+          {compact &&
+            " Bước bắt đầu từ 0; Số mũ là tiền tố đã xử lý. Bình phương, Nhân và Kết quả đều lấy mod q; dấu — nghĩa là không nhân ở bit 0."}
         </p>
         <div
           className="dh__trace-scroll"
@@ -47,24 +58,34 @@ export function TraceTable({ symbol, trace }: { symbol: string; trace: DhTrace }
           aria-describedby={`${id}-hint`}
           tabIndex={0}
         >
-          <table>
-            <caption>
-              Bình phương và nhân: {symbol} = {trace.base}^{trace.exponent} mod {trace.modulus} ={" "}
-              {trace.result}
-            </caption>
+          {compact && (
+            <p className="dh__trace-formula">
+              {symbol} = {trace.base}^{trace.exponent} mod {trace.modulus} = {trace.result}
+            </p>
+          )}
+          <table aria-label={compact ? `Bình phương và nhân: ${symbol}` : undefined}>
+            {!compact && (
+              <caption>
+                Bình phương và nhân: {symbol} = {trace.base}^{trace.exponent} mod {trace.modulus} ={" "}
+                {trace.result}
+              </caption>
+            )}
             <thead>
               <tr>
-                <th scope="col">Bước (từ 0)</th>
+                <th scope="col">{compact ? "Bước" : "Bước (từ 0)"}</th>
                 <th scope="col">Bit</th>
-                <th scope="col">Tiền tố số mũ</th>
-                <th scope="col">Sau bình phương</th>
-                <th scope="col">Sau nhân cơ số</th>
+                <th scope="col">{compact ? "Số mũ" : "Tiền tố số mũ"}</th>
+                <th scope="col">{compact ? "Bình phương" : "Sau bình phương"}</th>
+                <th scope="col">{compact ? "Nhân" : "Sau nhân cơ số"}</th>
                 <th scope="col">Kết quả</th>
               </tr>
             </thead>
             <tbody>
               {trace.steps.map((row) => (
-                <tr key={row.index}>
+                <tr
+                  key={row.index}
+                  className={compact && row.bit === 1 ? "dh__trace-row--hit" : undefined}
+                >
                   <th scope="row">{row.index}</th>
                   <td>{row.bit}</td>
                   <td>{row.exponentPrefix}</td>
@@ -75,6 +96,36 @@ export function TraceTable({ symbol, trace }: { symbol: string; trace: DhTrace }
               ))}
             </tbody>
           </table>
+          {compact && (
+            <div className="dh__trace-cards">
+              {trace.steps.map((row, index) => (
+                <section
+                  className={`dh__trace-step${index === trace.steps.length - 1 ? " dh__trace-step--last" : ""}`}
+                  key={row.index}
+                  aria-label={`Bước ${row.index}`}
+                >
+                  <h4>Bước {row.index}</h4>
+                  <dl>
+                    {[
+                      ["Bit", row.bit],
+                      ["Số mũ", row.exponentPrefix],
+                      ["Bình phương", row.squared],
+                      ["Nhân", row.multiplied ?? "—"],
+                      ["Kết quả", row.result],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className={label === "Kết quả" ? "dh__trace-step-result" : ""}
+                      >
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </details>
@@ -133,7 +184,7 @@ function AnalysisContent({
         </p>
         {result.traces ? (
           calculations.map(({ key, symbol }) => (
-            <TraceTable key={key} symbol={symbol} trace={result.traces![key]} />
+            <TraceTable compact key={key} symbol={symbol} trace={result.traces![key]} />
           ))
         ) : (
           <p className="dh__help">Kết quả này không có dữ liệu trace.</p>

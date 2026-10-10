@@ -39,6 +39,37 @@ function manual() {
 }
 
 describe("RSA independent operations", () => {
+  it("shows shared input/output status bars for both operations", async () => {
+    setup(false);
+    const panels = () => [
+      within(screen.getByRole("region", { name: "Mã hóa và giải mã một khối số" })),
+      within(screen.getByRole("region", { name: "Văn bản: mỗi ký tự là một khối" })),
+    ];
+    for (const panel of panels()) {
+      expect(panel.getByText("Chưa có dữ liệu")).toHaveClass("status");
+      expect(panel.getByText("Chưa xử lý")).toHaveClass("status");
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
+    for (const panel of panels()) {
+      expect(panel.getByText("✓ Đầu vào hợp lệ ở mức sơ bộ.")).toHaveClass("status--success");
+    }
+    const [number] = panels();
+    manual();
+    fireEvent.change(screen.getByRole("textbox", { name: "e · khóa công khai" }), {
+      target: { value: "7" },
+    });
+    fireEvent.click(number.getByRole("button", { name: "Mã hóa" }));
+    const status = await number.findByText("✓ Xử lý thành công · 1 khối");
+    expect(status).toHaveClass("status", "status--success");
+    expect(status.parentElement).toHaveClass("rsa__transform-panel");
+    expect(status.parentElement?.lastElementChild).toBe(status);
+    fireEvent.change(number.getByRole("textbox", { name: "Bản rõ P (số)" }), {
+      target: { value: "abc" },
+    });
+    expect(number.getByText(/^! P phải/)).toHaveClass("status--error");
+    expect(number.getByText("Chưa xử lý")).toBeVisible();
+  });
+
   it("never auto-runs, including examples, presets and StrictMode mounting", async () => {
     const { gateway } = setup(false);
     let number = within(screen.getByRole("region", { name: "Mã hóa và giải mã một khối số" }));

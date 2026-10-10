@@ -48,7 +48,6 @@ describe("Diffie–Hellman form", () => {
     }
     expect(screen.getByRole("group", { name: "Bên A" })).toBeVisible();
     expect(screen.getByRole("group", { name: "Bên B" })).toBeVisible();
-    expect(screen.getByText(/Mô phỏng học tập; Backend biết/)).toBeVisible();
     expect(gateway.exchange).not.toHaveBeenCalled();
     expect(gateway.generatePrivateValues).not.toHaveBeenCalled();
   });

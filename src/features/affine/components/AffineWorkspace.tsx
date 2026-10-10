@@ -1,3 +1,4 @@
+import { CipherIntro } from "../../../shared/components/CipherIntro";
 import { CipherActions } from "../../../shared/components/CipherActions";
 import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
@@ -48,6 +49,10 @@ export function AffineWorkspace({ cipher }: AffineWorkspaceProps) {
 
   return (
     <div className="cipher-workspace">
+      <CipherIntro
+        title="Affine"
+        description="Mã hóa và giải mã bằng phép biến đổi với hai khóa a và b."
+      />
       <CipherModeSelector value={cipher.mode} disabled={cipher.isBusy} onChange={cipher.setMode} />
 
       <div className="helper-row">

@@ -5,7 +5,7 @@ import { saveBlob } from "../../../shared/utils/download";
 import { dhOperations, type DhCaesarResponse } from "../services/dhOperations";
 import { DiffieHellmanGatewayError } from "../services/diffieHellmanGateway";
 import type { DiffieHellmanController } from "./useDiffieHellman";
-import type { DhSide } from "./useDhPractice";
+import type { DhSide, SharedRecord } from "./useDhPractice";
 
 export interface DhCaesarSnapshot {
   response: DhCaesarResponse;
@@ -15,7 +15,12 @@ export interface DhCaesarSnapshot {
   fileName?: string;
   side: DhSide;
 }
-export function useDhCaesar(cipher: DiffieHellmanController, side: DhSide) {
+export function useDhCaesar(
+  cipher: DiffieHellmanController,
+  side: DhSide,
+  practiceShared: SharedRecord | null,
+) {
+  const context = practiceShared ?? cipher.result;
   const [mode, setModeState] = useState<CipherMode>("encrypt");
   const [inputType, setInputTypeState] = useState<InputType>("text");
   const [text, setTextState] = useState("");
@@ -26,9 +31,9 @@ export function useDhCaesar(cipher: DiffieHellmanController, side: DhSide) {
   const [output, setOutput] = useState<{
     result: DhCaesarSnapshot | null;
     error: string | null;
-    context: typeof cipher.result;
+    context: typeof context;
     side: DhSide;
-  }>({ result: null, error: null, context: cipher.result, side });
+  }>({ result: null, error: null, context, side });
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [running, setRunning] = useState(false);
   const revision = useRef(0);
@@ -42,23 +47,27 @@ export function useDhCaesar(cipher: DiffieHellmanController, side: DhSide) {
   }, []);
   useLayoutEffect(() => {
     revision.current++;
-  }, [cipher.result, side]);
-  if (output.context !== cipher.result || output.side !== side) {
-    setOutput({ result: null, error: null, context: cipher.result, side });
+  }, [context, side]);
+  if (output.context !== context || output.side !== side) {
+    setOutput({ result: null, error: null, context, side });
     setNotice(null);
   }
   const current =
-    output.context === cipher.result && output.side === side
-      ? output
-      : { result: null, error: null };
+    output.context === context && output.side === side ? output : { result: null, error: null };
   const inputError =
     inputType === "text"
       ? text.length
         ? null
         : "Vui lòng nhập văn bản."
       : (fileError ?? validateTextFile(file));
-  const source =
-    cipher.result && cipher.snapshot
+  const source = practiceShared
+    ? {
+        q: practiceShared.q,
+        privateKey: practiceShared.privateKey,
+        otherPublicKey: practiceShared.otherPublicKey,
+        sharedKey: practiceShared.response.sharedKey,
+      }
+    : cipher.result && cipher.snapshot
       ? {
           q: cipher.snapshot.q,
           privateKey: side === "A" ? cipher.snapshot.privateA : cipher.snapshot.privateB,
@@ -70,7 +79,7 @@ export function useDhCaesar(cipher: DiffieHellmanController, side: DhSide) {
     revision.current++;
     cipher.cancelSupplemental();
     setRunning(false);
-    setOutput({ result: null, error: null, context: cipher.result, side });
+    setOutput({ result: null, error: null, context, side });
     setNotice(null);
   }
   function setText(next: string) {
@@ -163,7 +172,7 @@ export function useDhCaesar(cipher: DiffieHellmanController, side: DhSide) {
           "Dữ liệu phản hồi không khớp khóa chung DH. Vui lòng thử lại.",
           "INVALID_RESPONSE",
         );
-      setOutput({ result: { ...snapshot, response }, error: null, context: cipher.result, side });
+      setOutput({ result: { ...snapshot, response }, error: null, context, side });
     } catch (error) {
       if (mounted.current && version === revision.current)
         setOutput({
@@ -172,7 +181,7 @@ export function useDhCaesar(cipher: DiffieHellmanController, side: DhSide) {
             error instanceof DiffieHellmanGatewayError
               ? error.message
               : "Không thể xử lý yêu cầu. Vui lòng thử lại.",
-          context: cipher.result,
+          context,
           side,
         });
     } finally {

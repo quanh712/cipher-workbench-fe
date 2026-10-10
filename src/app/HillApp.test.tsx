@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { hillApi } from "../features/hill/services/hillApi";
@@ -29,17 +29,12 @@ describe("Hill tab integration", () => {
     await user.type(screen.getByRole("textbox", { name: "Nội dung đầu vào" }), "HELLO");
     await user.click(screen.getByRole("tab", { name: /Hill/ }));
     expect(screen.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELLO");
-    await waitFor(() =>
-      expect(hillApi.analyze).toHaveBeenCalledWith(
-        {
-          key: [
-            [3, 3],
-            [2, 5],
-          ],
-        },
-        expect.any(AbortSignal),
-      ),
-    );
+    expect(hillApi.analyze).not.toHaveBeenCalled();
+    for (const input of screen
+      .getAllByRole("textbox")
+      .filter((input) => input.getAttribute("inputmode") === "numeric")) {
+      expect(input).toHaveValue("");
+    }
     await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), " HILL");
     await user.click(screen.getByRole("tab", { name: /Caesar/ }));
     expect(screen.getByRole("textbox", { name: "Nội dung đầu vào" })).toHaveValue("HELLO");

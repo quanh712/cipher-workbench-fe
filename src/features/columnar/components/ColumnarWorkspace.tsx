@@ -1,3 +1,4 @@
+import { CipherIntro } from "../../../shared/components/CipherIntro";
 import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
@@ -45,6 +46,10 @@ export function ColumnarWorkspace({ cipher }: ColumnarWorkspaceProps) {
 
   return (
     <div className="cipher-workspace">
+      <CipherIntro
+        title="Hệ mã hàng"
+        description="Mã hóa và giải mã bằng cách hoán vị các cột theo khóa."
+      />
       <CipherModeSelector value={cipher.mode} disabled={cipher.isBusy} onChange={cipher.setMode} />
 
       <div className="helper-row">

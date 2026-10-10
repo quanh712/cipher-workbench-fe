@@ -1,3 +1,4 @@
+import { CipherIntro } from "../../../shared/components/CipherIntro";
 import { CipherActions } from "../../../shared/components/CipherActions";
 import { KeyAlignedColumns } from "../../../shared/components/KeyAlignedColumns";
 import type { CaesarCipherController } from "../hooks/useCaesarCipher";
@@ -44,6 +45,10 @@ export function CaesarWorkspace({ cipher }: CaesarWorkspaceProps) {
 
   return (
     <div className="cipher-workspace">
+      <CipherIntro
+        title="Caesar"
+        description="Mã hóa và giải mã bằng cách dịch vòng bảng chữ cái."
+      />
       <CipherModeSelector
         value={cipher.mode}
         disabled={cipher.isLoading}

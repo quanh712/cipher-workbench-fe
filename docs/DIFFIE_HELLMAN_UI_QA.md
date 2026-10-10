@@ -43,3 +43,15 @@ Chưa kiểm clipboard hệ điều hành, screen reader thủ công hoặc trì
 Snapshot DH được kiểm thử riêng, không kèm các thay đổi RSA chữ ký/Hill đang làm tại máy: **522/522 test**, 56 files; **52/52 browser cases** (57,5 giây). ESLint, TypeScript, build production bật đủ cờ thuật toán và Prettier các file đưa vào commit đều pass. Test RSA app đã cập nhật theo hành vi chỉ điền mẫu khi người dùng yêu cầu của commit trước.
 
 Sửa kích thước nút tạo cặp khóa/tính khóa chung và bộ chọn A/B: kiểm tra trực tiếp demo 18084 ở 1280 px và 375 px; hai nút cùng chiều rộng/chiều cao, bộ chọn chia đều, chuyển bên đồng bộ và không tràn ngang trang.
+
+## Bảng thực hành dễ đọc — thiết kế đã xác nhận
+
+A/B xếp dọc và rộng toàn phần. Desktop giữ đủ sáu cột với tiêu đề ngắn/chú giải, chữ 14 px, số có độ rộng đều, nền hàng xen kẽ; nhấn cột kết quả và hàng cuối. Mobile ≤600 px dùng khối từng bước, giữ toàn bộ trường và cho số dài xuống dòng. Disclosure vẫn mặc định đóng.
+
+12/12 component tests và 52/52 browser cases (39,1 giây) pass; build/TypeScript, ESLint các component thay đổi và diff check pass. Demo 18084 đã kiểm với BE thật: bốn bảng thực hành A/B, đóng ban đầu, desktop 1280 px, mobile 375 px, số dài 128 bit và dark mode không cuộn ngang. Đã xem ảnh desktop/light và mobile/light.
+
+### Điều chỉnh desktop theo RSA — thiết kế xác nhận sau cùng
+
+Desktop dùng font ứng dụng 13 px, căn trái, ô 8×10 px, tiêu đề không tô nền; tô hàng bit=1 thay cho nền xen kẽ và nhấn cột kết quả/hàng cuối. Số trên một dòng và được cuộn ngang trong vùng bảng khi dài; đây là thay đổi đã được người dùng xác nhận so với yêu cầu không cuộn trước đó. Giữ khung bo góc DH, mặc định đóng, A/B xếp dọc và các khối mobile hiện tại.
+
+12/12 component tests, build/TypeScript và ESLint pass. Demo 18084 kiểm trực tiếp bốn bảng với BE thật, computed styles khớp font/căn lề/padding/nowrap, highlight đúng bit=1; số 128 bit cuộn bên trong khung trên desktop, mobile vẫn xuống dòng và không tràn ngang trang. Đã xem ảnh desktop với số dài.

@@ -3,6 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 async function openHill(page: Page) {
   await page.goto("/");
   await page.getByRole("tab", { name: /Hill/ }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.getByRole("textbox", { name: "Văn bản đầu vào" }).fill("");
   await expect(page.getByRole("region", { name: "Khóa Hill", exact: true })).toContainText(
     "Khóa khả nghịch",
   );
@@ -17,7 +19,7 @@ async function process(page: Page, mode: "encrypt" | "decrypt", text: string) {
   return (await response).json();
 }
 
-test("default matrix, punctuation padding, decrypt, tooltip and full download", async ({
+test("example matrix, punctuation padding, decrypt, tooltip and full download", async ({
   page,
 }) => {
   await openHill(page);

@@ -70,7 +70,11 @@ describe("Diffie–Hellman result", () => {
   ])("copies only the decimal value of %s on explicit click", async (symbol, value) => {
     setupResult();
     fireEvent.click(screen.getByRole("button", { name: `Sao chép ${symbol}` }));
-    expect(await screen.findByRole("status")).toHaveTextContent(`Đã sao chép ${symbol}.`);
+    const notification = await screen.findByRole("status");
+    expect(notification).toHaveTextContent(`Đã sao chép ${symbol}.`);
+    expect(notification).toHaveClass("notice", "notice--success");
+    fireEvent.click(within(notification).getByRole("button", { name: "Đóng thông báo" }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(value);
   });
 
@@ -78,9 +82,11 @@ describe("Diffie–Hellman result", () => {
     vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error("Not allowed"));
     setupResult();
     fireEvent.click(screen.getByRole("button", { name: "Sao chép Y_A" }));
-    expect(await screen.findByRole("status")).toHaveTextContent(
+    const notification = await screen.findByRole("status");
+    expect(notification).toHaveTextContent(
       "Không thể sao chép Y_A. Hãy chọn giá trị và sao chép thủ công.",
     );
+    expect(notification).toHaveClass("notice", "notice--error");
     expect(
       within(screen.getByRole("region", { name: "Kết quả bên A" })).getByText("8", { exact: true }),
     ).toBeVisible();

@@ -1,4 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
+import { Notification } from "../../../shared/components/Notification";
+import type { NoticeState } from "../../../shared/types/cipher";
 import type { DhExchangeResult, DhParameters } from "../types/cipher";
 
 type CopyLabel = "Y_A" | "Y_B" | "K_A" | "K_B";
@@ -49,7 +51,7 @@ export function DiffieHellmanResult({
 }) {
   const prefix = useId();
   const [copying, setCopying] = useState<CopyLabel | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<NoticeState | null>(null);
   const [context, setContext] = useState({ snapshot, result });
   const copyRevision = useRef(0);
   const copyPending = useRef(false);
@@ -77,10 +79,15 @@ export function DiffieHellmanResult({
     setNotice(null);
     try {
       await navigator.clipboard.writeText(value);
-      if (revision === copyRevision.current) setNotice(`Đã sao chép ${symbol}.`);
+      if (revision === copyRevision.current) {
+        setNotice({ kind: "success", message: `Đã sao chép ${symbol}.` });
+      }
     } catch {
       if (revision === copyRevision.current) {
-        setNotice(`Không thể sao chép ${symbol}. Hãy chọn giá trị và sao chép thủ công.`);
+        setNotice({
+          kind: "error",
+          message: `Không thể sao chép ${symbol}. Hãy chọn giá trị và sao chép thủ công.`,
+        });
       }
     } finally {
       if (revision === copyRevision.current) {
@@ -174,11 +181,7 @@ export function DiffieHellmanResult({
           </div>
         </section>
       </div>
-      {notice && (
-        <p className="dh__message" role="status">
-          {notice}
-        </p>
-      )}
+      {notice && <Notification notice={notice} onClose={() => setNotice(null)} />}
     </section>
   );
 }

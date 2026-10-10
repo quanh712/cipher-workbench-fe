@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { useHillCipher } from "../hooks/useHillCipher";
@@ -12,7 +12,34 @@ function Harness({ gateway }: { gateway: HillGateway }) {
   return <HillWorkspace cipher={cipher} />;
 }
 
+function renderWithExampleKey(gateway: HillGateway) {
+  const view = render(<Harness gateway={gateway} />);
+  for (const [label, value] of [
+    ["Khóa hàng 1 cột 1", "3"],
+    ["Khóa hàng 1 cột 2", "3"],
+    ["Khóa hàng 2 cột 1", "2"],
+    ["Khóa hàng 2 cột 2", "5"],
+  ])
+    fireEvent.change(screen.getByRole("textbox", { name: label }), { target: { value } });
+  return view;
+}
+
 describe("Hill workspace", () => {
+  it("starts and resets empty, with a sample only after Tạo ví dụ", async () => {
+    const gateway = createHillGateway();
+    render(<Harness gateway={gateway} />);
+    for (const input of screen.getAllByRole("textbox", { name: /Khóa hàng/ }))
+      expect(input).toHaveValue("");
+    expect(gateway.analyze).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
+    expect(screen.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELP");
+    expect(screen.getByRole("textbox", { name: "Khóa hàng 1 cột 1" })).toHaveValue("3");
+    await userEvent.click(screen.getByRole("button", { name: "Đặt lại" }));
+    for (const input of screen.getAllByRole("textbox", { name: /Khóa hàng/ }))
+      expect(input).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("");
+  });
+
   it("filters backend padding for display and copy without processing again", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
@@ -30,7 +57,7 @@ describe("Hill workspace", () => {
         padding: { count: 1, positions: [5], filtered: "HELLO!" },
       }),
     });
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await user.click(screen.getByRole("radio", { name: /Giải mã/ }));
     await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "DPDKK!B");
     await waitFor(() => expect(screen.getByRole("button", { name: "Giải mã" })).toBeEnabled());
@@ -67,7 +94,7 @@ describe("Hill workspace", () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     const gateway = createHillGateway();
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await user.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     expect(screen.getByRole("textbox", { name: "Văn bản đầu vào" })).toHaveValue("HELP");
     await waitFor(() => expect(screen.getByRole("button", { name: "Mã hóa" })).toBeEnabled());
@@ -113,7 +140,7 @@ describe("Hill workspace", () => {
           ),
         ),
     });
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await waitFor(() => expect(gateway.analyze).toHaveBeenCalledTimes(1));
     await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "HELP");
     const cell = screen.getByRole("textbox", { name: "Khóa hàng 1 cột 1" });
@@ -129,7 +156,7 @@ describe("Hill workspace", () => {
 
   it("validates keyword, uploads text, and keeps draft after a rejected file", async () => {
     const user = userEvent.setup({ applyAccept: false });
-    render(<Harness gateway={createHillGateway()} />);
+    renderWithExampleKey(createHillGateway());
     await user.click(screen.getByRole("button", { name: "Từ khóa" }));
     expect(screen.queryByLabelText("Cấp ma trận")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Lưới ma trận khóa")).not.toBeInTheDocument();
@@ -183,7 +210,7 @@ describe("Hill workspace", () => {
         warnings: [],
       }),
     });
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await user.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Mã hóa" })).toBeEnabled());
     await user.click(screen.getByRole("button", { name: "Mã hóa" }));
@@ -210,7 +237,7 @@ describe("Hill workspace", () => {
         ),
       ),
     });
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "DPL");
     await user.click(screen.getByRole("button", { name: "File .txt" }));
     const fileInput = screen.getByLabelText("Chọn file văn bản");
@@ -255,7 +282,7 @@ describe("Hill workspace", () => {
           ],
         }),
     });
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "HELLO");
     await waitFor(() => expect(screen.getByRole("button", { name: "Mã hóa" })).toBeEnabled());
     await user.click(screen.getByRole("button", { name: "Mã hóa" }));
@@ -280,7 +307,7 @@ describe("Hill workspace", () => {
         warnings: [],
       }),
     });
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await user.selectOptions(screen.getByLabelText("Cấp ma trận"), "3");
     await user.click(screen.getByRole("tab", { name: "Phân tích" }));
     const analysis = screen.getByRole("region", { name: "Khóa Hill" });
@@ -299,7 +326,7 @@ describe("Hill workspace", () => {
         .mockRejectedValueOnce(new Error("offline"))
         .mockResolvedValue({ success: true, result: exampleKey, warnings: [] }),
     });
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await waitFor(() => expect(gateway.analyze).toHaveBeenCalledTimes(1));
     await user.click(screen.getByRole("button", { name: "Khóa ngẫu nhiên" }));
     await user.click(screen.getByRole("tab", { name: "Phân tích" }));
@@ -342,7 +369,7 @@ describe("Hill workspace", () => {
             new HillApiError({ code, message, details }, code === "E06" ? 413 : 422),
           ),
       });
-      render(<Harness gateway={gateway} />);
+      renderWithExampleKey(gateway);
       await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "HELP");
       await waitFor(() => expect(screen.getByRole("button", { name: "Mã hóa" })).toBeEnabled());
       await user.click(screen.getByRole("button", { name: "Mã hóa" }));
@@ -360,7 +387,7 @@ describe("Hill workspace", () => {
   it("keeps text/file drafts separate and sends the full file through JSON, beyond the preview", async () => {
     const user = userEvent.setup();
     const gateway = createHillGateway();
-    render(<Harness gateway={gateway} />);
+    renderWithExampleKey(gateway);
     await user.type(screen.getByRole("textbox", { name: "Văn bản đầu vào" }), "Typed draft");
     await user.click(screen.getByRole("button", { name: "File .txt" }));
     expect(screen.getByText("Kéo thả file .txt vào đây")).toBeInTheDocument();

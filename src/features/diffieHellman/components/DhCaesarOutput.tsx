@@ -144,13 +144,15 @@ export function DhCaesarOutput({ cipher }: { cipher: DhCaesarController }) {
                   <dd>{count.unchanged}</dd>
                 </div>
               </dl>
-              <p className="dh__formula">
-                {result.mode === "encrypt" ? "C = (P + " : "P = (C − "}
-                {result.response.shift}) mod 26
-              </p>
-              <p className="dh__help">
-                Chỉ dịch A–Z và a–z; giữ nguyên Unicode, dấu câu và xuống dòng.
-              </p>
+              <div className="analysis-section dh__caesar-analysis-notes">
+                <p className="dh__formula">
+                  {result.mode === "encrypt" ? "C = (P + " : "P = (C − "}
+                  {result.response.shift}) mod 26
+                </p>
+                <p className="dh__help">
+                  Chỉ dịch A–Z và a–z; giữ nguyên Unicode, dấu câu và xuống dòng.
+                </p>
+              </div>
             </>
           ) : (
             <CipherAnalysisEmpty />

@@ -1,3 +1,4 @@
+import { CipherIntro } from "../../../shared/components/CipherIntro";
 import { CipherActions } from "../../../shared/components/CipherActions";
 import { CipherModeSelector } from "../../../shared/components/CipherModeSelector";
 import { CipherInputPanel } from "../../../shared/components/CipherInputPanel";
@@ -43,6 +44,7 @@ export function VigenereWorkspace({ cipher }: VigenereWorkspaceProps) {
 
   return (
     <div className="cipher-workspace">
+      <CipherIntro title="Vigenère" description="Mã hóa và giải mã văn bản bằng khóa dạng từ." />
       <CipherModeSelector
         value={cipher.mode}
         disabled={cipher.isLoading}

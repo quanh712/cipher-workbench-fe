@@ -14,6 +14,43 @@ beforeEach(() => {
 });
 
 describe("Cipher Workbench", () => {
+  it("shows each algorithm title before its mode selector and fills samples on demand", () => {
+    vi.stubEnv("VITE_ENABLE_HILL", "true");
+    vi.stubEnv("VITE_ENABLE_DES", "true");
+    try {
+      render(<App />);
+      for (const title of [
+        "Caesar",
+        "Vigenère",
+        "Playfair",
+        "Affine",
+        "Hệ mã hàng",
+        "Hill",
+        "DES",
+      ]) {
+        fireEvent.click(screen.getByRole("tab", { name: new RegExp(title) }));
+        const heading = screen.getByRole("heading", { name: title });
+        const mode = screen.getByRole("radiogroup", { name: "Chế độ" });
+        expect(
+          heading.compareDocumentPosition(mode) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        const workspace = document.querySelector(".cipher-workspace") as HTMLElement;
+        for (const input of within(workspace).getAllByRole("textbox"))
+          expect(input).toHaveValue("");
+        fireEvent.click(within(workspace).getByRole("button", { name: "Tạo ví dụ" }));
+        expect(
+          within(workspace)
+            .getAllByRole("textbox")
+            .some((input) => (input as HTMLInputElement).value !== ""),
+        ).toBe(true);
+        fireEvent.click(within(workspace).getByRole("button", { name: "Đặt lại" }));
+        for (const input of within(workspace).getAllByRole("textbox"))
+          expect(input).toHaveValue("");
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("hides server history unless both health flags allow it", async () => {
     const health = vi.mocked(getHealthStatus);
     const { unmount } = render(<App />);

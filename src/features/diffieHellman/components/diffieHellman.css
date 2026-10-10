@@ -364,6 +364,65 @@
   color: var(--muted);
 }
 
+.dh__trace--compact .dh__trace-body {
+  padding: 0 16px 16px;
+  min-width: 0;
+}
+
+.dh__trace--compact table {
+  table-layout: auto;
+  font-family: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dh__trace--compact caption {
+  overflow-wrap: anywhere;
+}
+
+.dh__trace--compact th,
+.dh__trace--compact td {
+  padding: 8px 10px;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.dh__trace--compact th {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.dh__trace--compact thead {
+  background: transparent;
+}
+
+.dh__trace--compact .dh__trace-row--hit {
+  background: var(--success-surface);
+}
+
+.dh__trace-formula {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.dh__trace-cards {
+  display: none;
+}
+
+@media (min-width: 601px) {
+  .dh__trace-formula {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+}
+
+.dh__practice > .dh__parties {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .dh__practice,
 .dh__caesar {
   display: grid;
@@ -485,7 +544,79 @@
   min-width: 0;
 }
 
+.dh__caesar-analysis-notes {
+  display: grid;
+  gap: 8px;
+}
+
 @media (max-width: 600px) {
+  .dh__trace--compact table {
+    display: none;
+  }
+
+  .dh__trace-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .dh__trace-step {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+
+  .dh__trace-step:nth-child(even) {
+    background: var(--surface);
+  }
+
+  .dh__trace-step--last {
+    border-color: var(--success);
+  }
+
+  .dh__trace-step h4 {
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+
+  .dh__trace-step dl {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .dh__trace-step dl > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    gap: 12px;
+  }
+
+  .dh__trace-step dt {
+    color: var(--muted);
+  }
+
+  .dh__trace-step dd {
+    margin: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dh__trace-step-result {
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-weight: 700;
+  }
+
+  .dh__trace-step-result dd {
+    color: var(--accent);
+  }
+
+  .dh__trace-step--last .dh__trace-step-result dd {
+    color: var(--success);
+  }
   .dh__practice > .dh__preset-bar > .dh__side-selector,
   .dh__practice > .dh__preset-bar > .dh__key-actions {
     width: 100%;

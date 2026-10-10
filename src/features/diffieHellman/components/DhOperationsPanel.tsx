@@ -71,6 +71,7 @@ function KeyResults({ practice }: { practice: DhPracticeController }) {
                     </div>
                   </dl>
                   <TraceTable
+                    compact
                     symbol={`Y_${side} thực hành`}
                     trace={{
                       base: key.alpha,
@@ -102,6 +103,7 @@ function KeyResults({ practice }: { practice: DhPracticeController }) {
                     </button>
                   </div>
                   <TraceTable
+                    compact
                     symbol={`K_${side} thực hành`}
                     trace={{
                       base: shared.otherPublicKey,
@@ -123,7 +125,7 @@ function KeyResults({ practice }: { practice: DhPracticeController }) {
 export function DhOperationsPanel({ cipher }: { cipher: DiffieHellmanController }) {
   const [side, setSide] = useState<DhSide>("A");
   const practice = useDhPractice(cipher, side);
-  const caesar = useDhCaesar(cipher, side);
+  const caesar = useDhCaesar(cipher, side, practice.shared[side] ?? null);
   function changeSide(next: DhSide) {
     if (next === side) return;
     cipher.cancelSupplemental();
@@ -319,12 +321,14 @@ export function DhOperationsPanel({ cipher }: { cipher: DiffieHellmanController 
                     <p className="dh__formula">K = {caesar.source.sharedKey}; độ dịch = K mod 26</p>
                     <p className="dh__help">
                       Bên {side} dùng khóa riêng của mình và khóa công khai của bên{" "}
-                      {side === "A" ? "B" : "A"}. Khóa lấy từ lần trao đổi DH thành công.
+                      {side === "A" ? "B" : "A"}. Khóa lấy từ lần tính khóa chung hoặc trao đổi DH
+                      thành công.
                     </p>
                   </>
                 ) : (
                   <p className="dh__help">
-                    Thiết lập bí mật chung phía trên để có khóa hợp lệ cho Caesar.
+                    Tính khóa chung cho bên đang chọn trong phần thực hành hoặc thiết lập bí mật
+                    chung phía trên để dùng Caesar.
                   </p>
                 )}
               </div>

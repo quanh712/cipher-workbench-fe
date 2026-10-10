@@ -1,0 +1,13 @@
+# Local FE 18081: DH uses the newly pulled BE; other APIs keep their existing backend.
+services:
+  frontend:
+    image: cipher-workbench-frontend:local-dh-ui-20261010
+    volumes:
+      - ./deploy/nginx.18081-dh.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - application
+      - dh_backend
+networks:
+  dh_backend:
+    external: true
+    name: cipher-workbench-be_default

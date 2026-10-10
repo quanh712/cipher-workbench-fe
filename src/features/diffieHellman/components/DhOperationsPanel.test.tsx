@@ -81,6 +81,50 @@ async function keys() {
 }
 
 describe("linked DH practice and Caesar", () => {
+  it("uses each side's practice shared secret for Caesar without a main exchange", async () => {
+    setup();
+    await keys();
+    change("Văn bản Caesar", "Hello World");
+    const submit = () => screen.getByRole("button", { name: "Mã hóa bằng khóa chung" });
+    expect(submit()).toBeDisabled();
+    vi.mocked(dhOperations.sharedSecret).mockResolvedValue({
+      success: true,
+      sharedKey: "2",
+      steps: preset.traces!.sharedB.steps,
+    });
+    click("Tính khóa chung bên B");
+    await screen.findByText("K_B = 8^15 mod 23 = 2");
+    expect(submit()).toBeEnabled();
+    click("Mã hóa bằng khóa chung");
+    await within(output()).findByText("✓ Xử lý thành công · 11 ký tự");
+    expect(dhOperations.caesar).toHaveBeenLastCalledWith(
+      { q: "23", privateKey: "15", otherPublicKey: "8", action: "encrypt", data: "Hello World" },
+      expect.any(AbortSignal),
+    );
+    expect(gateway.exchange).not.toHaveBeenCalled();
+    select("A");
+    expect(submit()).toBeDisabled();
+    click("Tính khóa chung bên A");
+    await screen.findByText("K_A = 19^6 mod 23 = 2");
+    click("Mã hóa bằng khóa chung");
+    await within(output()).findByText("✓ Xử lý thành công · 11 ký tự");
+    expect(dhOperations.caesar).toHaveBeenLastCalledWith(
+      { q: "23", privateKey: "6", otherPublicKey: "19", action: "encrypt", data: "Hello World" },
+      expect.any(AbortSignal),
+    );
+    fireEvent.click(
+      within(screen.getByRole("region", { name: "Kết quả thực hành bên A" })).getByRole("button", {
+        name: "Xóa khóa chung",
+      }),
+    );
+    expect(submit()).toBeDisabled();
+    expect(within(output()).queryByText("✓ Xử lý thành công · 11 ký tự")).not.toBeInTheDocument();
+    select("B");
+    expect(submit()).toBeEnabled();
+    change("Số mũ riêng X_A", "7");
+    expect(submit()).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Văn bản Caesar" })).toHaveValue("Hello World");
+  });
   it("is visible without disclosure, shares main inputs and requires explicit alpha suggestion", async () => {
     setup();
     expect(dhOperations.params).not.toHaveBeenCalled();
