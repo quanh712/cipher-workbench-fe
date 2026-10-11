@@ -1,3 +1,5 @@
+import type { ModPowRow } from "./cipher";
+
 export type RsaSignatureMode = "sign" | "verify";
 
 export type RsaSignatureScenarioId =
@@ -9,6 +11,9 @@ export interface RsaSignatureResult {
   recoveredMessage?: string;
   message: string;
   steps: string[];
+  rows?: ModPowRow[];
+  warning?: string;
+  history?: { saved: boolean; id: number | null; reason: string };
 }
 
 export interface RsaSignatureFieldErrors {
@@ -26,3 +31,7 @@ export interface RsaSignatureScenario {
   key: { n: string; e: string; d: string };
   result: RsaSignatureResult;
 }
+
+export type RsaSignatureRequest = { n: string; e: string; m: string } & (
+  { operation: "sign"; d: string } | { operation: "verify"; signature: string }
+);

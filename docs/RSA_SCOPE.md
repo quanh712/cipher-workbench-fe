@@ -24,6 +24,8 @@ Trang RSA là một workspace trong selector hiện có, không mở route riên
 
 ## 2a. Bổ sung giao diện chữ ký số trong lúc chờ Backend
 
+> Phạm vi lịch sử ngày 08/10/2026 dưới đây đã được thay thế bởi tích hợp ký/kiểm tra số qua BE trong [RSA_SPEC.md](RSA_SPEC.md).
+
 Phạm vi được người dùng xác nhận ngày 08/10/2026:
 
 - Hai tab **Mã hóa / Chữ ký số**, phần khóa dùng chung với nhãn **Khóa công khai / Khóa riêng**. Giữ bộ khóa khi chuyển tab; giữ theme hiện tại, dùng được ở 375 px.

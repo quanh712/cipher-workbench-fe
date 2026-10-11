@@ -342,12 +342,12 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
 export function RsaWorkspace({ cipher }: { cipher: RsaCipherController }) {
   const { draft, key, fieldErrors } = cipher;
   const [tab, setTab] = useState<"encrypt" | "signature">("encrypt");
-  const signature = useRsaSignature(cipher);
+  const signature = useRsaSignature(cipher, tab === "signature");
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const signatureTab = tab === "signature";
   const tabs = ["encrypt", "signature"] as const;
   return (
-    <div className="cipher-workspace rsa" aria-busy={cipher.isBusy}>
+    <div className="cipher-workspace rsa" aria-busy={cipher.isBusy || signature.loading}>
       <header className="rsa__intro">
         <div>
           <h2>RSA từng bước</h2>
@@ -358,6 +358,64 @@ export function RsaWorkspace({ cipher }: { cipher: RsaCipherController }) {
           </p>
         </div>
       </header>
+      <div className="rsa__toolbar">
+        <div className="rsa__tabs" role="tablist" aria-label="Chức năng RSA">
+          {tabs.map((value, index) => (
+            <button
+              key={value}
+              ref={(element) => {
+                tabRefs.current[index] = element;
+              }}
+              id={`rsa-tab-${value}`}
+              type="button"
+              role="tab"
+              aria-selected={tab === value}
+              aria-controls={`rsa-panel-${value}`}
+              tabIndex={tab === value ? 0 : -1}
+              onClick={() => setTab(value)}
+              onKeyDown={(event) => {
+                let next: number | null = null;
+                if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key))
+                  next = 1 - index;
+                if (event.key === "Home") next = 0;
+                if (event.key === "End") next = 1;
+                if (next === null) return;
+                event.preventDefault();
+                setTab(tabs[next]);
+                tabRefs.current[next]?.focus();
+              }}
+            >
+              {value === "encrypt" ? "Mã hóa" : "Chữ ký số"}
+            </button>
+          ))}
+        </div>
+        <div className="button-group rsa__toolbar-actions" role="group" aria-label="Thao tác RSA">
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={() => {
+              if (signatureTab)
+                signature.loadScenario(signature.mode === "sign" ? "sign-success" : "verify-valid");
+              else {
+                signature.reset();
+                cipher.loadExample();
+              }
+            }}
+          >
+            Tạo ví dụ
+          </button>
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={() => {
+              signature.reset();
+              cipher.resetAll();
+            }}
+          >
+            Đặt lại
+          </button>
+        </div>
+      </div>
       <details className="rsa__details">
         <summary>
           {signatureTab ? "Luồng chữ ký RSA · Alice và Bob" : "Luồng mã hóa RSA · Alice và Bob"}
@@ -404,68 +462,11 @@ export function RsaWorkspace({ cipher }: { cipher: RsaCipherController }) {
           </ol>
         )}
       </details>
-      <div className="helper-row">
-        <span>
-          {signatureTab
-            ? "RSA học thuật: ký và kiểm tra bằng lũy thừa modulo n."
-            : "RSA biến đổi từng khối số bằng lũy thừa modulo n."}
-        </span>
-        <div className="button-group">
-          <button
-            className="button button--secondary"
-            type="button"
-            onClick={() => {
-              if (signatureTab) signature.loadScenario("sign-success");
-              else {
-                signature.reset();
-                cipher.loadExample();
-              }
-            }}
-          >
-            Tạo ví dụ
-          </button>
-          <button
-            className="button button--secondary"
-            type="button"
-            onClick={() => {
-              signature.reset();
-              cipher.resetAll();
-            }}
-          >
-            Đặt lại
-          </button>
-        </div>
-      </div>
-      <div className="rsa__tabs" role="tablist" aria-label="Chức năng RSA">
-        {tabs.map((value, index) => (
-          <button
-            key={value}
-            ref={(element) => {
-              tabRefs.current[index] = element;
-            }}
-            id={`rsa-tab-${value}`}
-            type="button"
-            role="tab"
-            aria-selected={tab === value}
-            aria-controls={`rsa-panel-${value}`}
-            tabIndex={tab === value ? 0 : -1}
-            onClick={() => setTab(value)}
-            onKeyDown={(event) => {
-              let next: number | null = null;
-              if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key))
-                next = 1 - index;
-              if (event.key === "Home") next = 0;
-              if (event.key === "End") next = 1;
-              if (next === null) return;
-              event.preventDefault();
-              setTab(tabs[next]);
-              tabRefs.current[next]?.focus();
-            }}
-          >
-            {value === "encrypt" ? "Mã hóa" : "Chữ ký số"}
-          </button>
-        ))}
-      </div>
+      <p className="rsa__help">
+        {signatureTab
+          ? "RSA học thuật: ký và kiểm tra bằng lũy thừa modulo n."
+          : "RSA biến đổi từng khối số bằng lũy thừa modulo n."}
+      </p>
       <section className="rsa__section panel" aria-labelledby="rsa-key-title">
         <div className="panel__header">
           <h2 id="rsa-key-title">Khóa RSA</h2>
@@ -573,7 +574,7 @@ export function RsaWorkspace({ cipher }: { cipher: RsaCipherController }) {
             <>
               <p className="rsa__help">
                 {signatureTab
-                  ? "Ký cần d và n; kiểm tra chữ ký cần e và n. Bộ khóa được giữ khi chuyển tab."
+                  ? "Ký cần d, e và n; kiểm tra chữ ký cần e và n. Bộ khóa được giữ khi chuyển tab."
                   : "Mã hóa chỉ cần e và n; giải mã chỉ cần d và n."}
               </p>
               <div className="rsa__fields">

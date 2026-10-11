@@ -56,37 +56,32 @@ test("keyboard modes, explicit errors and retry", async ({ page }) => {
   ).toHaveAttribute("aria-checked", "true");
 });
 
-test("signature demo, keyboard tabs and edited inputs at every viewport", async ({ page }) => {
+test("signature gateway, keyboard tabs and edited inputs at every viewport", async ({ page }) => {
   await page.goto(fixture);
-  const encryptionTab = page.getByRole("tab", { name: "Mã hóa", exact: true });
-  await encryptionTab.focus();
+  await page.getByRole("tab", { name: "Mã hóa", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Chữ ký số" })).toBeFocused();
-  await expect(page.getByText("Dữ liệu minh họa", { exact: true })).toBeVisible();
+  await expect(page.getByText("RSA học thuật", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Tạo ví dụ" }).click();
-  await page.getByRole("button", { name: "Ký minh họa" }).click();
-  await expect(page.getByText("Đã ký minh họa", { exact: true })).toBeVisible();
-  await page.getByText("Xem từng bước ký minh họa", { exact: true }).click();
-  await expect(page.getByText("Ký: s = 88²³ mod 187 = 11.", { exact: true })).toBeVisible();
-  await page.screenshot({
-    path: test.info().outputPath("rsa-signature-signed.png"),
-    fullPage: true,
-  });
-  for (const scenario of ["Chữ ký hợp lệ", "Chữ ký không hợp lệ", "Lỗi dịch vụ"]) {
-    await page.getByRole("button", { name: scenario, exact: true }).click();
-    await page.getByRole("button", { name: "Kiểm tra minh họa" }).click();
-    await expect(
-      page
-        .locator(".rsa__signature-result")
-        .getByText(scenario === "Lỗi dịch vụ" ? "Lỗi dịch vụ minh họa" : scenario, {
-          exact: true,
-        }),
-    ).toBeVisible();
-  }
+  await page.getByRole("button", { name: "Ký", exact: true }).click();
+  await expect(page.getByText("Đã ký", { exact: true })).toBeVisible();
+  await page.getByText("Xem từng bước ký", { exact: true }).click();
+  await expect(page.getByRole("table", { name: "Các bước chữ ký RSA" })).toBeVisible();
+  await page.getByRole("radio", { name: /Kiểm tra/ }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+  await expect(
+    page.locator(".rsa__signature-result").getByText("Chữ ký hợp lệ", { exact: true }),
+  ).toBeVisible();
+  await page.getByText("Thử tình huống chữ ký sai", { exact: true }).click();
+  await page.getByRole("button", { name: "Chữ ký không hợp lệ", exact: true }).click();
+  await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+  await expect(
+    page.locator(".rsa__signature-result").getByText("Chữ ký không hợp lệ", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("textbox", { name: "Thông điệp gốc m (số)" }).fill("42");
-  await expect(page.getByRole("button", { name: "Kiểm tra minh họa" })).toBeDisabled();
-  await expect(page.getByText("Lỗi dịch vụ minh họa", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Chờ backend.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kiểm tra", exact: true })).toBeEnabled();
+  await expect(page.locator(".rsa__signature-result .status")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath("rsa-signature.png"), fullPage: true });
 });

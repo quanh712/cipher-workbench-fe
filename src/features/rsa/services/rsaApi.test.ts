@@ -145,3 +145,73 @@ describe("RSA Backend adapter", () => {
     });
   });
 });
+
+const rawRequest = { operation: "sign" as const, m: "65", d: "2753", e: "17", n: "3233" };
+function signatureResponse(verify = false, valid = true) {
+  return {
+    success: true,
+    result: {
+      mode: "raw-integer",
+      warning: "Educational only",
+      m: "65",
+      signature: "588",
+      publicKey: { e: "17", n: "3233" },
+      ...(verify ? { valid, recoveredMessage: "65" } : {}),
+      trace: {
+        operation: verify ? "verify" : "sign",
+        input: verify ? "588" : "65",
+        exponent: verify ? "17" : "2753",
+        modulus: "3233",
+        result: verify ? "65" : "588",
+        steps: [{ i: 0, bit: 1, base: "65", before: "1", result: "65" }],
+      },
+    },
+    history: { saved: false, id: null, reason: "disabled" },
+  };
+}
+describe("RSA raw signature adapter", () => {
+  it("posts exact decimals and credentials, maps backend trace and history", async () => {
+    const fetch = response(signatureResponse());
+    expect(await rsaApi.signature(rawRequest, signal())).toMatchObject({
+      kind: "signed",
+      signature: "588",
+      rows: [{ index: 0, after: "65" }],
+      history: { saved: false },
+    });
+    expect(fetch.mock.calls[0][0]).toBe("/api/rsa/sign/raw");
+    expect(fetch.mock.calls[0][1].credentials).toBe("include");
+    expect(payload(fetch)).toEqual({ m: "65", d: "2753", e: "17", n: "3233" });
+  });
+  it.each([true, false])("maps valid=%s as a verification outcome", async (valid) => {
+    const fetch = response(signatureResponse(true, valid));
+    const result = await rsaApi.signature(
+      { operation: "verify", m: "65", signature: "588", e: "17", n: "3233" },
+      signal(),
+    );
+    expect(result.kind).toBe(valid ? "valid" : "invalid");
+    expect(result.recoveredMessage).toBe("65");
+    expect(fetch.mock.calls[0][0]).toBe("/api/rsa/verify/raw");
+    expect(payload(fetch)).not.toHaveProperty("d");
+  });
+  it.each(["mode", "m", "signature", "publicKey", "trace", "history", "valid"])(
+    "rejects malformed %s",
+    async (field) => {
+      const body = signatureResponse(true);
+      const malformed =
+        field === "history"
+          ? { ...body, history: null }
+          : { ...body, result: { ...body.result, [field]: null } };
+      response(malformed);
+      await expect(
+        rsaApi.signature(
+          { operation: "verify", m: "65", signature: "588", e: "17", n: "3233" },
+          signal(),
+        ),
+      ).rejects.toThrow("Phản hồi RSA");
+    },
+  );
+  it("preserves backend errors and never supplies local results", async () => {
+    response({ success: false, message: "Sai khóa <Backend>" }, 422);
+    await expect(rsaApi.signature(rawRequest, signal())).rejects.toThrow("Sai khóa <Backend>");
+  });
+});

@@ -243,6 +243,8 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
     });
   }
   return {
+    gateway,
+    active,
     resetVersion,
     draft,
     key,

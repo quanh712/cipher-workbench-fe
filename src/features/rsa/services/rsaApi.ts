@@ -36,6 +36,7 @@ async function post(path: string, payload: JsonObject, signal: AbortSignal): Pro
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    credentials: "include",
     signal,
   });
   let body: JsonObject;
@@ -55,9 +56,13 @@ async function post(path: string, payload: JsonObject, signal: AbortSignal): Pro
   return body;
 }
 
-function traceRows(value: unknown, operation: "encrypt" | "decrypt"): ModPowRow[] {
+function traceRows(
+  value: unknown,
+  operation: "encrypt" | "decrypt" | "sign" | "verify",
+): ModPowRow[] {
   const trace = object(value);
-  requireValue(trace.operation === operation && trace.blockIndex === 0);
+  requireValue(trace.operation === operation);
+  if (operation === "encrypt" || operation === "decrypt") requireValue(trace.blockIndex === 0);
   decimal(trace.input);
   decimal(trace.exponent);
   decimal(trace.modulus);
@@ -77,6 +82,60 @@ function traceRows(value: unknown, operation: "encrypt" | "decrypt"): ModPowRow[
 }
 
 export const rsaApi: RsaGateway = {
+  async signature(parameters, signal) {
+    const { operation, ...payload } = parameters;
+    const body = await post(`${operation}/raw`, payload, signal);
+    const result = object(body.result);
+    requireValue(result.mode === "raw-integer" && typeof result.warning === "string");
+    requireValue(BigInt(decimal(result.m)) === BigInt(parameters.m));
+    const publicKey = object(result.publicKey);
+    requireValue(BigInt(decimal(publicKey.n)) === BigInt(parameters.n));
+    requireValue(BigInt(decimal(publicKey.e)) === BigInt(parameters.e));
+    const signature = decimal(result.signature);
+    const trace = object(result.trace);
+    const recoveredMessage = operation === "verify" ? decimal(result.recoveredMessage) : undefined;
+    requireValue(
+      BigInt(decimal(trace.input)) ===
+        BigInt(operation === "sign" ? parameters.m : parameters.signature),
+    );
+    requireValue(
+      BigInt(decimal(trace.exponent)) ===
+        BigInt(operation === "sign" ? parameters.d : parameters.e),
+    );
+    requireValue(BigInt(decimal(trace.modulus)) === BigInt(parameters.n));
+    requireValue(decimal(trace.result) === (recoveredMessage ?? signature));
+    if (operation === "verify") {
+      requireValue(typeof result.valid === "boolean");
+      requireValue(BigInt(signature) === BigInt(parameters.signature));
+    }
+    const history = object(body.history);
+    requireValue(
+      typeof history.saved === "boolean" &&
+        ["saved", "disabled", "unavailable", "capacity"].includes(history.reason as string),
+    );
+    if (history.saved) requireValue(integer(history.id) > 0 && history.reason === "saved");
+    else requireValue(history.id === null && history.reason !== "saved");
+    const kind = operation === "sign" ? "signed" : result.valid ? "valid" : "invalid";
+    return {
+      kind,
+      signature,
+      recoveredMessage,
+      warning: result.warning as string,
+      history: {
+        saved: history.saved as boolean,
+        id: history.id as number | null,
+        reason: history.reason as string,
+      },
+      message:
+        kind === "signed"
+          ? "Ký thành công."
+          : kind === "valid"
+            ? "Chữ ký hợp lệ: thông điệp khôi phục khớp thông điệp gốc."
+            : "Chữ ký không hợp lệ: thông điệp khôi phục khác thông điệp gốc.",
+      steps: [],
+      rows: traceRows(trace, operation),
+    };
+  },
   async transform(parameters, signal) {
     const { operation, inputType, n } = parameters;
     const payload: JsonObject = { n, inputType, traceBlockIndex: 0 };

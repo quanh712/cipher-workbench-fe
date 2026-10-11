@@ -484,17 +484,6 @@
   min-width: 0;
 }
 
-.rsa__signature-modes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.rsa__signature-modes [aria-checked="true"] {
-  border-color: var(--focus);
-  box-shadow: inset 0 0 0 1px var(--focus);
-}
-
 .rsa__demo-label {
   padding: 4px 9px;
   border: 1px dashed var(--control-border);
@@ -583,4 +572,54 @@
 
 .rsa__transform-panel > .status {
   margin: 0;
+}
+
+.rsa__signature-input,
+.rsa__signature-outcome {
+  width: 100%;
+}
+.rsa__signature-fields {
+  padding: 14px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.rsa__signature-outcome .rsa__facts {
+  padding: 14px;
+  margin: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+.rsa__signature-detail {
+  padding: 14px;
+}
+.rsa__signature-input > .status,
+.rsa__signature-outcome > .status {
+  margin: 0;
+}
+.rsa__signature-fields > div {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.rsa__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+.rsa__toolbar > .rsa__tabs {
+  margin: 0;
+  min-width: 0;
+}
+.rsa__toolbar-actions {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .rsa__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .rsa__toolbar > .rsa__tabs {
+    width: 100%;
+  }
 }

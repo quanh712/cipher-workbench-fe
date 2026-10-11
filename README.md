@@ -3,7 +3,8 @@
 Giao diện web để mã hóa, giải mã và phân tích kết quả bằng Caesar, Vigenère, Playfair, Affine,
 Hệ mã hàng, Hill, DES, RSA và Diffie–Hellman. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
 Hill, DES và RSA được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
-RSA đã nối API BE `229c69d`: sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace. Fake gateway chỉ dùng trong test.
+RSA đã nối API thật: sinh/nhập khóa, mã hóa/giải mã số và văn bản, ký/kiểm tra số nguyên và trace.
+API chữ ký dùng BE `da77d54`; fake gateway chỉ dùng trong test.
 
 ## Mốc release đã kiểm thử — 08/10/2026
 
@@ -17,12 +18,22 @@ Các thay đổi Diffie–Hellman sau mốc này được kiểm thử riêng tr
 ## Cập nhật giao diện — 10/10/2026
 
 - Sao chép/dán dùng popup chung như Caesar, có nút đóng và tự tắt sau 2,5 giây; áp dụng cả kết quả thiết lập bí mật chung DH và RSA. DES có thông báo khi dán thành công.
-- RSA có tab **Chữ ký số** dùng chung phần khóa; tab này dùng ví dụ cố định có nhãn **Dữ liệu minh họa** trong lúc chờ contract Backend, không gọi API ký/kiểm tra và không ghi lịch sử.
+- RSA có tab **Chữ ký số** dùng chung phần khóa; bản ban đầu dùng ví dụ cố định. Từ 11/10, tab gọi API thật như mô tả bên dưới.
 - Hill hiển thị popup “Mã hóa thành công.” hoặc “Giải mã thành công.” sau khi Backend xử lý thành công.
 - RSA khối số và văn bản dùng thanh trạng thái ở đáy ô đầu vào/kết quả: chưa có dữ liệu, hợp lệ sơ bộ, đang xử lý, thất bại hoặc thành công kèm số khối. Kiểm tra sơ bộ số/JSON không thay thế xác thực của Backend.
 - Caesar bằng khóa chung nhận khóa từ thao tác tính bí mật chung thành công của bên A/B đang chọn hoặc từ kết quả trao đổi DH. Đổi tham số sẽ vô hiệu hóa kết quả cũ.
 - Bảng trace trong phân tích DH dùng cùng kiểu bảng desktop và thẻ mobile như phần thực hành. Hai dòng cuối phân tích Caesar bằng khóa chung được căn lề thống nhất.
 - Phần thiết lập DH đã bỏ hai dòng hướng dẫn “Mô phỏng học tập…” và “Nhập tham số hoặc bấm Tạo ví dụ…”. Các cảnh báo trong phản hồi Backend vẫn được hiển thị.
+
+## Tích hợp chữ ký RSA — 11/10/2026
+
+- Tab **Chữ ký số** gọi `POST /api/rsa/sign/raw` và `POST /api/rsa/verify/raw` với số nguyên thập phân dạng chuỗi. Ký cần `d`, `e`, `n`; kiểm tra cần `e`, `n`, thông điệp và chữ ký.
+- Hiển thị chữ ký, thông điệp khôi phục, kết quả hợp lệ/không hợp lệ, cảnh báo RSA học thuật và bảng bình phương–nhân từ Backend. Ví dụ chỉ điền đầu vào.
+- Có trạng thái đang xử lý, lỗi/thử lại; hủy yêu cầu cũ khi đổi dữ liệu, khóa hoặc rời tab. Cookie cùng origin được gửi để BE lưu lịch sử riêng theo hồ sơ trình duyệt.
+- Đã đạt **564 unit/component test**, **8 kiểm thử UI RSA** và **10 kiểm thử tích hợp qua Tailscale** trên desktop/375 px. Đây là các bộ kiểm thử riêng, không cộng với mốc release cũ.
+- Đây là RSA số nguyên phục vụ học tập; chưa có ký văn bản/file, băm hoặc padding chữ ký.
+
+Xem [spec RSA](docs/RSA_SPEC.md) và [biên bản khôi phục Tailscale](docs/TAILSCALE_RSA_RECOVERY_20261011.md).
 
 ## Trạng thái tính năng
 
@@ -35,7 +46,7 @@ Các thay đổi Diffie–Hellman sau mốc này được kiểm thử riêng tr
 | Hệ mã hàng     | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
 | Hill           | Mã hóa / giải mã                       | Preview / tải kết quả | `VITE_ENABLE_HILL=true`           |
 | DES            | Text/HEX, ECB/CBC                      | Preview / tải kết quả | `VITE_ENABLE_DES=true`            |
-| RSA minh họa   | Mã hóa / giải mã số, văn bản           | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true`            |
+| RSA minh họa   | Mã hóa / giải mã số, văn bản; ký số    | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true`            |
 | Diffie–Hellman | Trao đổi khóa / Caesar bằng khóa chung | Caesar text/file      | `VITE_ENABLE_DIFFIE_HELLMAN=true` |
 
 Affine dùng hai khóa nguyên `a`, `b` (được thêm từ BE revision `c55278f`). Chi tiết hành vi
@@ -47,7 +58,7 @@ giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã h
 - Chuyển đổi giữa tám thuật toán trong cùng một workspace khi đã bật Hill, DES và RSA.
 - Diffie–Hellman dùng contract BE `/api/dh/*` sau cờ `VITE_ENABLE_DIFFIE_HELLMAN=true` (mặc định false, cả Docker build). Entry đã nối HTTP adapter; bật bằng `VITE_ENABLE_DIFFIE_HELLMAN=true npm run dev`. Có exchange A/B, trace trái→phải, kiểm/sinh tham số, tạo khóa, khóa chung và Caesar text/file. Xem [hướng dẫn DH](src/features/diffieHellman/README.md).
 - Chạy `npm run dev:rsa` để dùng RSA với API thật qua `BACKEND_DEV_URL`; build production bằng `VITE_ENABLE_RSA=true npm run build`.
-- `RsaGateway` là ranh giới cho sinh/nhập khóa, mã hóa hoặc giải mã riêng số/văn bản và trace; fake gateway nằm trong thư mục test, không được App import.
+- `RsaGateway` là ranh giới cho sinh/nhập khóa, mã hóa/giải mã số/văn bản, ký/kiểm tra số nguyên và trace; fake gateway nằm trong thư mục test, không được App import.
 - Chạy `npm run test:e2e:rsa` để kiểm tra UI RSA với fixture test riêng trên desktop, 375 px và light/dark theme. `npm run test:e2e:rsa:integration` kiểm Backend thật trên stack SQLite integration cổng 18082; không build hoặc cập nhật BE.
 - Nghiệm thu DH: `DH_BACKEND_URL=http://127.0.0.1:18084 npm run test:integration:diffie-hellman` với BE DH và DB integration riêng, history bật. Đã pass 43/43 ca với BE thật; năm endpoint tham số/khóa không ghi history, Caesar chỉ ghi metadata. Xem [bằng chứng nghiệm thu](docs/DIFFIE_HELLMAN_BE_INTEGRATION.md).
 - Mã hóa hoặc giải mã nội dung nhập trực tiếp và file `.txt`.
@@ -248,14 +259,17 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test
 
 ## Chạy production stack cục bộ
 
-### Trạng thái triển khai — 10/10/2026
+### Trạng thái triển khai — 11/10/2026
 
 Frontend chính đang chạy tại <http://127.0.0.1:18081> với image
-`cipher-workbench-frontend:local-dh-docker-optimized-20261010`.
+`cipher-workbench-frontend:local-rsa-20261011`.
 Container healthy; giao diện và `/api/health` trả HTTP 200, SQLite báo `database: "ok"`.
 Các container frontend integration/demo đã được xóa sau kiểm thử;
 cổng `18082` và `18084` đã đóng. Cấu hình vẫn được giữ để khởi động lại khi cần.
-Backend, cổng Backend `8080`, database và backup được giữ nguyên.
+BE DH/chữ ký RSA đã cập nhật lên image `cipher-workbench-be-app:rsa-da77d54`,
+áp dụng migration `sqlite_0003` và restart policy `unless-stopped`. Cổng BE `8080`
+và volume SQLite được giữ lại. BE mới giữ lịch sử 5 giờ; 58 bản ghi cũ đã hết hạn.
+Snapshot trước cập nhật được giữ cục bộ; xem [biên bản khôi phục](docs/TAILSCALE_RSA_RECOVERY_20261011.md).
 
 Docker build chỉ gửi các đầu vào frontend cần thiết, dùng cache `npm ci` và
 tách stage build/runtime. Nginx bật gzip, cache asset và tái sử dụng kết nối
@@ -302,22 +316,43 @@ và volume/backup riêng. `.env.deploy` chỉ dùng cho Nginx host/HTTPS, không
 để khởi động Compose. VPS/HTTPS xem [deployment](docs/DEPLOYMENT.md).
 
 Cổng frontend local/integration/demo được quản lý tại `deploy/frontend-ports.env`.
-Dùng `./deploy/frontend.sh local up` để cập nhật riêng FE local và giữ routing DH;
+Dùng `./deploy/frontend.sh local up` để cập nhật riêng FE local và giữ routing DH/chữ ký RSA;
 dùng `integration` hoặc `demo` khi cần mở lại frontend thử nghiệm tương ứng. Xem
 [quản lý cổng frontend](docs/SQLITE_COMPOSE.md#quản-lý-cổng-frontend).
 
-### Bản local 18081 với Backend DH riêng
+### Bản local 18081 với Backend DH/chữ ký RSA riêng
 
-Bản local ngày 10/10 dùng override để chuyển riêng `/api/dh/*` tới container Backend
-`cipher-workbench-be-app-1:8000`. Các API khác vẫn dùng Backend SQLite hiện hành.
-Cần có network Docker `cipher-workbench-be_default` và container BE DH đang chạy.
+Bản local chuyển `/api/dh/*`, `/api/rsa/sign*` và `/api/rsa/verify*` tới container
+`cipher-workbench-be-app-1:8000`. Các API khác dùng Backend SQLite hiện hành.
+Cần network Docker `cipher-workbench-be_default` và BE mới đang chạy.
+Tailscale Serve/Funnel trên máy này chuyển HTTPS tới `127.0.0.1:18081`.
 
 ```bash
-docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:local-dh-docker-optimized-20261010 .
+docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:local-rsa-20261011 .
 ./deploy/frontend.sh local up
 ```
 
-Override này dành cho máy local; không thay đổi image BE hay volume lịch sử.
+Override FE dành cho máy local. BE được quản lý riêng bằng `deploy/rsa-backend.sh`,
+overlay `deploy/docker-compose.rsa-backend.yml` và file riêng tư `.env.rsa-backend`.
+File env cần `DATABASE_URL`, `HISTORY_API_ENABLED`, `HISTORY_PROFILE_SIGNING_KEY`,
+`HISTORY_COOKIE_SECURE=true` khi dùng HTTPS và cấu hình CORS/cổng phù hợp.
+Giữ cố định signing key qua các lần khởi động; không commit env hoặc snapshot SQLite.
+
+```bash
+# Build BE từ checkout chứa revision da77d54.
+docker build -t cipher-workbench-be-app:rsa-da77d54 ../cipher-workbench-be
+./deploy/rsa-backend.sh config
+# Sao lưu SQLite trước khi chạy migration.
+./deploy/rsa-backend.sh migrate
+./deploy/rsa-backend.sh up
+./deploy/rsa-backend.sh ps
+```
+
+Kiểm thử RSA trên URL đã triển khai:
+
+```bash
+PLAYWRIGHT_BASE_URL=https://your-host.ts.net npm run test:e2e:rsa:integration
+```
 
 ## Cấu trúc dự án
 
@@ -333,7 +368,7 @@ src/
 │   ├── hill/            # Khóa ma trận, phân tích khối và API Hill
 │   ├── des/             # ECB/CBC, IV, trace DES và API adapter
 │   ├── diffieHellman/   # Trao đổi khóa, thực hành DH và Caesar bằng khóa chung
-│   └── rsa/             # Sinh/nhập khóa, mã hóa/giải mã số và văn bản, trace RSA
+│   └── rsa/             # Sinh/nhập khóa, mã hóa/giải mã số và văn bản, ký/kiểm tra và trace RSA
 ├── shared/              # UI, hook, service và utility dùng chung
 └── test/                # Thiết lập và helper dùng trong test
 e2e/                     # Playwright scenarios
@@ -384,5 +419,5 @@ Khi tài liệu FE khác completed OpenSpec hoặc consumer guide đã ghim củ
 
 ## Giới hạn hiện tại
 
-- Lịch sử chỉ có metadata chung toàn instance; chưa có tài khoản hay xem lại nội dung cũ.
+- Thẻ lịch sử FE hiển thị metadata cipher chung toàn instance. BE chữ ký RSA có lịch sử riêng theo cookie, nhưng FE chưa có giao diện xem lại lịch sử chữ ký. Chưa có tài khoản.
 - Chưa hỗ trợ brute-force, tự động tìm khóa hoặc alphabet tùy chỉnh.

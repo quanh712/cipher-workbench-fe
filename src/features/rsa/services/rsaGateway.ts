@@ -1,3 +1,4 @@
+import type { RsaSignatureRequest, RsaSignatureResult } from "../types/signature";
 import type {
   RsaKeyResult,
   RsaParameters,
@@ -13,6 +14,7 @@ import type {
  * UI code consumes results/traces as returned and never computes a local fallback.
  */
 export interface RsaGateway {
+  signature(parameters: RsaSignatureRequest, signal: AbortSignal): Promise<RsaSignatureResult>;
   transform(parameters: RsaTransformRequest, signal: AbortSignal): Promise<RsaTransformResult>;
   generateKey(parameters: RsaParameters, signal: AbortSignal): Promise<RsaKeyResult>;
 }

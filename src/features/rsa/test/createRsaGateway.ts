@@ -51,6 +51,18 @@ export function createRsaGateway(options: { failOnce?: RsaTask } = {}): RsaGatew
     }
   }
   return {
+    async signature(parameters, signal) {
+      signal.throwIfAborted();
+      return {
+        kind:
+          parameters.operation === "sign" ? "signed" : parameters.m === "88" ? "valid" : "invalid",
+        signature: "11",
+        recoveredMessage: parameters.operation === "verify" ? "88" : undefined,
+        message: parameters.operation === "sign" ? "Ký thành công." : "Đã kiểm tra chữ ký.",
+        steps: [],
+        rows: [{ index: 0, bit: 1, base: "88", before: "1", after: "11" }],
+      };
+    },
     async transform(parameters, signal) {
       check(parameters.inputType, signal);
       const encrypt = parameters.operation === "encrypt";

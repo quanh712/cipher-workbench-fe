@@ -67,7 +67,7 @@ Checkout BE được Compose build sử dụng phải đúng revision đã ghim;
 
 ## RSA
 
-FE nối API RSA của BE `229c69d` qua `src/features/rsa/services/rsaApi.ts`, bật bằng `VITE_ENABLE_RSA=true`. Sinh khóa dùng `/api/rsa/keys`; mỗi tác vụ số/văn bản chọn mã hóa hoặc giải mã riêng qua `/api/rsa/encrypt` hoặc `/api/rsa/decrypt`, dùng khóa sinh hoặc khóa nhập tay tương ứng. Bản mã hiển thị và nhập giải mã dùng mảng JSON chuỗi số. Không tự chạy khi mở workspace hoặc chọn ví dụ. Văn bản dùng `mode=char`. Tất cả operand là chuỗi thập phân; trace lấy từ BE. `P ≥ n` hoặc ký tự có code point ≥ n bị BE từ chối; FE giữ nguyên message và không tính fallback. Xem [RSA_SPEC.md](RSA_SPEC.md) cho mapping và lệnh integration test.
+FE nối API RSA của BE `229c69d` qua `src/features/rsa/services/rsaApi.ts`, bật bằng `VITE_ENABLE_RSA=true`. Chữ ký số dùng `/api/rsa/sign/raw` (`m,d,e,n`) và `/api/rsa/verify/raw` (`m,signature,e,n`), nhận envelope `result/history`, trace và `valid` từ BE; gửi credentials cho cookie profile lịch sử. Sinh khóa dùng `/api/rsa/keys`; mỗi tác vụ số/văn bản chọn mã hóa hoặc giải mã riêng qua `/api/rsa/encrypt` hoặc `/api/rsa/decrypt`, dùng khóa sinh hoặc khóa nhập tay tương ứng. Bản mã hiển thị và nhập giải mã dùng mảng JSON chuỗi số. Không tự chạy khi mở workspace hoặc chọn ví dụ. Văn bản dùng `mode=char`. Tất cả operand là chuỗi thập phân; trace lấy từ BE. `P ≥ n` hoặc ký tự có code point ≥ n bị BE từ chối; FE giữ nguyên message và không tính fallback. Xem [RSA_SPEC.md](RSA_SPEC.md) cho mapping và lệnh integration test.
 
 ## Lịch sử server trên SQLite
 

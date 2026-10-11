@@ -57,7 +57,7 @@ test("manual half-keys, Unicode JSON roundtrip, download and independent modes",
   await page.getByRole("button", { name: "Tạo khóa", exact: true }).click();
   await expect(page.getByText("{17, 1022117}", { exact: true })).toBeVisible();
   const privateKey = await page
-    .getByText("Khóa riêng của Bob", { exact: true })
+    .getByText("Khóa riêng", { exact: true })
     .locator("..")
     .locator("dd")
     .innerText();
@@ -128,4 +128,67 @@ test("Backend errors, input validation and reset remain usable", async ({ page }
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(text.getByRole("textbox", { name: "Thông điệp" })).toHaveValue("");
   await expect(text.getByRole("button", { name: "Mã hóa", exact: true })).toBeDisabled();
+});
+
+test("backend signs arbitrary numbers and verifies valid/invalid signatures with public half-key", async ({
+  page,
+}) => {
+  const requests: { url: string; payload: Record<string, unknown> }[] = [];
+  page.on("request", (request) => {
+    if (/\/api\/rsa\/(sign|verify)\/raw$/.test(request.url()))
+      requests.push({ url: request.url(), payload: request.postDataJSON() });
+  });
+  await page.getByRole("tab", { name: "Chữ ký số" }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  expect(requests).toHaveLength(0);
+  await page.getByRole("textbox", { name: "n · modulo" }).fill("3233");
+  await page.getByRole("textbox", { name: "e · khóa công khai" }).fill("17");
+  await page.getByRole("textbox", { name: "d · khóa riêng" }).fill("2753");
+  await page.getByRole("textbox", { name: "Thông điệp gốc m (số)" }).fill("65");
+  await page.getByRole("button", { name: "Ký", exact: true }).click();
+  const outcome = page.locator(".rsa__signature-result");
+  await expect(outcome.getByRole("definition").filter({ hasText: /^588$/ })).toBeVisible();
+  expect(requests[0].payload).toEqual({ m: "65", d: "2753", e: "17", n: "3233" });
+  await page.getByText("Xem từng bước ký", { exact: true }).click();
+  await expect(
+    page.getByRole("table", { name: "Các bước chữ ký RSA" }).getByRole("row"),
+  ).toHaveCount(13);
+  await page.getByRole("radio", { name: /Kiểm tra/ }).click();
+  await page.getByRole("textbox", { name: "d · khóa riêng" }).fill("");
+  await page.getByRole("textbox", { name: "Chữ ký s (số)" }).fill("588");
+  await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+  await expect(outcome.getByText("Chữ ký hợp lệ", { exact: true })).toBeVisible();
+  expect(requests[1].payload).toEqual({ m: "65", signature: "588", e: "17", n: "3233" });
+  await page.getByRole("textbox", { name: "Thông điệp gốc m (số)" }).fill("66");
+  await expect(outcome.getByText("Chữ ký hợp lệ", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+  await expect(outcome.getByText("Chữ ký không hợp lệ", { exact: true })).toBeVisible();
+  await expect(outcome.getByRole("definition").filter({ hasText: /^65$/ })).toBeVisible();
+  await page.getByRole("textbox", { name: "Thông điệp gốc m (số)" }).fill("3233");
+  await expect(page.getByRole("button", { name: "Kiểm tra", exact: true })).toBeDisabled();
+  expect(requests).toHaveLength(3);
+  await page.getByRole("textbox", { name: "Thông điệp gốc m (số)" }).fill("0");
+  await page.getByRole("textbox", { name: "Chữ ký s (số)" }).fill("0");
+  await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+  await expect(outcome.getByText("Chữ ký hợp lệ", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("rsa-signature-backend.png"),
+    fullPage: true,
+  });
+});
+
+test("signature service failure clears results and permits retry", async ({ page }) => {
+  await page.getByRole("tab", { name: "Chữ ký số" }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.route("**/api/rsa/sign/raw", (route) => route.abort(), { times: 1 });
+  await page.getByRole("button", { name: "Ký", exact: true }).click();
+  await expect(
+    page.locator(".rsa__signature-result").getByText("Lỗi dịch vụ", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Ký", exact: true }).click();
+  await expect(page.getByText("Đã ký", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Đặt lại" }).click();
+  await expect(page.getByRole("textbox", { name: "Thông điệp gốc m (số)" })).toHaveValue("");
+  await expect(page.getByText("Đã ký", { exact: true })).toHaveCount(0);
 });
