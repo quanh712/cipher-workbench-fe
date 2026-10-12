@@ -1,3 +1,4 @@
+import type { VerificationDraft } from "../../history/services/signatureHistoryApi";
 import { useRef, useState } from "react";
 import { Notification } from "../../../shared/components/Notification";
 import type { NoticeState } from "../../../shared/types/cipher";
@@ -339,10 +340,16 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
   );
 }
 
-export function RsaWorkspace({ cipher }: { cipher: RsaCipherController }) {
+export function RsaWorkspace({
+  cipher,
+  verification,
+}: {
+  cipher: RsaCipherController;
+  verification?: VerificationDraft;
+}) {
   const { draft, key, fieldErrors } = cipher;
-  const [tab, setTab] = useState<"encrypt" | "signature">("encrypt");
-  const signature = useRsaSignature(cipher, tab === "signature");
+  const [tab, setTab] = useState<"encrypt" | "signature">(verification ? "signature" : "encrypt");
+  const signature = useRsaSignature(cipher, tab === "signature", verification);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const signatureTab = tab === "signature";
   const tabs = ["encrypt", "signature"] as const;

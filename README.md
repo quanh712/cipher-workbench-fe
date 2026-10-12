@@ -49,6 +49,14 @@ Các thay đổi Diffie–Hellman sau mốc này được kiểm thử riêng tr
 
 Xem [spec RSA](docs/RSA_SPEC.md) và [biên bản khôi phục Tailscale](docs/TAILSCALE_RSA_RECOVERY_20261011.md).
 
+## Lịch sử chữ ký — 12/10/2026
+
+- Chữ ký được gộp vào **Lịch sử thao tác**, sắp mới nhất trước, có nhãn **Lịch sử chung / Chữ ký riêng** và bộ lọc **Tất cả / Mã hóa / Giải mã / Ký / Kiểm tra chữ ký**.
+- **Xem chi tiết** mở popup responsive để xem dữ liệu đã lưu và kết quả hợp lệ/không hợp lệ. **Dùng lại để kiểm tra chữ ký** điền thông điệp, chữ ký và khóa công khai vào RSA; người dùng bấm **Kiểm tra** để gửi yêu cầu. Không khôi phục khóa riêng hoặc trace cũ.
+- **Xóa bản ghi** cần xác nhận; không có xóa toàn bộ. Tải khi mở lịch sử và có **Làm mới lịch sử**, **Tải thêm**, thông báo lỗi và thử lại riêng từng nguồn. Sau ký/kiểm tra, mở lịch sử sẽ tải lại dữ liệu.
+- Lịch sử chữ ký thuộc cookie HttpOnly của hồ sơ trình duyệt, lưu tối đa 5 giờ và có thể bị loại sớm do hạn mức. Đổi hồ sơ/xóa cookie có thể mất quyền xem các bản ghi trước đó.
+- Nginx local chuyển `/api/rsa/history` và đường chi tiết/xóa sang `/api/history` của backend RSA/DH; `/api/history` chung giữ backend SQLite cũ. Vite dùng `BACKEND_SIGNATURE_URL` (mặc định `http://127.0.0.1:8080`) cho đường này, độc lập `BACKEND_DEV_URL`.
+
 ## Trạng thái tính năng
 
 | Thuật toán     | Văn bản                                | File `.txt`           | Trạng thái                        |
@@ -145,7 +153,7 @@ BE cũ thiếu trường `history` sẽ không tải dữ liệu lịch sử. Kh
 Funnel/public vì endpoint này chưa có xác thực. Nếu BE Compose chạy trên host `8080`, khởi động
 FE bằng `BACKEND_DEV_URL=http://localhost:8080 npm run dev`. BE không phục vụ UI ở `/`;
 dùng `/docs` để thử API.
-Thẻ **Lịch sử thao tác** chỉ xuất hiện khi health báo đồng thời hai trạng thái cho phép.
+Thẻ **Lịch sử thao tác** xuất hiện khi lịch sử chung khả dụng hoặc RSA được bật; lỗi một nguồn không ngăn xem nguồn còn lại.
 
 ### 2. Cài dependency và chạy Frontend
 
@@ -350,7 +358,7 @@ dùng `integration` hoặc `demo` khi cần mở lại frontend thử nghiệm t
 
 ### Bản local 18081 với Backend DH/chữ ký RSA riêng
 
-Bản local chuyển `/api/dh/*`, `/api/rsa/sign*` và `/api/rsa/verify*` tới container
+Bản local chuyển `/api/dh/*`, `/api/rsa/sign*`, `/api/rsa/verify*` và `/api/rsa/history*` tới container
 `cipher-workbench-be-app-1:8000`. Các API khác dùng Backend SQLite hiện hành.
 Cần network Docker `cipher-workbench-be_default` và BE mới đang chạy.
 Tailscale Serve/Funnel trên máy này chuyển HTTPS tới `127.0.0.1:18081`.

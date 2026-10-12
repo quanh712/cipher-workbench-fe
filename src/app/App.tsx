@@ -24,6 +24,7 @@ import { PlayfairWorkspace } from "../features/playfair/components/PlayfairWorks
 import { usePlayfairCipher } from "../features/playfair/hooks/usePlayfairCipher";
 import { VigenereWorkspace } from "../features/vigenere/components/VigenereWorkspace";
 import { useVigenereCipher } from "../features/vigenere/hooks/useVigenereCipher";
+import type { VerificationDraft } from "../features/history/services/signatureHistoryApi";
 import { HistoryWorkspace } from "../features/history/components/HistoryWorkspace";
 import { canShowServerHistory, getHealthStatus } from "../features/history/services/historyApi";
 import { CipherAlgorithmSelector } from "../shared/components/CipherAlgorithmSelector";
@@ -49,6 +50,7 @@ export function App({
   const affine = useAffineCipher(affineApi);
   const columnar = useColumnarCipher(columnarApi);
   const [algorithm, setAlgorithm] = useState<CipherAlgorithm>("caesar");
+  const [verification, setVerification] = useState<VerificationDraft | undefined>();
   const [showHistory, setShowHistory] = useState(false);
   const hill = useHillCipher(hillApi, algorithm === "hill" && !showHistory);
   const des = useDesCipher(desGateway, algorithm === "des" && !showHistory);
@@ -59,7 +61,9 @@ export function App({
   );
   const hillOpened = useRef(false);
   const cipherAlgorithms = getCipherAlgorithms();
-  const [historyAvailable, setHistoryAvailable] = useState(false);
+  const [historyAvailable, setHistoryAvailable] = useState(
+    import.meta.env.VITE_ENABLE_RSA === "true",
+  );
   const isLoading =
     cipher.isLoading ||
     vigenere.isLoading ||
@@ -73,7 +77,10 @@ export function App({
     const controller = new AbortController();
     void getHealthStatus(controller.signal)
       .then((health) => {
-        if (!controller.signal.aborted) setHistoryAvailable(canShowServerHistory(health));
+        if (!controller.signal.aborted)
+          setHistoryAvailable(
+            canShowServerHistory(health) || import.meta.env.VITE_ENABLE_RSA === "true",
+          );
       })
       .catch(() => {
         // History is optional; a failed health check must not block cipher workspaces.
@@ -82,6 +89,7 @@ export function App({
   }, []);
 
   function resetWorkspace() {
+    setVerification(undefined);
     setShowHistory(false);
     setAlgorithm("caesar");
     cipher.resetAll();
@@ -98,6 +106,7 @@ export function App({
 
   function changeAlgorithm(nextAlgorithm: CipherAlgorithm) {
     if (isLoading || nextAlgorithm === algorithm) return;
+    setVerification(undefined);
     cipher.clearResult();
     cipher.setNotice(null);
     vigenere.clearResult();
@@ -128,7 +137,7 @@ export function App({
     columnar: <ColumnarWorkspace cipher={columnar} />,
     hill: <HillWorkspace cipher={hill} />,
     des: <DesWorkspace cipher={des} />,
-    rsa: <RsaWorkspace cipher={rsa} />,
+    rsa: <RsaWorkspace cipher={rsa} verification={verification} />,
     "diffie-hellman": <DiffieHellmanWorkspace cipher={diffieHellman} />,
   };
 
@@ -168,14 +177,27 @@ export function App({
                 type="button"
                 className={showHistory ? "view-switch__active" : ""}
                 aria-pressed={showHistory}
-                onClick={() => setShowHistory(true)}
+                onClick={() => {
+                  setVerification(undefined);
+                  setShowHistory(true);
+                }}
               >
                 Lịch sử thao tác
               </button>
             </div>
           )}
           {showHistory && historyAvailable ? (
-            <HistoryWorkspace />
+            <HistoryWorkspace
+              onReuse={(draft) => {
+                rsa.setKeySource("manual");
+                rsa.setManualKey("n", draft.n);
+                rsa.setManualKey("e", draft.e);
+                rsa.setManualKey("d", "");
+                setVerification(draft);
+                setAlgorithm("rsa");
+                setShowHistory(false);
+              }}
+            />
           ) : (
             <>
               <CipherAlgorithmSelector

@@ -2017,3 +2017,30 @@ textarea,
   color: var(--muted);
   line-height: 1.55;
 }
+
+.history__dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 24px;
+  border: 1px solid var(--control-border);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--panel);
+}
+.history__dialog::backdrop {
+  background: #13273b99;
+}
+.history__dialog pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface);
+  padding: 16px;
+  border-radius: 8px;
+}
+.history__dialog button {
+  margin-top: 8px;
+  max-width: 100%;
+  white-space: normal;
+}

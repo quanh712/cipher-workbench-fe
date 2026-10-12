@@ -1,3 +1,4 @@
+import type { VerificationDraft } from "../../history/services/signatureHistoryApi";
 import { RsaGatewayError } from "../services/rsaGateway";
 import type { NoticeState } from "../../../shared/types/cipher";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -55,8 +56,17 @@ function emptyState(cipher: RsaCipherController, enabled: boolean): SignatureSta
   };
 }
 
-export function useRsaSignature(cipher: RsaCipherController, enabled = true) {
-  const [state, setState] = useState(() => emptyState(cipher, enabled));
+export function useRsaSignature(
+  cipher: RsaCipherController,
+  enabled = true,
+  verification?: VerificationDraft,
+) {
+  const [state, setState] = useState(() => ({
+    ...emptyState(cipher, enabled),
+    ...(verification
+      ? { mode: "verify" as const, message: verification.m, signature: verification.signature }
+      : {}),
+  }));
   const request = useRef<AbortController | null>(null);
   const current = useRef("");
   const fingerprint = keyFingerprint(cipher);

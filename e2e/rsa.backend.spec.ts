@@ -192,3 +192,100 @@ test("signature service failure clears results and permits retry", async ({ page
   await expect(page.getByRole("textbox", { name: "Thông điệp gốc m (số)" })).toHaveValue("");
   await expect(page.getByText("Đã ký", { exact: true })).toHaveCount(0);
 });
+
+test("private signature history survives reload, reuses without submitting, deletes and isolates profiles", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await page.getByRole("tab", { name: "Chữ ký số" }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  const responsePromise = page.waitForResponse(/\/api\/rsa\/sign\/raw$/);
+  await page.getByRole("button", { name: "Ký", exact: true }).click();
+  const body = await (await responsePromise).json();
+  expect(body.history.saved).toBe(true);
+  const id = body.history.id;
+  await page.reload();
+  await page.getByRole("button", { name: "Lịch sử thao tác", exact: true }).click();
+  await page.getByRole("combobox", { name: "Thao tác", exact: true }).selectOption("sign");
+  const row = page.locator(".history__item").first();
+  await row.getByRole("button", { name: "Xem chi tiết" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Dữ liệu chữ ký")).toContainText('"m": "88"');
+  await expect(dialog.getByLabel("Dữ liệu chữ ký")).not.toContainText('"d"');
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("signature-history-detail.png") });
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+  await page.screenshot({ path: test.info().outputPath("signature-history-detail-dark.png") });
+  let verifies = 0;
+  page.on("request", (request) => {
+    if (/\/api\/rsa\/verify\/raw$/.test(request.url())) verifies++;
+  });
+  await dialog.getByRole("button", { name: "Dùng lại để kiểm tra chữ ký" }).click();
+  await expect(page.getByRole("textbox", { name: "Thông điệp gốc m (số)" })).toHaveValue("88");
+  await expect(page.getByRole("textbox", { name: "d · khóa riêng" })).toHaveValue("");
+  expect(verifies).toBe(0);
+  await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+  await expect(
+    page.locator(".rsa__signature-result").getByText("Chữ ký hợp lệ", { exact: true }),
+  ).toBeVisible();
+  expect(verifies).toBe(1);
+  const other = await browser.newContext({ baseURL });
+  try {
+    const isolated = await other.newPage();
+    await isolated.goto("/");
+    expect(
+      await isolated.evaluate(async (id) => (await fetch(`/api/rsa/history/${id}`)).status, id),
+    ).toBe(404);
+  } finally {
+    await other.close();
+  }
+  await page.getByRole("button", { name: "Lịch sử thao tác", exact: true }).click();
+  await page.getByRole("combobox", { name: "Thao tác", exact: true }).selectOption("sign");
+  await page
+    .locator(".history__item")
+    .first()
+    .getByRole("button", { name: "Xem chi tiết" })
+    .click();
+  await expect(dialog).toContainText(`Chi tiết chữ ký #${id}`);
+  await dialog.getByRole("button", { name: "Xóa bản ghi" }).click();
+  await dialog.getByRole("button", { name: "Hủy", exact: true }).click();
+  expect(
+    await page.evaluate(async (id) => (await fetch(`/api/rsa/history/${id}`)).status, id),
+  ).toBe(200);
+  await dialog.getByRole("button", { name: "Xóa bản ghi" }).click();
+  await dialog.getByRole("button", { name: "Xác nhận xóa" }).click();
+  await expect(dialog).not.toBeVisible();
+  expect(
+    await page.evaluate(async (id) => (await fetch(`/api/rsa/history/${id}`)).status, id),
+  ).toBe(404);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("signature-history.png"), fullPage: true });
+});
+
+test("history source failures keep the other source visible and permit retry", async ({ page }) => {
+  await page.getByRole("tab", { name: "Chữ ký số" }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.getByRole("button", { name: "Ký", exact: true }).click();
+  await expect(page.getByText("Đã ký", { exact: true })).toBeVisible();
+  await page.route("**/api/health", (route) => route.abort(), { times: 1 });
+  await page.getByRole("button", { name: "Lịch sử thao tác", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Lịch sử chung");
+  await expect(page.getByRole("button", { name: "Xem chi tiết" })).toBeVisible();
+  await page.getByRole("button", { name: "Thử lại", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(
+    page.locator(".history__item").filter({ hasText: "Lịch sử chung" }).first(),
+  ).toBeVisible();
+  await page.route("**/api/rsa/history?**", (route) => route.abort());
+  await page.getByRole("button", { name: "Làm mới lịch sử" }).click();
+  await expect(page.getByRole("alert")).toHaveCount(2);
+  await expect(
+    page.locator(".history__item").filter({ hasText: "Lịch sử chung" }).first(),
+  ).toBeVisible();
+  await expect(page.getByText("Chưa có thao tác nào khớp bộ lọc.")).toHaveCount(0);
+  await page.unroute("**/api/rsa/history?**");
+  await page.getByRole("button", { name: "Làm mới lịch sử" }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Xem chi tiết" })).toBeVisible();
+});

@@ -1,3 +1,4 @@
+import { getSignatureHistory } from "../services/signatureHistoryApi";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -8,6 +9,11 @@ vi.mock("../services/historyApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../services/historyApi")>()),
   getHealthStatus: vi.fn(),
   getHistory: vi.fn(),
+}));
+
+vi.mock("../services/signatureHistoryApi", async (original) => ({
+  ...(await original<typeof import("../services/signatureHistoryApi")>()),
+  getSignatureHistory: vi.fn(),
 }));
 
 const statusMock = vi.mocked(getHealthStatus);
@@ -28,6 +34,7 @@ const historyItem = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getSignatureHistory).mockResolvedValue({ items: [], nextCursor: null });
   statusMock.mockResolvedValue({ database: "ok", history: "enabled" });
 });
 
@@ -87,23 +94,21 @@ it("shows metadata and loads a second page using the opaque cursor", async () =>
 it("does not read history when the server history gate is disabled", async () => {
   statusMock.mockResolvedValue({ database: "ok", history: "disabled" });
   render(<HistoryWorkspace />);
-  expect(await screen.findByText("Lịch sử chưa được bật trên máy chủ.")).toBeInTheDocument();
+  expect(await screen.findByText(/Lịch sử chưa được bật trên máy chủ/)).toBeInTheDocument();
   expect(historyMock).not.toHaveBeenCalled();
 });
 
 it("does not read history when the database is unavailable", async () => {
   statusMock.mockResolvedValue({ database: "unavailable", history: "enabled" });
   render(<HistoryWorkspace />);
-  expect(
-    await screen.findByText("Cơ sở dữ liệu tạm thời không khả dụng. Hãy thử lại sau."),
-  ).toBeInTheDocument();
+  expect(await screen.findByText(/Cơ sở dữ liệu tạm thời không khả dụng/)).toBeInTheDocument();
   expect(historyMock).not.toHaveBeenCalled();
 });
 
 it("does not read history when the database is disabled even if history is enabled", async () => {
   statusMock.mockResolvedValue({ database: "disabled", history: "enabled" });
   render(<HistoryWorkspace />);
-  expect(await screen.findByText("Lịch sử chưa được bật trên máy chủ.")).toBeInTheDocument();
+  expect(await screen.findByText(/Lịch sử chưa được bật trên máy chủ/)).toBeInTheDocument();
   expect(historyMock).not.toHaveBeenCalled();
 });
 
@@ -145,7 +150,7 @@ it("shows the server message and clears history when the gate closes after healt
     new HistoryApiError("Lịch sử không được bật trên máy chủ này.", 404),
   );
   render(<HistoryWorkspace />);
-  expect(await screen.findByText("Lịch sử không được bật trên máy chủ này.")).toBeInTheDocument();
+  expect(await screen.findByText(/Lịch sử không được bật trên máy chủ này/)).toBeInTheDocument();
   expect(screen.queryByRole("list", { name: "Các thao tác gần đây" })).not.toBeInTheDocument();
 });
 
@@ -173,14 +178,14 @@ it("clears loaded rows if the server disables history during pagination", async 
   const user = userEvent.setup();
   render(<HistoryWorkspace />);
   await user.click(await screen.findByRole("button", { name: "Tải thêm" }));
-  expect(await screen.findByText("Lịch sử không được bật trên máy chủ này.")).toBeInTheDocument();
+  expect(await screen.findByText(/Lịch sử không được bật trên máy chủ này/)).toBeInTheDocument();
   expect(screen.queryByRole("list", { name: "Các thao tác gần đây" })).not.toBeInTheDocument();
 });
 
 it("does not misclassify a missing health endpoint as a disabled history gate", async () => {
   statusMock.mockRejectedValue(new HistoryApiError("Không tìm thấy endpoint.", 404));
   render(<HistoryWorkspace />);
-  expect(await screen.findByText("Không tìm thấy endpoint.")).toHaveAttribute("role", "alert");
+  expect(await screen.findByText(/Không tìm thấy endpoint/)).toHaveAttribute("role", "alert");
   expect(historyMock).not.toHaveBeenCalled();
 });
 
@@ -199,4 +204,62 @@ it.each([
   expect(historyMock).toHaveBeenLastCalledWith(query, expect.any(AbortSignal));
   expect(screen.queryByRole("list", { name: "Các thao tác gần đây" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Tải thêm" })).not.toBeInTheDocument();
+});
+
+it("merges private signatures with common rows using separate identities and independent failures", async () => {
+  historyMock.mockResolvedValue({ items: [historyItem], nextCursor: null });
+  vi.mocked(getSignatureHistory).mockImplementation(async (operation) => {
+    if (operation === "verify") throw new HistoryApiError("Nguồn kiểm tra tạm lỗi", 503);
+    return {
+      items: [
+        {
+          ...historyItem,
+          cipher: "rsa",
+          operation: "sign",
+          createdAt: "2026-10-12T00:00:00Z",
+          valid: null,
+          processingState: "completed",
+        },
+      ],
+      nextCursor: null,
+    };
+  });
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
+  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(2));
+  expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("Chữ ký riêng");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Nguồn kiểm tra tạm lỗi");
+  await user.selectOptions(screen.getByLabelText("Thao tác"), "encrypt");
+  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(1));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+it("holds older rows until every unfinished source crosses their timestamp", async () => {
+  historyMock.mockResolvedValueOnce({
+    items: [{ ...historyItem, createdAt: "2026-10-10T00:00:00Z" }],
+    nextCursor: null,
+  });
+  vi.mocked(getSignatureHistory).mockImplementation(async (_operation, cursor) => ({
+    items: [
+      {
+        ...historyItem,
+        cipher: "rsa",
+        operation: _operation,
+        id: (cursor ? 3 : 2) + (_operation === "verify" ? 10 : 0),
+        createdAt: cursor ? "2026-10-09T00:00:00Z" : "2026-10-12T00:00:00Z",
+        valid: null,
+        processingState: "completed",
+      },
+    ],
+    nextCursor: cursor ? null : "next",
+  }));
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
+  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(2));
+  expect(within(list).queryByText("Caesar")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Tải thêm" }));
+  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(5));
+  expect(within(list).getAllByRole("listitem")[2]).toHaveTextContent("Lịch sử chung");
 });
