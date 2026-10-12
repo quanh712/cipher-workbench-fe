@@ -10,14 +10,15 @@ API chữ ký dùng BE `da77d54`; fake gateway chỉ dùng trong test.
 
 - Workspace có chín thuật toán khi bật đầy đủ Hill, DES, RSA và Diffie–Hellman.
 - RSA luôn hiển thị nút **Chữ ký không hợp lệ** để thử dữ liệu mẫu; cảnh báo RSA học thuật được hiển thị bằng tiếng Việt. Các phần giải thích và bước tính có khung, hỗ trợ xuống dòng trên màn hình nhỏ.
+- Lịch sử chữ ký đã gộp vào **Lịch sử thao tác**: xem chi tiết, dùng lại để kiểm tra và xóa có xác nhận; lỗi một nguồn không che nguồn còn lại.
 - Phần Caesar bằng khóa chung DH được chỉnh bố cục và giữ nút thao tác không bị co.
 - Runtime local còn **4 container**: frontend, backend SQLite cho API chung, backend RSA/DH và backup SQLite local. Backend legacy cùng backend/backup integration đã dừng; container, image và dữ liệu vẫn được giữ để bật lại.
 - Tổng RAM container đo bằng `docker stats --no-stream` giảm từ khoảng **454 MiB xuống 237–242 MiB**, tiết kiệm khoảng **47–48%**. Đây là số đo tại thời điểm kiểm tra, chưa gồm RAM máy ảo Docker Desktop và không đại diện peak khi tải cao.
 - Sau khi giảm RAM, smoke test API/upload/download, **10 kiểm thử tích hợp RSA** trên desktop/375 px và **1 kiểm thử DH tạo khóa/tính khóa chung** đều qua tại `http://127.0.0.1:18081`.
-- Bản chốt mã nguồn đạt **564 unit/component test**, **8 kiểm thử UI RSA** trên desktop/375 px và light/dark theme; format, lint, TypeScript và production build đều qua.
+- Bản chốt mã nguồn đạt **566 unit/component test**, **14 kiểm thử tích hợp RSA/lịch sử** trên desktop/375 px qua Tailscale; format, lint, TypeScript và production build đều qua.
 
-Image frontend đã triển khai là `cipher-workbench-frontend:release-7e7c851`,
-build từ commit `7e7c851` với đầy đủ Hill/DES/RSA/DH; container local healthy.
+Image frontend đã triển khai là `cipher-workbench-frontend:release-4a1b3e0`,
+build từ commit `4a1b3e0` với đầy đủ Hill/DES/RSA/DH; container local healthy.
 Hướng dẫn bật lại và dừng stack kiểm thử nằm trong [vận hành RAM local](docs/SQLITE_COMPOSE.md#ram-khi-vận-hành-local).
 
 ## Mốc release đã kiểm thử — 08/10/2026
@@ -288,7 +289,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test
 ### Trạng thái triển khai — 12/10/2026
 
 Frontend chính đang chạy tại <http://127.0.0.1:18081> với image
-`cipher-workbench-frontend:release-7e7c851`, build từ commit `7e7c851`.
+`cipher-workbench-frontend:release-4a1b3e0`, build từ commit `4a1b3e0`.
 Container healthy; giao diện và `/api/health` trả HTTP 200, SQLite báo `database: "ok"`.
 Các container frontend integration/demo đã được xóa sau kiểm thử;
 cổng `18082` và `18084` đã đóng. Cấu hình vẫn được giữ để khởi động lại khi cần.
@@ -299,13 +300,15 @@ BE DH/chữ ký RSA đã cập nhật lên image `cipher-workbench-be-app:rsa-da
 và volume SQLite được giữ lại. BE mới giữ lịch sử 5 giờ; 58 bản ghi cũ đã hết hạn.
 Snapshot trước cập nhật được giữ cục bộ; xem [biên bản khôi phục](docs/TAILSCALE_RSA_RECOVERY_20261011.md).
 
-Frontend được cập nhật riêng ngày 12/10, giữ nguyên backend và dữ liệu SQLite.
-Smoke test local, 10 kiểm thử tích hợp RSA trên desktop/375 px và luồng DH
-tạo khóa/tính khóa chung đều qua trên image mới. Lần kiểm tra HTTPS đầu tiên
-bị đóng kết nối ở bước TLS. Kiểm thử lại qua
-<https://quanh-tran-inspiron-14-plus-7430.tail3c83f1.ts.net> ngày 12/10 đã trả HTTP 200;
-smoke test, **10 kiểm thử RSA** và **1 kiểm thử DH tạo khóa/tính khóa chung**
-đều qua HTTPS. Asset JavaScript/CSS khớp image `release-7e7c851`.
+Frontend cập nhật riêng sang `release-4a1b3e0` ngày 12/10, giữ nguyên backend và dữ liệu SQLite.
+**14 kiểm thử tích hợp RSA/lịch sử chữ ký** đã qua trên desktop/375 px, gồm tải lại trang,
+dùng lại không tự gửi, xóa/hủy xóa, cách ly hồ sơ và lỗi độc lập giữa các nguồn.
+Smoke test và **1 kiểm thử DH tạo khóa/tính khóa chung** cũng qua HTTPS tại
+<https://quanh-tran-inspiron-14-plus-7430.tail3c83f1.ts.net>.
+Container frontend healthy, revision label khớp commit `4a1b3e0`.
+Sau nghiệm thu, 4 container dùng khoảng **249 MiB** RAM, riêng frontend **12,36 MiB**;
+số đo biến đổi theo tải. Image `release-7e7c851` được giữ để rollback frontend;
+nếu rollback toàn bộ cấu hình, cần khôi phục cả `deploy/nginx.18081-dh.conf` từ commit `5edefc8`.
 
 Docker build chỉ gửi các đầu vào frontend cần thiết, dùng cache `npm ci` và
 tách stage build/runtime. Nginx bật gzip, cache asset và tái sử dụng kết nối
@@ -364,7 +367,7 @@ Cần network Docker `cipher-workbench-be_default` và BE mới đang chạy.
 Tailscale Serve/Funnel trên máy này chuyển HTTPS tới `127.0.0.1:18081`.
 
 ```bash
-docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:release-7e7c851 .
+docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:release-4a1b3e0 .
 ./deploy/frontend.sh local up
 ```
 
