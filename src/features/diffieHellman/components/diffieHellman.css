@@ -544,6 +544,19 @@
   min-width: 0;
 }
 
+.dh__caesar {
+  display: block;
+}
+
+.dh__caesar > .dh__section-heading {
+  margin-bottom: 18px;
+}
+
+.dh__caesar > .helper-row > .button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .dh__caesar-analysis-notes {
   display: grid;
   gap: 8px;

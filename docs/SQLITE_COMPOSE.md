@@ -19,6 +19,49 @@ Image build từ workspace tại thời điểm tối ưu Docker; đây không p
 08/10 ở trên. Frontend integration và demo đã được xóa sau kiểm thử, đóng cổng
 `18082` và `18084`; các backend, volume và backup vẫn được giữ nguyên.
 
+Ngày 12/10/2026, backend/backup integration và backend legacy
+`cipher-workbench-backend-1` đã được dừng để giảm RAM. Container, image và
+volume vẫn được giữ; frontend local tiếp tục dùng backend SQLite cho API chung
+và backend `cipher-workbench-be-app-1` cho RSA signature/DH.
+
+## RAM khi vận hành local
+
+Đo bằng `docker stats --no-stream` ngày 12/10/2026: tổng RAM của các container
+đang chạy giảm từ khoảng 454 MiB (7 container) xuống 237–242 MiB (4 container),
+giảm khoảng 47–48% (đo trước và sau kiểm thử RSA/DH). Đây là số đo tại thời điểm kiểm tra, không phải peak khi tải cao
+hay tổng RAM của máy ảo Docker Desktop.
+
+Các container đã dừng:
+
+- `cipher-workbench-backend-1`: backend legacy, network không có frontend.
+- `cipher-workbench-sqlite-integration-backend-1`: backend kiểm thử, không có frontend.
+- `cipher-workbench-sqlite-integration-backup-1`: backup của DB kiểm thử đã dừng ghi.
+
+Giữ frontend local, hai backend mà cấu hình proxy hiện tại sử dụng và backup
+SQLite local. Không giảm memory limit của backend: giới hạn 512 MiB là trần,
+không phải RAM được cấp phát sẵn; backend RSA/DH đã từng bị OOM theo
+[recovery record](TAILSCALE_RSA_RECOVERY_20261011.md).
+
+Các container dừng có restart policy `unless-stopped`, nên không tự bật lại
+sau restart Docker. Khi cần dùng integration, bật lại các container hiện có:
+
+```bash
+docker start cipher-workbench-sqlite-integration-backend-1 cipher-workbench-sqlite-integration-backup-1
+./deploy/frontend.sh integration up
+```
+
+Sau khi kiểm thử xong, dừng frontend trước rồi dừng backend/backup integration:
+
+```bash
+./deploy/frontend.sh integration stop
+docker stop cipher-workbench-sqlite-integration-backend-1 cipher-workbench-sqlite-integration-backup-1
+```
+
+Chỉ bật backend legacy nếu cần kiểm tra riêng bằng
+`docker start cipher-workbench-backend-1`; ứng dụng local hiện tại không dùng nó.
+Các lệnh Compose `up` có thể bật lại service đã dừng; đo lại bằng
+`docker stats --no-stream` sau khi vận hành các stack.
+
 ## Cài mới và cập nhật
 
 ### Quản lý cổng frontend

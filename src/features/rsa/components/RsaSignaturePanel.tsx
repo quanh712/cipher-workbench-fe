@@ -130,9 +130,10 @@ export function RsaSignaturePanel({ signature }: { signature: SignatureControlle
           Bấm Tạo ví dụ để điền khóa và dữ liệu mẫu cho chế độ đang chọn. Kết quả và các bước tính
           được trả về từ backend.
         </p>
-        <details className="rsa__details rsa__demo-note">
-          <summary>Thử tình huống chữ ký sai</summary>
-          <p>Chọn một tình huống để điền khóa và dữ liệu mẫu.</p>
+        <section className="rsa__demo-note" aria-label="Thử chữ ký sai">
+          <p className="rsa__help">
+            Bấm Chữ ký không hợp lệ để điền dữ liệu mẫu, rồi bấm Kiểm tra để xem kết quả.
+          </p>
           <div className="rsa__presets" role="group" aria-label="Kịch bản chữ ký minh họa">
             {signature.scenarios
               .filter((scenario) => scenario.id === "verify-invalid")
@@ -148,7 +149,7 @@ export function RsaSignaturePanel({ signature }: { signature: SignatureControlle
                 </button>
               ))}
           </div>
-        </details>
+        </section>
         <div className="panel rsa__signature-input">
           <div className="rsa__signature-fields">
             <div>
@@ -282,7 +283,14 @@ export function RsaSignaturePanel({ signature }: { signature: SignatureControlle
                         : "Lỗi dịch vụ"}
                 </div>
               </div>
-              {result.warning && <p className="rsa__help">{result.warning}</p>}
+              {result.warning && (
+                <p className="rsa__help">
+                  {result.warning ===
+                  "Raw RSA integer arithmetic is educational only; it has no hash, padding, document encoding, signer identity, or production security claim."
+                    ? "Các phép toán số nguyên RSA thuần túy chỉ phục vụ mục đích học tập; không bao gồm hàm băm, cơ chế đệm, mã hóa tài liệu hay danh tính người ký, và không đảm bảo an toàn khi sử dụng trong thực tế."
+                    : result.warning}
+                </p>
+              )}
               {result.history && !result.history.saved && (
                 <p className="rsa__help" role="status">
                   Kết quả đã xử lý;{" "}
@@ -295,7 +303,7 @@ export function RsaSignaturePanel({ signature }: { signature: SignatureControlle
                 </p>
               )}
               {result.rows && result.rows.length > 0 && (
-                <details className="rsa__details">
+                <details className="rsa__details rsa__signature-details">
                   <summary>Xem từng bước {signing ? "ký" : "kiểm tra"}</summary>
                   <div className="rsa__table-wrap" tabIndex={0}>
                     <table className="rsa__table" aria-label="Các bước chữ ký RSA">
@@ -324,7 +332,7 @@ export function RsaSignaturePanel({ signature }: { signature: SignatureControlle
                 </details>
               )}
               {result.steps.length > 0 && (
-                <details className="rsa__details">
+                <details className="rsa__details rsa__signature-details">
                   <summary>Xem từng bước {signing ? "ký" : "kiểm tra"}</summary>
                   <ol className="rsa__signature-steps">
                     {result.steps.map((step, index) => (
@@ -336,7 +344,7 @@ export function RsaSignaturePanel({ signature }: { signature: SignatureControlle
             </>
           )}
         </div>
-        <details className="rsa__details">
+        <details className="rsa__details rsa__signature-details">
           <summary>Cách ký và kiểm tra RSA học thuật</summary>
           <div className="rsa__explanation">
             <div>

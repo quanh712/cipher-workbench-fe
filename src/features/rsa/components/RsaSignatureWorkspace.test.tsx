@@ -41,10 +41,9 @@ describe("RSA signature workspace", () => {
     expect(transform).not.toHaveBeenCalled();
   });
 
-  it("loads the normal example for the selected mode and keeps invalid signature example collapsed", async () => {
+  it("loads the normal example for the selected mode and always shows the invalid signature example", async () => {
     setup();
-    const details = screen.getByText("Thử tình huống chữ ký sai").closest("details");
-    expect(details).not.toHaveAttribute("open");
+    expect(screen.getByRole("button", { name: "Chữ ký không hợp lệ" })).toBeVisible();
     fireEvent.click(screen.getByRole("radio", { name: /Kiểm tra/ }));
     fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));
     expect(screen.getByRole("radio", { name: /Kiểm tra/ })).toHaveAttribute("aria-checked", "true");

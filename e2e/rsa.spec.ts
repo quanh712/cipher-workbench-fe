@@ -73,7 +73,6 @@ test("signature gateway, keyboard tabs and edited inputs at every viewport", asy
   await expect(
     page.locator(".rsa__signature-result").getByText("Chữ ký hợp lệ", { exact: true }),
   ).toBeVisible();
-  await page.getByText("Thử tình huống chữ ký sai", { exact: true }).click();
   await page.getByRole("button", { name: "Chữ ký không hợp lệ", exact: true }).click();
   await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
   await expect(

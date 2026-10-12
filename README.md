@@ -6,6 +6,20 @@ Hill, DES và RSA được bật bằng cờ cấu hình khi Backend tương ứ
 RSA đã nối API thật: sinh/nhập khóa, mã hóa/giải mã số và văn bản, ký/kiểm tra số nguyên và trace.
 API chữ ký dùng BE `da77d54`; fake gateway chỉ dùng trong test.
 
+## Bản chốt — 12/10/2026
+
+- Workspace có chín thuật toán khi bật đầy đủ Hill, DES, RSA và Diffie–Hellman.
+- RSA luôn hiển thị nút **Chữ ký không hợp lệ** để thử dữ liệu mẫu; cảnh báo RSA học thuật được hiển thị bằng tiếng Việt. Các phần giải thích và bước tính có khung, hỗ trợ xuống dòng trên màn hình nhỏ.
+- Phần Caesar bằng khóa chung DH được chỉnh bố cục và giữ nút thao tác không bị co.
+- Runtime local còn **4 container**: frontend, backend SQLite cho API chung, backend RSA/DH và backup SQLite local. Backend legacy cùng backend/backup integration đã dừng; container, image và dữ liệu vẫn được giữ để bật lại.
+- Tổng RAM container đo bằng `docker stats --no-stream` giảm từ khoảng **454 MiB xuống 237–242 MiB**, tiết kiệm khoảng **47–48%**. Đây là số đo tại thời điểm kiểm tra, chưa gồm RAM máy ảo Docker Desktop và không đại diện peak khi tải cao.
+- Sau khi giảm RAM, smoke test API/upload/download, **10 kiểm thử tích hợp RSA** trên desktop/375 px và **1 kiểm thử DH tạo khóa/tính khóa chung** đều qua tại `http://127.0.0.1:18081`.
+- Bản chốt mã nguồn đạt **564 unit/component test**, **8 kiểm thử UI RSA** trên desktop/375 px và light/dark theme; format, lint, TypeScript và production build đều qua.
+
+Image frontend đang triển khai vẫn là `cipher-workbench-frontend:local-rsa-20261011`;
+các chỉnh sửa giao diện của bản chốt cần build/cập nhật frontend để triển khai.
+Hướng dẫn bật lại và dừng stack kiểm thử nằm trong [vận hành RAM local](docs/SQLITE_COMPOSE.md#ram-khi-vận-hành-local).
+
 ## Mốc release đã kiểm thử — 08/10/2026
 
 Báo cáo release ghi nhận FE tại <http://127.0.0.1:18081> từ commit `175219d`, bật đủ tám thuật toán,
@@ -55,7 +69,7 @@ giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã h
 
 ## Chức năng chính
 
-- Chuyển đổi giữa tám thuật toán trong cùng một workspace khi đã bật Hill, DES và RSA.
+- Chuyển đổi giữa chín thuật toán trong cùng một workspace khi đã bật Hill, DES, RSA và Diffie–Hellman.
 - Diffie–Hellman dùng contract BE `/api/dh/*` sau cờ `VITE_ENABLE_DIFFIE_HELLMAN=true` (mặc định false, cả Docker build). Entry đã nối HTTP adapter; bật bằng `VITE_ENABLE_DIFFIE_HELLMAN=true npm run dev`. Có exchange A/B, trace trái→phải, kiểm/sinh tham số, tạo khóa, khóa chung và Caesar text/file. Xem [hướng dẫn DH](src/features/diffieHellman/README.md).
 - Chạy `npm run dev:rsa` để dùng RSA với API thật qua `BACKEND_DEV_URL`; build production bằng `VITE_ENABLE_RSA=true npm run build`.
 - `RsaGateway` là ranh giới cho sinh/nhập khóa, mã hóa/giải mã số/văn bản, ký/kiểm tra số nguyên và trace; fake gateway nằm trong thư mục test, không được App import.
@@ -85,6 +99,10 @@ Khi chạy bằng Docker Compose:
 ```text
 Browser -> localhost :18081 -> Frontend/Nginx :8080 -> Backend :8000 -> SQLite /data/cipher-history.sqlite3
 ```
+
+Trên bản local hiện tại, Nginx chuyển `/api/dh/*`, `/api/rsa/sign*` và
+`/api/rsa/verify*` tới backend RSA/DH riêng; các API khác dùng backend SQLite.
+Backup SQLite local chạy trong container riêng. Stack integration được dừng khi không kiểm thử.
 
 Frontend chỉ gọi các URL tương đối `/api/...`. Vì vậy code runtime không ghi cứng địa chỉ Backend và
 không cần cấu hình CORS trong mô hình triển khai same-origin.
@@ -136,10 +154,10 @@ npm install
 npm run dev
 ```
 
-Để bật đủ tám thuật toán với Backend có đủ endpoint:
+Để bật đủ chín thuật toán với Backend có đủ endpoint:
 
 ```bash
-VITE_ENABLE_HILL=true VITE_ENABLE_DES=true VITE_ENABLE_RSA=true npm run dev
+VITE_ENABLE_HILL=true VITE_ENABLE_DES=true VITE_ENABLE_RSA=true VITE_ENABLE_DIFFIE_HELLMAN=true npm run dev
 ```
 
 Mở <http://localhost:5173>. Vite chuyển tiếp `/api` tới `BACKEND_DEV_URL`
@@ -259,13 +277,15 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test
 
 ## Chạy production stack cục bộ
 
-### Trạng thái triển khai — 11/10/2026
+### Trạng thái triển khai — 12/10/2026
 
 Frontend chính đang chạy tại <http://127.0.0.1:18081> với image
 `cipher-workbench-frontend:local-rsa-20261011`.
 Container healthy; giao diện và `/api/health` trả HTTP 200, SQLite báo `database: "ok"`.
 Các container frontend integration/demo đã được xóa sau kiểm thử;
 cổng `18082` và `18084` đã đóng. Cấu hình vẫn được giữ để khởi động lại khi cần.
+Backend/backup integration và backend legacy đã dừng để giảm RAM;
+backend SQLite local, backend RSA/DH và backup local tiếp tục hoạt động.
 BE DH/chữ ký RSA đã cập nhật lên image `cipher-workbench-be-app:rsa-da77d54`,
 áp dụng migration `sqlite_0003` và restart policy `unless-stopped`. Cổng BE `8080`
 và volume SQLite được giữ lại. BE mới giữ lịch sử 5 giờ; 58 bản ghi cũ đã hết hạn.
