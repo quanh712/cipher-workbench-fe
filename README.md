@@ -17,8 +17,9 @@ API chữ ký dùng BE `da77d54`; fake gateway chỉ dùng trong test.
 - Sau khi giảm RAM, smoke test API/upload/download, **10 kiểm thử tích hợp RSA** trên desktop/375 px và **1 kiểm thử DH tạo khóa/tính khóa chung** đều qua tại `http://127.0.0.1:18081`.
 - Bản chốt mã nguồn đạt **566 unit/component test**, **14 kiểm thử tích hợp RSA/lịch sử** trên desktop/375 px qua Tailscale; format, lint, TypeScript và production build đều qua.
 
-Image frontend đã triển khai là `cipher-workbench-frontend:release-4a1b3e0`,
-build từ commit `4a1b3e0` với đầy đủ Hill/DES/RSA/DH; container local healthy.
+Image frontend hiện tại là `cipher-workbench-frontend:signature-actions-20261012`,
+build từ worktree trên commit `6a259de` với thay đổi popup chi tiết chữ ký và đầy đủ
+Hill/DES/RSA/DH. Popup dùng các nhóm thông tin có nhãn thay cho JSON.
 Hướng dẫn bật lại và dừng stack kiểm thử nằm trong [vận hành RAM local](docs/SQLITE_COMPOSE.md#ram-khi-vận-hành-local).
 
 ## Mốc release đã kiểm thử — 08/10/2026
@@ -289,7 +290,8 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test
 ### Trạng thái triển khai — 12/10/2026
 
 Frontend chính đang chạy tại <http://127.0.0.1:18081> với image
-`cipher-workbench-frontend:release-4a1b3e0`, build từ commit `4a1b3e0`.
+`cipher-workbench-frontend:signature-actions-20261012`, build từ worktree trên commit
+`6a259de`; revision label là `6a259de-signature-actions-worktree-20261012`.
 Container healthy; giao diện và `/api/health` trả HTTP 200, SQLite báo `database: "ok"`.
 Các container frontend integration/demo đã được xóa sau kiểm thử;
 cổng `18082` và `18084` đã đóng. Cấu hình vẫn được giữ để khởi động lại khi cần.
@@ -305,10 +307,21 @@ Frontend cập nhật riêng sang `release-4a1b3e0` ngày 12/10, giữ nguyên b
 dùng lại không tự gửi, xóa/hủy xóa, cách ly hồ sơ và lỗi độc lập giữa các nguồn.
 Smoke test và **1 kiểm thử DH tạo khóa/tính khóa chung** cũng qua HTTPS tại
 <https://quanh-tran-inspiron-14-plus-7430.tail3c83f1.ts.net>.
-Container frontend healthy, revision label khớp commit `4a1b3e0`.
+Ở mốc `release-4a1b3e0`, container frontend healthy và revision label khớp commit `4a1b3e0`.
 Sau nghiệm thu, 4 container dùng khoảng **249 MiB** RAM, riêng frontend **12,36 MiB**;
 số đo biến đổi theo tải. Image `release-7e7c851` được giữ để rollback frontend;
 nếu rollback toàn bộ cấu hình, cần khôi phục cả `deploy/nginx.18081-dh.conf` từ commit `5edefc8`.
+
+Popup chi tiết chữ ký đã được cập nhật trên cổng `18081` bằng image
+`signature-details-20261012`: kết quả nổi bật, thông điệp/chữ ký, khóa công khai và
+thông tin thao tác hiển thị bằng nhãn, không còn JSON. **16 kiểm thử tích hợp RSA/lịch sử**
+đã qua trực tiếp với backend thật tại `http://127.0.0.1:18081` trên desktop/375 px;
+smoke test API/upload/download cũng qua. Image `release-4a1b3e0` được giữ để rollback.
+
+Image `signature-actions-20261012` chỉnh hai nút dùng lại/xóa về cùng chiều cao
+44 px và cỡ chữ 14 px; desktop đặt cạnh nhau, mobile xếp dọc và rộng hết nội dung.
+Đã kiểm tra kích thước thực trên trình duyệt sáng/tối ở 1280/375 px và chạy qua
+**4 kiểm thử lịch sử chữ ký với backend thật** tại `18081`.
 
 Docker build chỉ gửi các đầu vào frontend cần thiết, dùng cache `npm ci` và
 tách stage build/runtime. Nginx bật gzip, cache asset và tái sử dụng kết nối
@@ -367,7 +380,7 @@ Cần network Docker `cipher-workbench-be_default` và BE mới đang chạy.
 Tailscale Serve/Funnel trên máy này chuyển HTTPS tới `127.0.0.1:18081`.
 
 ```bash
-docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:release-4a1b3e0 .
+docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION=6a259de-signature-actions-worktree-20261012 -t cipher-workbench-frontend:signature-actions-20261012 .
 ./deploy/frontend.sh local up
 ```
 
@@ -458,5 +471,5 @@ Khi tài liệu FE khác completed OpenSpec hoặc consumer guide đã ghim củ
 
 ## Giới hạn hiện tại
 
-- Thẻ lịch sử FE hiển thị metadata cipher chung toàn instance. BE chữ ký RSA có lịch sử riêng theo cookie, nhưng FE chưa có giao diện xem lại lịch sử chữ ký. Chưa có tài khoản.
+- Lịch sử cipher dùng chung toàn instance; lịch sử ký/kiểm tra RSA xem lại riêng theo cookie hồ sơ trình duyệt, lưu tối đa 5 giờ. Chưa có tài khoản.
 - Chưa hỗ trợ brute-force, tự động tìm khóa hoặc alphabet tùy chỉnh.

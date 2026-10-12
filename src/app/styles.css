@@ -2032,15 +2032,110 @@ textarea,
 .history__dialog::backdrop {
   background: #13273b99;
 }
-.history__dialog pre {
+.history__signature-details {
+  margin-block: 20px;
+}
+.history__outcome {
+  padding: 16px;
+  border-left: 4px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.history__outcome--success {
+  border-color: var(--success);
+  background: var(--success-surface);
+}
+.history__outcome--error {
+  border-color: var(--danger);
+  background: var(--danger-surface);
+}
+.history__outcome h3 {
+  margin: 0;
+  font-size: 20px;
+}
+.history__outcome--success h3 {
+  color: var(--success);
+}
+.history__outcome--error h3 {
+  color: var(--danger);
+}
+.history__outcome p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+.history__detail-section {
+  margin-top: 24px;
+}
+.history__detail-section h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.history__facts {
+  margin: 0;
+}
+.history__facts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+  gap: 8px 16px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.history__facts dt {
+  color: var(--control-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.history__facts dd {
+  min-width: 0;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  background: var(--surface);
-  padding: 16px;
-  border-radius: 8px;
+}
+.history__facts--metadata dd {
+  font-weight: 400;
+}
+@media (max-width: 560px) {
+  .history__dialog {
+    padding: 16px;
+  }
+  .history__facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
 }
 .history__dialog button {
   margin-top: 8px;
   max-width: 100%;
   white-space: normal;
+}
+.history__dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+}
+.history__dialog-actions .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+@media (max-width: 560px) {
+  .history__dialog-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .history__dialog-actions .button {
+    width: 100%;
+    min-width: 0;
+  }
 }

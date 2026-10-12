@@ -28,6 +28,15 @@ Workspace có hai tab **Mã hóa / Chữ ký số** và phần khóa dùng chung
 - Trace bình phương–nhân từ BE hiển thị trong bảng có thể thu gọn. Giải thích `s=mᵈ mod n`, `m′=sᵉ mod n`; RSA học thuật không băm/padding, không xác lập danh tính.
 - Ký văn bản/file bằng PEM và RSASSA-PSS nằm ngoài phạm vi giao diện số hiện tại.
 
+## Lịch sử ký và kiểm tra chữ ký
+
+- Gộp bản ghi riêng vào **Lịch sử thao tác**, mới nhất trước; bộ lọc **Ký / Kiểm tra chữ ký** chỉ đọc nguồn lịch sử RSA theo cookie hồ sơ trình duyệt. Lịch sử mã hóa/giải mã chung vẫn dùng nguồn riêng.
+- Cả kiểm tra hợp lệ và không hợp lệ đều được lưu khi BE báo `history.saved:true`. `valid:false` hiển thị **Chữ ký không hợp lệ**, còn trạng thái request vẫn **Thành công**; không đổi thành lỗi dịch vụ.
+- **Xem chi tiết** mở popup; **Dùng lại để kiểm tra chữ ký** chỉ điền thông điệp, chữ ký và khóa công khai, không tự gửi request hoặc khôi phục khóa riêng/trace. **Xóa bản ghi** cần xác nhận, không có xóa toàn bộ.
+- Popup chi tiết hiển thị kết quả, thông điệp/chữ ký, khóa công khai và thông tin thao tác theo nhóm có nhãn, không hiển thị JSON. Dữ liệu thiếu ghi rõ **Không có dữ liệu**. Hai nút dùng lại/xóa có cùng chiều cao 44 px; desktop đặt cạnh nhau, mobile xếp dọc và rộng hết nội dung.
+- Tải lại khi mở lịch sử; hỗ trợ làm mới, tải thêm và thử lại từng nguồn. Một nguồn lỗi không chặn dữ liệu từ nguồn còn lại. Bản ghi lưu tối đa 5 giờ, có thể mất sớm do hạn mức; đọc không gia hạn.
+- FE gọi `/api/rsa/history` và `/{id}`; proxy chuyển sang API lịch sử riêng của BE RSA. Không lưu payload vào localStorage. Integration E2E kiểm cả hai kết quả kiểm tra sau reload, xem chi tiết, dùng lại, xóa và cách ly hồ sơ trên desktop/375 px.
+
 ## Định dạng dữ liệu
 
 Mọi số lớn giữ nguyên dạng chuỗi thập phân, không chuyển qua `Number`. Bản rõ số là một chuỗi số; bản mã cho cả số và văn bản là **JSON array of decimal strings**, ví dụ `["11"]` hoặc `["11","76"]`. Kết quả hiển thị, sao chép và tải xuống dùng cùng định dạng đó. Giải mã số yêu cầu đúng một phần tử; JSON numeric values bị từ chối để tránh mất chính xác.

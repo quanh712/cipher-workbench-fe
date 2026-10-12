@@ -211,8 +211,12 @@ test("private signature history survives reload, reuses without submitting, dele
   const row = page.locator(".history__item").first();
   await row.getByRole("button", { name: "Xem chi tiết" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByLabel("Dữ liệu chữ ký")).toContainText('"m": "88"');
-  await expect(dialog.getByLabel("Dữ liệu chữ ký")).not.toContainText('"d"');
+  await expect(dialog.getByRole("heading", { name: "Đã ký", exact: true })).toBeVisible();
+  await expect(
+    dialog.locator(".history__facts > div").filter({ hasText: "Thông điệp gốc m" }).locator("dd"),
+  ).toHaveText("88");
+  await expect(dialog.getByRole("heading", { name: "Khóa công khai", exact: true })).toBeVisible();
+  await expect(dialog.locator("pre")).toHaveCount(0);
   expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath("signature-history-detail.png") });
   await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
@@ -261,6 +265,68 @@ test("private signature history survives reload, reuses without submitting, dele
   ).toBe(404);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath("signature-history.png"), fullPage: true });
+});
+
+test("verification history retains valid and invalid outcomes after reload", async ({ page }) => {
+  await page.getByRole("tab", { name: "Chữ ký số" }).click();
+  await page.getByRole("radio", { name: /Kiểm tra/ }).click();
+  await page.getByRole("button", { name: "Tạo ví dụ" }).click();
+  await page.getByRole("textbox", { name: "d · khóa riêng" }).fill("");
+  const ids: number[] = [];
+  for (const [message, valid] of [
+    ["88", true],
+    ["89", false],
+  ] as const) {
+    await page.getByRole("textbox", { name: "Thông điệp gốc m (số)" }).fill(message);
+    const responsePromise = page.waitForResponse(/\/api\/rsa\/verify\/raw$/);
+    await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.result.valid).toBe(valid);
+    expect(body.history.saved).toBe(true);
+    ids.push(body.history.id);
+    await expect(
+      page
+        .locator(".rsa__signature-result")
+        .getByText(valid ? "Chữ ký hợp lệ" : "Chữ ký không hợp lệ", { exact: true }),
+    ).toBeVisible();
+  }
+  await page.reload();
+  await page.getByRole("button", { name: "Lịch sử thao tác", exact: true }).click();
+  await page.getByRole("combobox", { name: "Thao tác", exact: true }).selectOption("verify");
+  const rows = page.locator(".history__item");
+  await expect(rows).toHaveCount(2);
+  for (const [index, valid] of [
+    [0, false],
+    [1, true],
+  ] as const) {
+    const row = rows.nth(index);
+    await expect(row).toContainText("Thành công");
+    await expect(
+      row.getByText(valid ? "Chữ ký hợp lệ" : "Chữ ký không hợp lệ", { exact: true }),
+    ).toBeVisible();
+    await row.getByRole("button", { name: "Xem chi tiết" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText(`Chi tiết chữ ký #${ids[valid ? 0 : 1]}`);
+    const payload = dialog.getByLabel("Dữ liệu chữ ký");
+    await expect(
+      payload.getByRole("heading", {
+        name: valid ? "Chữ ký hợp lệ" : "Chữ ký không hợp lệ",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      payload
+        .locator(".history__facts > div")
+        .filter({ hasText: "Thông điệp khôi phục m′" })
+        .locator("dd"),
+    ).toHaveText("88");
+    await expect(payload).toContainText(valid ? "(m′ = m)" : "(m′ ≠ m)");
+    await expect(payload.locator("pre")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Đóng", exact: true }).click();
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test("history source failures keep the other source visible and permit retry", async ({ page }) => {
