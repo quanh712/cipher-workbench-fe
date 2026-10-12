@@ -24,6 +24,14 @@ Ngày 12/10/2026, backend/backup integration và backend legacy
 volume vẫn được giữ; frontend local tiếp tục dùng backend SQLite cho API chung
 và backend `cipher-workbench-be-app-1` cho RSA signature/DH.
 
+Frontend được triển khai tiếp ngày 12/10 với image
+`cipher-workbench-frontend:release-7e7c851`, build từ archive Git của commit
+`7e7c85180930b5ad17bbad52b5f1708d8daed153`, bật đủ Hill/DES/RSA/DH.
+Override `deploy/docker-compose.18081-dh.yml` chọn image này; wrapper cập nhật
+riêng frontend bằng `--no-deps`, không bật lại các container đã dừng.
+Image trước `cipher-workbench-frontend:local-rsa-20261011` vẫn được giữ để rollback:
+đổi image trong override về tag cũ rồi chạy `./deploy/frontend.sh local up`.
+
 ## RAM khi vận hành local
 
 Đo bằng `docker stats --no-stream` ngày 12/10/2026: tổng RAM của các container

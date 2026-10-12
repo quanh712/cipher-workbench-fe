@@ -16,8 +16,8 @@ API chữ ký dùng BE `da77d54`; fake gateway chỉ dùng trong test.
 - Sau khi giảm RAM, smoke test API/upload/download, **10 kiểm thử tích hợp RSA** trên desktop/375 px và **1 kiểm thử DH tạo khóa/tính khóa chung** đều qua tại `http://127.0.0.1:18081`.
 - Bản chốt mã nguồn đạt **564 unit/component test**, **8 kiểm thử UI RSA** trên desktop/375 px và light/dark theme; format, lint, TypeScript và production build đều qua.
 
-Image frontend đang triển khai vẫn là `cipher-workbench-frontend:local-rsa-20261011`;
-các chỉnh sửa giao diện của bản chốt cần build/cập nhật frontend để triển khai.
+Image frontend đã triển khai là `cipher-workbench-frontend:release-7e7c851`,
+build từ commit `7e7c851` với đầy đủ Hill/DES/RSA/DH; container local healthy.
 Hướng dẫn bật lại và dừng stack kiểm thử nằm trong [vận hành RAM local](docs/SQLITE_COMPOSE.md#ram-khi-vận-hành-local).
 
 ## Mốc release đã kiểm thử — 08/10/2026
@@ -280,7 +280,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test
 ### Trạng thái triển khai — 12/10/2026
 
 Frontend chính đang chạy tại <http://127.0.0.1:18081> với image
-`cipher-workbench-frontend:local-rsa-20261011`.
+`cipher-workbench-frontend:release-7e7c851`, build từ commit `7e7c851`.
 Container healthy; giao diện và `/api/health` trả HTTP 200, SQLite báo `database: "ok"`.
 Các container frontend integration/demo đã được xóa sau kiểm thử;
 cổng `18082` và `18084` đã đóng. Cấu hình vẫn được giữ để khởi động lại khi cần.
@@ -290,6 +290,13 @@ BE DH/chữ ký RSA đã cập nhật lên image `cipher-workbench-be-app:rsa-da
 áp dụng migration `sqlite_0003` và restart policy `unless-stopped`. Cổng BE `8080`
 và volume SQLite được giữ lại. BE mới giữ lịch sử 5 giờ; 58 bản ghi cũ đã hết hạn.
 Snapshot trước cập nhật được giữ cục bộ; xem [biên bản khôi phục](docs/TAILSCALE_RSA_RECOVERY_20261011.md).
+
+Frontend được cập nhật riêng ngày 12/10, giữ nguyên backend và dữ liệu SQLite.
+Smoke test local, 10 kiểm thử tích hợp RSA trên desktop/375 px và luồng DH
+tạo khóa/tính khóa chung đều qua trên image mới. Khi kiểm tra
+URL Tailscale trong đợt triển khai này, kết nối HTTPS bị đóng ở bước TLS trước
+khi tải trang; máy hiện tại không có CLI/tiến trình Tailscale để kiểm tra Serve/Funnel.
+Trạng thái healthy local chưa xác nhận truy cập HTTPS bên ngoài.
 
 Docker build chỉ gửi các đầu vào frontend cần thiết, dùng cache `npm ci` và
 tách stage build/runtime. Nginx bật gzip, cache asset và tái sử dụng kết nối
@@ -348,7 +355,7 @@ Cần network Docker `cipher-workbench-be_default` và BE mới đang chạy.
 Tailscale Serve/Funnel trên máy này chuyển HTTPS tới `127.0.0.1:18081`.
 
 ```bash
-docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:local-rsa-20261011 .
+docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION="$(git rev-parse HEAD)" -t cipher-workbench-frontend:release-7e7c851 .
 ./deploy/frontend.sh local up
 ```
 
