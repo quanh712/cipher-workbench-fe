@@ -293,10 +293,11 @@ Snapshot trước cập nhật được giữ cục bộ; xem [biên bản khôi
 
 Frontend được cập nhật riêng ngày 12/10, giữ nguyên backend và dữ liệu SQLite.
 Smoke test local, 10 kiểm thử tích hợp RSA trên desktop/375 px và luồng DH
-tạo khóa/tính khóa chung đều qua trên image mới. Khi kiểm tra
-URL Tailscale trong đợt triển khai này, kết nối HTTPS bị đóng ở bước TLS trước
-khi tải trang; máy hiện tại không có CLI/tiến trình Tailscale để kiểm tra Serve/Funnel.
-Trạng thái healthy local chưa xác nhận truy cập HTTPS bên ngoài.
+tạo khóa/tính khóa chung đều qua trên image mới. Lần kiểm tra HTTPS đầu tiên
+bị đóng kết nối ở bước TLS. Kiểm thử lại qua
+<https://quanh-tran-inspiron-14-plus-7430.tail3c83f1.ts.net> ngày 12/10 đã trả HTTP 200;
+smoke test, **10 kiểm thử RSA** và **1 kiểm thử DH tạo khóa/tính khóa chung**
+đều qua HTTPS. Asset JavaScript/CSS khớp image `release-7e7c851`.
 
 Docker build chỉ gửi các đầu vào frontend cần thiết, dùng cache `npm ci` và
 tách stage build/runtime. Nginx bật gzip, cache asset và tái sử dụng kết nối
