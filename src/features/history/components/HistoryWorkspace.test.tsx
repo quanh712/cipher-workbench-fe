@@ -322,7 +322,7 @@ it.each([
     });
   await user.selectOptions(screen.getByLabelText("Thao tác"), operation);
   const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
-  expect(within(list).getByText("Diffie–Hellman minh họa")).toBeVisible();
+  expect(within(list).getByText("Diffie–Hellman")).toBeVisible();
   expect(within(list).getByText(label)).toBeVisible();
   expect(within(list).getByText("Thông tin thao tác")).toBeVisible();
   expect(within(list).queryByText(/Đầu vào:|Đầu ra:|Văn bản/)).not.toBeInTheDocument();

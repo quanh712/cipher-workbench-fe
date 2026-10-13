@@ -20,7 +20,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 function openDh() {
-  fireEvent.click(screen.getByRole("tab", { name: /Diffie–Hellman minh họa/ }));
+  fireEvent.click(screen.getByRole("tab", { name: /Diffie–Hellman/ }));
 }
 function submit() {
   fireEvent.click(screen.getByRole("button", { name: "Tạo ví dụ" }));

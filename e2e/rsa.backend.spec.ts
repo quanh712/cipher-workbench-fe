@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("tab", { name: /RSA minh họa.*Khả dụng/ }).click();
+  await page.getByRole("tab", { name: /RSA.*Khả dụng/ }).click();
 });
 
 test("explicit key generation, independent number operations and trace", async ({ page }) => {

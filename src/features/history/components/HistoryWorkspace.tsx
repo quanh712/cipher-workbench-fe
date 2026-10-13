@@ -307,7 +307,7 @@ export function HistoryWorkspace({
                 </span>
                 <strong>
                   {item.cipher === "diffie-hellman"
-                    ? "Diffie–Hellman minh họa"
+                    ? "Diffie–Hellman"
                     : (cipherAlgorithms.find(({ value }) => value === item.cipher)?.name ??
                       item.cipher)}
                 </strong>

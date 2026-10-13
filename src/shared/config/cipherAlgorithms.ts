@@ -50,14 +50,14 @@ const allCipherAlgorithms = [
   },
   {
     value: "rsa",
-    name: "RSA minh họa",
+    name: "RSA",
     description: "Sinh khóa và xem từng bước",
     status: "Khả dụng",
     available: true,
   },
   {
     value: "diffie-hellman",
-    name: "Diffie–Hellman minh họa",
+    name: "Diffie–Hellman",
     description: "Thiết lập bí mật chung giữa A và B",
     status: "Khả dụng",
     available: true,

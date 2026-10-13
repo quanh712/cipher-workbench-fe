@@ -73,7 +73,7 @@ export function DiffieHellmanWorkspace({ cipher }: { cipher: DiffieHellmanContro
   return (
     <div className="cipher-workspace dh">
       <header className="dh__intro">
-        <h2>Diffie–Hellman minh họa</h2>
+        <h2>Diffie–Hellman</h2>
         <p>Nhập tham số để hai bên A và B thiết lập cùng một bí mật chung.</p>
       </header>
       <form

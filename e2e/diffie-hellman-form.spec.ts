@@ -164,7 +164,7 @@ for (const theme of ["light", "dark"] as const) {
       document.documentElement.dataset.theme = value;
     }, theme);
     const caesar = page.getByRole("tab", { name: /Caesar/ });
-    const dh = page.getByRole("tab", { name: /Diffie–Hellman minh họa/ });
+    const dh = page.getByRole("tab", { name: /Diffie–Hellman/ });
     await caesar.focus();
     await caesar.press("End");
     await expect(dh).toBeFocused();

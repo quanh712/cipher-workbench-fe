@@ -9,7 +9,7 @@ async function openApp(page: Page, theme: "light" | "dark") {
   await page.evaluate((value) => {
     document.documentElement.dataset.theme = value;
   }, theme);
-  await page.getByRole("tab", { name: /Diffie–Hellman minh họa/ }).click();
+  await page.getByRole("tab", { name: /Diffie–Hellman/ }).click();
   await page.getByRole("button", { name: "Tạo ví dụ", exact: true }).click();
 }
 const submit = (page: Page) =>

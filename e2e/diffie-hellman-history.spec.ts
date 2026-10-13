@@ -67,7 +67,7 @@ test("filters DH history, paginates and retries a server error", async ({ page }
     .selectOption("diffie-hellman");
   await page.getByRole("combobox", { name: "Thao tác", exact: true }).selectOption("exchange");
   const list = page.getByRole("list", { name: "Các thao tác gần đây" });
-  await expect(list.getByText("Diffie–Hellman minh họa")).toBeVisible();
+  await expect(list.getByText("Diffie–Hellman")).toBeVisible();
   await expect(list.getByText("Trao đổi khóa")).toBeVisible();
   await expect(list.getByText("Thông tin thao tác")).toBeVisible();
   await expect(list.getByText(/Đầu vào:|Đầu ra:/)).toHaveCount(0);
