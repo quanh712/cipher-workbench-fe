@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { cipherAlgorithms } from "../../../shared/config/cipherAlgorithms";
+import { getCipherAlgorithms } from "../../../shared/config/cipherAlgorithms";
 import type { CipherAlgorithm } from "../../../shared/types/cipher";
 import {
   canShowServerHistory,
   getHealthStatus,
   getHistory,
+  getDhHistory,
   type HistoryItem,
   HistoryApiError,
+  dhHistoryOperations,
+  type HistoryOperation,
 } from "../services/historyApi";
 
 import {
@@ -32,8 +35,24 @@ function timeLabel(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString("vi-VN");
 }
 
-type Operation = "" | "encrypt" | "decrypt" | "sign" | "verify";
-type Row = (HistoryItem | SignatureHistoryItem) & { origin: "common" | "private" };
+type Operation = "" | HistoryOperation | "sign" | "verify";
+const operationLabels = {
+  encrypt: "Mã hóa",
+  decrypt: "Giải mã",
+  sign: "Ký",
+  verify: "Kiểm tra chữ ký",
+  ...dhHistoryOperations,
+};
+
+function operationsFor(cipher: CipherAlgorithm | "", includeDh: boolean) {
+  return (Object.keys(operationLabels) as Exclude<Operation, "">[]).filter((value) => {
+    if (value === "encrypt" || value === "decrypt") return true;
+    if (value === "sign" || value === "verify") return !cipher || cipher === "rsa";
+    return includeDh && (!cipher || cipher === "diffie-hellman");
+  });
+}
+
+type Row = (HistoryItem | SignatureHistoryItem) & { origin: "common" | "private" | "dh" };
 type Stream = { items: Row[]; cursor: string | null; error: string | null; loading: boolean };
 const emptyStream: Stream = { items: [], cursor: null, error: null, loading: true };
 
@@ -44,17 +63,30 @@ export function HistoryWorkspace({
   const [operation, setOperation] = useState<Operation>("");
   const [streams, setStreams] = useState<Record<string, Stream>>({
     common: emptyStream,
+    dh: emptyStream,
     sign: emptyStream,
     verify: emptyStream,
   });
   const [retry, setRetry] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const controllers = useRef<AbortController[]>([]);
-  const commonEnabled = operation !== "sign" && operation !== "verify";
+  const cipherAlgorithms = getCipherAlgorithms();
+  const includeDh = cipherAlgorithms.some(({ value }) => value === "diffie-hellman");
+  const operations = operationsFor(cipher, includeDh);
+  const dhOperation = operation in dhHistoryOperations;
+  const dhEnabled =
+    cipherAlgorithms.some(({ value }) => value === "diffie-hellman") &&
+    (!cipher || cipher === "diffie-hellman") &&
+    operation !== "sign" &&
+    operation !== "verify";
+  const commonEnabled =
+    cipher !== "diffie-hellman" && !dhOperation && operation !== "sign" && operation !== "verify";
   const signatureEnabled =
-    (!cipher || cipher === "rsa") && operation !== "encrypt" && operation !== "decrypt";
+    (!cipher || cipher === "rsa") &&
+    (operation === "" || operation === "sign" || operation === "verify");
   const keys = [
     ...(commonEnabled ? ["common"] : []),
+    ...(dhEnabled ? ["dh"] : []),
     ...(signatureEnabled
       ? operation === "sign"
         ? ["sign"]
@@ -79,12 +111,14 @@ export function HistoryWorkspace({
           );
       }
       const page =
-        key === "common"
-          ? await getHistory(
+        key === "common" || key === "dh"
+          ? await (key === "dh" ? getDhHistory : getHistory)(
               {
-                cipher: cipher || undefined,
+                cipher: key === "dh" ? "diffie-hellman" : cipher || undefined,
                 operation:
-                  operation === "encrypt" || operation === "decrypt" ? operation : undefined,
+                  operation && operation !== "sign" && operation !== "verify"
+                    ? operation
+                    : undefined,
                 ...(cursor ? { cursor } : {}),
               },
               signal,
@@ -98,7 +132,12 @@ export function HistoryWorkspace({
           .filter((item) => !ids.has(item.id))
           .map((item) => ({
             ...item,
-            origin: key === "common" ? ("common" as const) : ("private" as const),
+            origin:
+              key === "common"
+                ? ("common" as const)
+                : key === "dh"
+                  ? ("dh" as const)
+                  : ("private" as const),
           }));
         return {
           ...current,
@@ -131,7 +170,7 @@ export function HistoryWorkspace({
     controllers.current = [controller];
     queueMicrotask(() => {
       if (controller.signal.aborted) return;
-      setStreams({ common: emptyStream, sign: emptyStream, verify: emptyStream });
+      setStreams({ common: emptyStream, dh: emptyStream, sign: emptyStream, verify: emptyStream });
       keys.forEach((key) => void load(key, undefined, controller.signal));
     });
     return () => controllers.current.forEach((value) => value.abort());
@@ -148,7 +187,11 @@ export function HistoryWorkspace({
     -Infinity,
   );
   const items = keys
-    .flatMap((key) => streams[key].items)
+    .flatMap((key) =>
+      streams[key].items.filter(
+        (item) => key !== "common" || !dhEnabled || item.cipher !== "diffie-hellman",
+      ),
+    )
     .filter((item) => Date.parse(item.createdAt) >= boundary)
     .sort(
       (a, b) =>
@@ -170,8 +213,8 @@ export function HistoryWorkspace({
         <div>
           <h2 id="history-title">Lịch sử thao tác</h2>
           <p>
-            Lịch sử mã hóa và giải mã dùng chung trên trang. Chữ ký chỉ thuộc hồ sơ trình duyệt này,
-            lưu tối đa 5 giờ và có thể bị xóa sớm khi vượt hạn mức.
+            Lịch sử thuộc hồ sơ trình duyệt này, lưu tối đa 5 giờ và có thể bị xóa sớm khi vượt hạn
+            mức. Diffie–Hellman chỉ lưu thông tin thao tác, không lưu tham số, khóa hay trace.
           </p>
         </div>
         <button
@@ -188,16 +231,19 @@ export function HistoryWorkspace({
           Thuật toán
           <select
             value={cipher}
-            onChange={(event) => setCipher(event.target.value as CipherAlgorithm | "")}
+            onChange={(event) => {
+              const nextCipher = event.target.value as CipherAlgorithm | "";
+              setCipher(nextCipher);
+              if (operation && !operationsFor(nextCipher, includeDh).includes(operation))
+                setOperation("");
+            }}
           >
             <option value="">Tất cả</option>
-            {cipherAlgorithms
-              .filter(({ value }) => value !== "diffie-hellman")
-              .map(({ value, name }) => (
-                <option key={value} value={value}>
-                  {name}
-                </option>
-              ))}
+            {cipherAlgorithms.map(({ value, name }) => (
+              <option key={value} value={value}>
+                {name}
+              </option>
+            ))}
           </select>
         </label>
         <label>
@@ -207,10 +253,11 @@ export function HistoryWorkspace({
             onChange={(event) => setOperation(event.target.value as Operation)}
           >
             <option value="">Tất cả</option>
-            <option value="encrypt">Mã hóa</option>
-            <option value="decrypt">Giải mã</option>
-            <option value="sign">Ký</option>
-            <option value="verify">Kiểm tra chữ ký</option>
+            {operations.map((value) => (
+              <option key={value} value={value}>
+                {operationLabels[value]}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -224,7 +271,12 @@ export function HistoryWorkspace({
         (key) =>
           streams[key].error && (
             <p key={key} className="history__message history__message--error" role="alert">
-              {key === "common" ? "Lịch sử chung" : "Lịch sử chữ ký riêng"}: {streams[key].error}{" "}
+              {key === "common"
+                ? "Lịch sử chung"
+                : key === "dh"
+                  ? "Lịch sử Diffie–Hellman"
+                  : "Lịch sử chữ ký riêng"}
+              : {streams[key].error}{" "}
               <button
                 type="button"
                 disabled={streams[key].loading}
@@ -254,7 +306,10 @@ export function HistoryWorkspace({
                   {item.succeeded ? "Thành công" : `Lỗi ${item.httpStatus}`}
                 </span>
                 <strong>
-                  {cipherAlgorithms.find(({ value }) => value === item.cipher)?.name ?? item.cipher}
+                  {item.cipher === "diffie-hellman"
+                    ? "Diffie–Hellman minh họa"
+                    : (cipherAlgorithms.find(({ value }) => value === item.cipher)?.name ??
+                      item.cipher)}
                 </strong>
                 <span>
                   {item.operation === "encrypt"
@@ -265,10 +320,18 @@ export function HistoryWorkspace({
                         ? "Ký"
                         : item.operation === "verify"
                           ? "Kiểm tra chữ ký"
-                          : "Chưa xác định"}
+                          : item.operation && item.operation in dhHistoryOperations
+                            ? dhHistoryOperations[
+                                item.operation as keyof typeof dhHistoryOperations
+                              ]
+                            : "Chưa xác định"}
                 </span>
                 <span className="history__status">
-                  {item.origin === "private" ? "Chữ ký riêng" : "Lịch sử chung"}
+                  {item.origin === "private"
+                    ? "Chữ ký riêng"
+                    : item.cipher === "diffie-hellman"
+                      ? "Lịch sử Diffie–Hellman"
+                      : "Lịch sử chung"}
                 </span>
                 <time dateTime={item.createdAt}>{timeLabel(item.createdAt)}</time>
               </div>
@@ -290,16 +353,28 @@ export function HistoryWorkspace({
                 <span>
                   {item.origin === "private"
                     ? "Chữ ký RSA"
-                    : item.source === "text"
-                      ? "Văn bản"
-                      : item.responseMode === "file"
-                        ? "Tải file"
-                        : item.responseMode === "content"
-                          ? "Xem trước file"
-                          : "File"}
+                    : item.cipher === "diffie-hellman" &&
+                        item.operation &&
+                        item.operation in dhHistoryOperations
+                      ? "Thông tin thao tác"
+                      : item.source === "text"
+                        ? "Văn bản"
+                        : item.responseMode === "file"
+                          ? "Tải file"
+                          : item.responseMode === "content"
+                            ? "Xem trước file"
+                            : "File"}
                 </span>
-                <span>Đầu vào: {lengthLabel(item.inputLength, item.source)}</span>
-                <span>Đầu ra: {lengthLabel(item.outputLength, item.source)}</span>
+                {!(
+                  item.cipher === "diffie-hellman" &&
+                  item.operation &&
+                  item.operation in dhHistoryOperations
+                ) && (
+                  <>
+                    <span>Đầu vào: {lengthLabel(item.inputLength, item.source)}</span>
+                    <span>Đầu ra: {lengthLabel(item.outputLength, item.source)}</span>
+                  </>
+                )}
                 <span>{item.durationMs.toLocaleString("vi-VN")} ms</span>
               </div>
             </li>

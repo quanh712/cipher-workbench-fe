@@ -363,7 +363,7 @@ async function historySnapshot(request: APIRequestContext) {
   return items;
 }
 
-test("history records only safe Caesar text/file metadata", async ({ request }) => {
+test("history records safe metadata for every DH operation", async ({ request }) => {
   const health = await request.get("/api/health");
   expect(health.status()).toBe(200);
   expect((await health.json()).result).toMatchObject({ database: "ok", history: "enabled" });
@@ -376,7 +376,7 @@ test("history records only safe Caesar text/file metadata", async ({ request }) 
     ["/api/dh/exchange", preset],
   ] as const)
     await readDh(await request.post(path, { data }));
-  expect(await historySnapshot(request)).toEqual(before);
+
   await readDh(
     await request.post("/api/dh/caesar", {
       data: { q: "23", privateKey: "6", otherPublicKey: "19", action: "encrypt", data: "Hello" },
@@ -399,12 +399,28 @@ test("history records only safe Caesar text/file metadata", async ({ request }) 
         (await historySnapshot(request)).filter((item) => !before.some((old) => old.id === item.id))
           .length,
     )
-    .toBe(2);
+    .toBe(7);
   const added = (await historySnapshot(request)).filter(
     (item) => !before.some((old) => old.id === item.id),
   );
   expect(added).toEqual(
     expect.arrayContaining([
+      ...[
+        "validate_params",
+        "generate_params",
+        "generate_keypair",
+        "derive_shared_secret",
+        "exchange",
+      ].map((operation) =>
+        expect.objectContaining({
+          cipher: "dh",
+          operation,
+          source: "text",
+          inputLength: null,
+          outputLength: null,
+          succeeded: true,
+        }),
+      ),
       expect.objectContaining({
         cipher: "dh",
         operation: "encrypt",
@@ -419,6 +435,16 @@ test("history records only safe Caesar text/file metadata", async ({ request }) 
       }),
     ]),
   );
+  const filtered = await request.get("/api/history", {
+    params: { cipher: "dh", operation: "exchange" },
+  });
+  expect(filtered.status()).toBe(200);
+  const exchangePage = (await filtered.json()).result;
+  expect(exchangePage.items).toContainEqual(
+    expect.objectContaining({ id: added.find((row) => row.operation === "exchange")!.id }),
+  );
+  for (const row of exchangePage.items)
+    expect(row).toMatchObject({ cipher: "dh", operation: "exchange" });
   const forbidden =
     /^(q|alpha|privateKey.*|publicKey.*|sharedKey.*|otherPublicKey|shift|data|result|file|filename|content|steps|trace|warning)$/i;
   for (const row of added) for (const key of Object.keys(row)) expect(key).not.toMatch(forbidden);

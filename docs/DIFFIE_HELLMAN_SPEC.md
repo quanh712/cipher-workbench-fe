@@ -45,7 +45,7 @@ Thứ tự validation: declared Content-Length >64 MiB → media/parse/duplicate
 
 Một tác vụ mỗi thời điểm. Sửa đầu vào, preset/reset, đổi workspace hoặc unmount abort và tăng revision; response/error/finally cũ không được áp state. Request mới xóa kết quả/trace cũ. Timeout 15 giây, không auto retry. Khởi tạo trống; Tạo ví dụ điền 23/5/6/15 mà không gửi request. Header Làm mới xóa draft và về Caesar. Không tự gọi khi mount/mở trace.
 
-Giữ draft/snapshot/result trong bộ nhớ; không log, persist hoặc đưa parameters/keys/input/output/file/trace/warning vào URL, analytics hay browser history. Chỉ `/api/dh/caesar` ghi metadata server history best-effort: source text/file, operation theo action, responseMode null. Năm endpoint còn lại không ghi row. History tắt/lỗi không làm DH thất bại.
+Giữ draft/snapshot/result trong bộ nhớ; không log, persist hoặc đưa parameters/keys/input/output/file/trace/warning vào URL, analytics hay browser history. Cả sáu endpoint ghi metadata server history best-effort, thuộc hồ sơ trình duyệt hiện tại. `/api/dh/caesar` giữ source text/file, operation theo action, responseMode null. Năm endpoint còn lại ghi lần lượt `validate_params`, `generate_params`, `generate_keypair`, `derive_shared_secret`, `exchange`, source text và hai length null. UI ánh xạ cipher `dh` thành `diffie-hellman`, hỗ trợ bộ lọc và nhãn tiếng Việt; standalone chỉ hiển thị thông tin thao tác, không có chi tiết khóa/trace. History tắt/lỗi không làm DH thất bại.
 
 Contract hiện tại không có ECDH, KDF, xác thực MITM hay key storage. Không quảng bá cho bảo mật production.
 

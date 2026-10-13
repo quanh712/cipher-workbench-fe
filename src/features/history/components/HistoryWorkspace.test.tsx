@@ -1,14 +1,15 @@
 import { getSignatureHistory } from "../services/signatureHistoryApi";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { HistoryWorkspace } from "./HistoryWorkspace";
-import { getHealthStatus, getHistory, HistoryApiError } from "../services/historyApi";
+import { getHealthStatus, getHistory, getDhHistory, HistoryApiError } from "../services/historyApi";
 
 vi.mock("../services/historyApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../services/historyApi")>()),
   getHealthStatus: vi.fn(),
   getHistory: vi.fn(),
+  getDhHistory: vi.fn(),
 }));
 
 vi.mock("../services/signatureHistoryApi", async (original) => ({
@@ -18,6 +19,7 @@ vi.mock("../services/signatureHistoryApi", async (original) => ({
 
 const statusMock = vi.mocked(getHealthStatus);
 const historyMock = vi.mocked(getHistory);
+const dhHistoryMock = vi.mocked(getDhHistory);
 const historyItem = {
   id: 1,
   createdAt: "2026-09-28T03:20:02Z",
@@ -34,6 +36,10 @@ const historyItem = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  historyMock.mockReset();
+  historyMock.mockResolvedValue({ items: [], nextCursor: null });
+  dhHistoryMock.mockReset();
+  dhHistoryMock.mockResolvedValue({ items: [], nextCursor: null });
   vi.mocked(getSignatureHistory).mockResolvedValue({ items: [], nextCursor: null });
   statusMock.mockResolvedValue({ database: "ok", history: "enabled" });
 });
@@ -262,4 +268,191 @@ it("holds older rows until every unfinished source crosses their timestamp", asy
   await user.click(screen.getByRole("button", { name: "Tải thêm" }));
   await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(5));
   expect(within(list).getAllByRole("listitem")[2]).toHaveTextContent("Lịch sử chung");
+});
+
+afterEach(() => vi.unstubAllEnvs());
+
+it.each([
+  ["validate_params", "Kiểm tra tham số"],
+  ["generate_params", "Sinh tham số"],
+  ["generate_keypair", "Sinh cặp khóa"],
+  ["derive_shared_secret", "Tính bí mật chung"],
+  ["exchange", "Trao đổi khóa"],
+] as const)("filters and displays DH %s with metadata only", async (operation, label) => {
+  vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
+  dhHistoryMock.mockResolvedValue({ items: [], nextCursor: null });
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
+  await user.selectOptions(screen.getByLabelText("Thuật toán"), "diffie-hellman");
+  await waitFor(() =>
+    expect(dhHistoryMock).toHaveBeenLastCalledWith(
+      { cipher: "diffie-hellman", operation: undefined },
+      expect.any(AbortSignal),
+    ),
+  );
+  vi.mocked(getSignatureHistory).mockClear();
+  dhHistoryMock
+    .mockResolvedValueOnce({
+      items: [
+        {
+          ...historyItem,
+          cipher: "diffie-hellman",
+          operation,
+          inputLength: null,
+          outputLength: null,
+        },
+      ],
+      nextCursor: "dh-next",
+    })
+    .mockResolvedValueOnce({
+      items: [
+        {
+          ...historyItem,
+          id: 2,
+          cipher: "diffie-hellman",
+          operation,
+          inputLength: null,
+          outputLength: null,
+          succeeded: false,
+          httpStatus: 422,
+        },
+      ],
+      nextCursor: null,
+    });
+  await user.selectOptions(screen.getByLabelText("Thao tác"), operation);
+  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
+  expect(within(list).getByText("Diffie–Hellman minh họa")).toBeVisible();
+  expect(within(list).getByText(label)).toBeVisible();
+  expect(within(list).getByText("Thông tin thao tác")).toBeVisible();
+  expect(within(list).queryByText(/Đầu vào:|Đầu ra:|Văn bản/)).not.toBeInTheDocument();
+  expect(within(list).queryByRole("button", { name: "Xem chi tiết" })).not.toBeInTheDocument();
+  expect(dhHistoryMock).toHaveBeenLastCalledWith(
+    { cipher: "diffie-hellman", operation },
+    expect.any(AbortSignal),
+  );
+  await user.click(screen.getByRole("button", { name: "Tải thêm" }));
+  expect(await within(list).findByText("Lỗi 422")).toBeVisible();
+  expect(dhHistoryMock).toHaveBeenLastCalledWith(
+    { cipher: "diffie-hellman", operation, cursor: "dh-next" },
+    expect.any(AbortSignal),
+  );
+  expect(vi.mocked(getSignatureHistory)).not.toHaveBeenCalled();
+});
+
+it("does not load RSA signature streams for a DH operation without a cipher filter", async () => {
+  vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
+  dhHistoryMock.mockResolvedValue({ items: [], nextCursor: null });
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
+  vi.mocked(getSignatureHistory).mockClear();
+  await user.selectOptions(screen.getByLabelText("Thao tác"), "exchange");
+  await waitFor(() =>
+    expect(dhHistoryMock).toHaveBeenLastCalledWith(
+      { cipher: "diffie-hellman", operation: "exchange" },
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(vi.mocked(getSignatureHistory)).not.toHaveBeenCalled();
+});
+
+it("merges DH with common history using independent ids and preserves common rows on DH failure", async () => {
+  vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
+  historyMock.mockResolvedValue({ items: [historyItem], nextCursor: null });
+  dhHistoryMock
+    .mockResolvedValueOnce({
+      items: [
+        {
+          ...historyItem,
+          cipher: "diffie-hellman",
+          operation: "exchange",
+          inputLength: null,
+          outputLength: null,
+        },
+      ],
+      nextCursor: null,
+    })
+    .mockRejectedValueOnce(new HistoryApiError("BE DH chưa hỗ trợ thao tác mới.", 422));
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
+  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(2));
+  await user.click(screen.getByRole("button", { name: "Làm mới lịch sử" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Lịch sử Diffie–Hellman: BE DH chưa hỗ trợ thao tác mới.",
+  );
+  expect(within(screen.getByRole("list")).getByText("Caesar")).toBeVisible();
+});
+
+it.each([
+  ["caesar", ["", "encrypt", "decrypt"]],
+  ["vigenere", ["", "encrypt", "decrypt"]],
+  ["playfair", ["", "encrypt", "decrypt"]],
+  ["affine", ["", "encrypt", "decrypt"]],
+  ["columnar", ["", "encrypt", "decrypt"]],
+  ["hill", ["", "encrypt", "decrypt"]],
+  ["des", ["", "encrypt", "decrypt"]],
+  ["rsa", ["", "encrypt", "decrypt", "sign", "verify"]],
+  [
+    "diffie-hellman",
+    [
+      "",
+      "encrypt",
+      "decrypt",
+      "validate_params",
+      "generate_params",
+      "generate_keypair",
+      "derive_shared_secret",
+      "exchange",
+    ],
+  ],
+] as const)("only offers operations supported by %s", async (cipher, expected) => {
+  for (const flag of [
+    "VITE_ENABLE_HILL",
+    "VITE_ENABLE_DES",
+    "VITE_ENABLE_RSA",
+    "VITE_ENABLE_DIFFIE_HELLMAN",
+  ])
+    vi.stubEnv(flag, "true");
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
+  await user.selectOptions(screen.getByLabelText("Thuật toán"), cipher);
+  const options = within(screen.getByLabelText("Thao tác")).getAllByRole("option");
+  expect(options.map((option) => option.getAttribute("value"))).toEqual(expected);
+});
+
+it("resets incompatible operations on cipher changes and retains compatible ones", async () => {
+  vi.stubEnv("VITE_ENABLE_RSA", "true");
+  vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
+  const algorithm = screen.getByLabelText("Thuật toán");
+  const operation = screen.getByLabelText("Thao tác");
+  await user.selectOptions(operation, "exchange");
+  await user.selectOptions(algorithm, "rsa");
+  expect(operation).toHaveValue("");
+  await waitFor(() =>
+    expect(historyMock).toHaveBeenLastCalledWith(
+      { cipher: "rsa", operation: undefined },
+      expect.any(AbortSignal),
+    ),
+  );
+  await user.selectOptions(operation, "sign");
+  await user.selectOptions(algorithm, "diffie-hellman");
+  expect(operation).toHaveValue("");
+  await waitFor(() =>
+    expect(dhHistoryMock).toHaveBeenLastCalledWith(
+      { cipher: "diffie-hellman", operation: undefined },
+      expect.any(AbortSignal),
+    ),
+  );
+  await user.selectOptions(operation, "encrypt");
+  await user.selectOptions(algorithm, "caesar");
+  expect(operation).toHaveValue("encrypt");
+  await user.selectOptions(algorithm, "");
+  expect(within(operation).getByRole("option", { name: "Trao đổi khóa" })).toBeVisible();
+  expect(within(operation).getByRole("option", { name: /^Ký$/ })).toBeVisible();
 });

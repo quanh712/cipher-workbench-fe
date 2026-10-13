@@ -8,4 +8,4 @@ Contract bao gồm kiểm/gợi ý alpha, safe-prime random 16/32/64/128 bit, ke
 
 Không gồm kết nối hai người dùng thật, xác thực MITM, chữ ký, KDF, ECDH, quản lý/lưu/xuất khóa hoặc bảo mật production. Caesar chỉ là minh họa dùng khóa chung; upload luôn trả JSON.
 
-FE không persist/log parameters, keys, content hoặc trace. Chỉ Caesar ghi metadata server history best-effort. Nghiệm thu đúng version BE và kiểm UI desktop/mobile, sáng/tối, bàn phím, request cancellation và response muộn trước khi bật cờ deployment. Xem [integration](DIFFIE_HELLMAN_BE_INTEGRATION.md) để phân biệt fixture/mock với live acceptance.
+FE không persist/log parameters, keys, content hoặc trace. Cả sáu endpoint DH ghi metadata server history best-effort, thuộc hồ sơ trình duyệt hiện tại. Năm thao tác standalone không lưu tham số, khóa hoặc trace; Caesar giữ metadata text/file. Nghiệm thu đúng version BE và kiểm UI desktop/mobile, sáng/tối, bàn phím, request cancellation và response muộn trước khi bật cờ deployment. Xem [integration](DIFFIE_HELLMAN_BE_INTEGRATION.md) để phân biệt fixture/mock với live acceptance.

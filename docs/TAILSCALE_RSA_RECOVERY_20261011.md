@@ -59,3 +59,9 @@ desktop and 375 px:
 PLAYWRIGHT_BASE_URL=https://quanh-tran-inspiron-14-plus-7430.tail3c83f1.ts.net \
   npm run test:e2e:rsa:integration -- --output=/tmp/rsa-tailscale-results
 ```
+
+## DH history update — 13/10/2026
+
+Current FE image is `cipher-workbench-frontend:history-operation-filters-20261013`; current signature/DH BE image is `cipher-workbench-be-app:dh-history-9d22937`. The deploy overlays now select these images. The BE history volume and profile signing key were retained. SQLite was upgraded from `sqlite_0003` to `sqlite_0004` after writer freeze, verified backup/restore, and migration rehearsal; row data, indexes, and sequence were verified unchanged before startup.
+
+The dedicated FE alias `/api/dh/history` rewrites to `/api/history` on the same BE as `/api/dh/*`. Common history retains its previous backend. New DH operation filters return 200 through 18081; real desktop/mobile exchange/history/reload checks and RSA signature/history smoke pass. The isolated DH API acceptance suite passes 43/43. Detailed evidence is in [DH integration](DIFFIE_HELLMAN_BE_INTEGRATION.md).

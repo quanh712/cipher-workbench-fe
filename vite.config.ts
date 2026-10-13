@@ -9,6 +9,14 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: {
+        "/api/dh/history": {
+          target:
+            process.env.BACKEND_SIGNATURE_URL ||
+            env.BACKEND_SIGNATURE_URL ||
+            "http://127.0.0.1:8080",
+          changeOrigin: false,
+          rewrite: (path) => path.replace(/^\/api\/dh\/history/, "/api/history"),
+        },
         "/api/rsa/history": {
           target:
             process.env.BACKEND_SIGNATURE_URL ||

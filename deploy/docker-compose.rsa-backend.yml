@@ -1,10 +1,10 @@
 # Overlay on ../cipher-workbench-be/docker-compose.yml; keep its existing history volume.
 services:
   migrate:
-    image: cipher-workbench-be-app:rsa-da77d54
+    image: cipher-workbench-be-app:dh-history-9d22937
     pull_policy: never
   app:
-    image: cipher-workbench-be-app:rsa-da77d54
+    image: cipher-workbench-be-app:dh-history-9d22937
     pull_policy: never
     restart: unless-stopped
     cpus: 1.0

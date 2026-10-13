@@ -149,7 +149,7 @@ describe("Diffie–Hellman app registration", () => {
     },
   );
 
-  it("retains the draft when visiting history and keeps DH out of history filters", async () => {
+  it("retains the draft when visiting history and includes DH in history filters", async () => {
     vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
     vi.mocked(getHealthStatus).mockResolvedValue({ database: "ok", history: "enabled" });
     const gateway = createDiffieHellmanGateway();
@@ -163,7 +163,7 @@ describe("Diffie–Hellman app registration", () => {
     await waitFor(() =>
       expect(screen.queryByRole("textbox", { name: "Số mũ riêng X_A" })).not.toBeInTheDocument(),
     );
-    expect(screen.queryByRole("option", { name: /Diffie–Hellman/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Diffie–Hellman/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Công cụ" }));
     expect(screen.getByRole("textbox", { name: "Số mũ riêng X_A" })).toHaveValue("7");
     expect(gateway.exchange).not.toHaveBeenCalled();
