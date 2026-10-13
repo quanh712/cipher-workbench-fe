@@ -1,129 +1,44 @@
 # Cipher Workbench Frontend
 
-Giao diện web để mã hóa, giải mã và phân tích kết quả bằng Caesar, Vigenère, Playfair, Affine,
-Hệ mã hàng, Hill, DES, RSA và Diffie–Hellman. Dự án dùng React, TypeScript và Vite; kết quả xử lý lấy từ Backend thật.
-Hill, DES và RSA được bật bằng cờ cấu hình khi Backend tương ứng đã sẵn sàng.
-RSA đã nối API thật: sinh/nhập khóa, mã hóa/giải mã số và văn bản, ký/kiểm tra số nguyên và trace.
-API chữ ký dùng BE `da77d54`; fake gateway chỉ dùng trong test.
+Ứng dụng web phục vụ học tập và thực hành mật mã: mã hóa, giải mã, trao đổi khóa,
+ký số và xem các bước xử lý. Frontend dùng React, TypeScript và Vite, kết nối
+Backend thật qua API cùng origin.
 
-## Bản chốt — 12/10/2026
+## Tính năng
 
-- Workspace có chín thuật toán khi bật đầy đủ Hill, DES, RSA và Diffie–Hellman.
-- RSA luôn hiển thị nút **Chữ ký không hợp lệ** để thử dữ liệu mẫu; cảnh báo RSA học thuật được hiển thị bằng tiếng Việt. Các phần giải thích và bước tính có khung, hỗ trợ xuống dòng trên màn hình nhỏ.
-- Lịch sử chữ ký đã gộp vào **Lịch sử thao tác**: xem chi tiết, dùng lại để kiểm tra và xóa có xác nhận; lỗi một nguồn không che nguồn còn lại.
-- Phần Caesar bằng khóa chung DH được chỉnh bố cục và giữ nút thao tác không bị co.
-- Runtime local còn **4 container**: frontend, backend SQLite cho API chung, backend RSA/DH và backup SQLite local. Backend legacy cùng backend/backup integration đã dừng; container, image và dữ liệu vẫn được giữ để bật lại.
-- Tổng RAM container đo bằng `docker stats --no-stream` giảm từ khoảng **454 MiB xuống 237–242 MiB**, tiết kiệm khoảng **47–48%**. Đây là số đo tại thời điểm kiểm tra, chưa gồm RAM máy ảo Docker Desktop và không đại diện peak khi tải cao.
-- Sau khi giảm RAM, smoke test API/upload/download, **10 kiểm thử tích hợp RSA** trên desktop/375 px và **1 kiểm thử DH tạo khóa/tính khóa chung** đều qua tại `http://127.0.0.1:18081`.
-- Bản chốt mã nguồn đạt **566 unit/component test**, **14 kiểm thử tích hợp RSA/lịch sử** trên desktop/375 px qua Tailscale; format, lint, TypeScript và production build đều qua.
+- Thực hành chín thuật toán trong cùng một workspace.
+- Nhập văn bản hoặc file `.txt`, xem trước, sao chép và tải kết quả.
+- Xem phân tích và các bước tính theo khả năng của từng thuật toán.
+- Sinh hoặc nhập khóa RSA, mã hóa/giải mã số và văn bản, ký/kiểm tra chữ ký số nguyên.
+- Kiểm tra hoặc sinh tham số Diffie–Hellman, tạo cặp khóa, tính bí mật chung,
+  trao đổi khóa A/B và thực hành Caesar bằng khóa chung.
+- Xem lịch sử thao tác, lọc theo thuật toán và thao tác tương ứng, tải thêm và làm mới.
+  Lịch sử chữ ký RSA hỗ trợ xem chi tiết, dùng lại để kiểm tra và xóa bản ghi.
+- Giao diện responsive, hỗ trợ bàn phím, screen reader và giao diện sáng/tối.
 
-Image frontend hiện tại là `cipher-workbench-frontend:signature-actions-20261012`,
-build từ worktree trên commit `6a259de` với thay đổi popup chi tiết chữ ký và đầy đủ
-Hill/DES/RSA/DH. Popup dùng các nhóm thông tin có nhãn thay cho JSON.
-Hướng dẫn bật lại và dừng stack kiểm thử nằm trong [vận hành RAM local](docs/SQLITE_COMPOSE.md#ram-khi-vận-hành-local).
+| Thuật toán     | Khả năng chính                                                | File `.txt` |
+| -------------- | ------------------------------------------------------------- | ----------- |
+| Caesar         | Mã hóa / giải mã                                              | Có          |
+| Vigenère       | Mã hóa / giải mã                                              | Có          |
+| Playfair       | Mã hóa / giải mã, đối chiếu ký tự đệm                         | Có          |
+| Affine         | Mã hóa / giải mã với hai khóa `a`, `b`                        | Có          |
+| Hệ mã hàng     | Mã hóa / giải mã bằng khóa hoán vị                            | Có          |
+| Hill           | Khóa ma trận hoặc từ khóa, mã hóa / giải mã                   | Có          |
+| DES            | Text/HEX, ECB/CBC, IV và phân tích vòng xử lý                 | Có          |
+| RSA            | Sinh/nhập khóa, mã hóa / giải mã số và văn bản, ký / kiểm tra | Chưa hỗ trợ |
+| Diffie–Hellman | Trao đổi khóa, tính bí mật chung, Caesar bằng khóa chung      | Qua Caesar  |
 
-## Mốc release đã kiểm thử — 08/10/2026
-
-Báo cáo release ghi nhận FE tại <http://127.0.0.1:18081> từ commit `175219d`, bật đủ tám thuật toán,
-kết nối API thật và dùng lịch sử SQLite. Mốc release này đã đạt **318 unit/component test**,
-**74 kịch bản regression production** và **6 kiểm tra backup/restore/retention**.
-Thông tin image, phạm vi thay đổi và rollback nằm trong [báo cáo release](docs/FE_RELEASE_20261008.md).
-Backend của mốc release ghim revision `229c69d`; cập nhật FE bằng wrapper bên dưới giữ nguyên Backend.
-Các thay đổi Diffie–Hellman sau mốc này được kiểm thử riêng trong [báo cáo UI DH](docs/DIFFIE_HELLMAN_UI_QA.md); số kiểm thử release trên không mô tả toàn bộ trạng thái hiện tại.
-
-## Cập nhật giao diện — 10/10/2026
-
-- Sao chép/dán dùng popup chung như Caesar, có nút đóng và tự tắt sau 2,5 giây; áp dụng cả kết quả thiết lập bí mật chung DH và RSA. DES có thông báo khi dán thành công.
-- RSA có tab **Chữ ký số** dùng chung phần khóa; bản ban đầu dùng ví dụ cố định. Từ 11/10, tab gọi API thật như mô tả bên dưới.
-- Hill hiển thị popup “Mã hóa thành công.” hoặc “Giải mã thành công.” sau khi Backend xử lý thành công.
-- RSA khối số và văn bản dùng thanh trạng thái ở đáy ô đầu vào/kết quả: chưa có dữ liệu, hợp lệ sơ bộ, đang xử lý, thất bại hoặc thành công kèm số khối. Kiểm tra sơ bộ số/JSON không thay thế xác thực của Backend.
-- Caesar bằng khóa chung nhận khóa từ thao tác tính bí mật chung thành công của bên A/B đang chọn hoặc từ kết quả trao đổi DH. Đổi tham số sẽ vô hiệu hóa kết quả cũ.
-- Bảng trace trong phân tích DH dùng cùng kiểu bảng desktop và thẻ mobile như phần thực hành. Hai dòng cuối phân tích Caesar bằng khóa chung được căn lề thống nhất.
-- Phần thiết lập DH đã bỏ hai dòng hướng dẫn “Mô phỏng học tập…” và “Nhập tham số hoặc bấm Tạo ví dụ…”. Các cảnh báo trong phản hồi Backend vẫn được hiển thị.
-
-## Tích hợp chữ ký RSA — 11/10/2026
-
-- Tab **Chữ ký số** gọi `POST /api/rsa/sign/raw` và `POST /api/rsa/verify/raw` với số nguyên thập phân dạng chuỗi. Ký cần `d`, `e`, `n`; kiểm tra cần `e`, `n`, thông điệp và chữ ký.
-- Hiển thị chữ ký, thông điệp khôi phục, kết quả hợp lệ/không hợp lệ, cảnh báo RSA học thuật và bảng bình phương–nhân từ Backend. Ví dụ chỉ điền đầu vào.
-- Có trạng thái đang xử lý, lỗi/thử lại; hủy yêu cầu cũ khi đổi dữ liệu, khóa hoặc rời tab. Cookie cùng origin được gửi để BE lưu lịch sử riêng theo hồ sơ trình duyệt.
-- Đã đạt **564 unit/component test**, **8 kiểm thử UI RSA** và **10 kiểm thử tích hợp qua Tailscale** trên desktop/375 px. Đây là các bộ kiểm thử riêng, không cộng với mốc release cũ.
-- Đây là RSA số nguyên phục vụ học tập; chưa có ký văn bản/file, băm hoặc padding chữ ký.
-
-Xem [spec RSA](docs/RSA_SPEC.md) và [biên bản khôi phục Tailscale](docs/TAILSCALE_RSA_RECOVERY_20261011.md).
-
-## Lịch sử chữ ký — 12/10/2026
-
-- Chữ ký được gộp vào **Lịch sử thao tác**, sắp mới nhất trước, có nhãn **Lịch sử chung / Chữ ký riêng** và bộ lọc **Tất cả / Mã hóa / Giải mã / Ký / Kiểm tra chữ ký**.
-- **Xem chi tiết** mở popup responsive để xem dữ liệu đã lưu và kết quả hợp lệ/không hợp lệ. **Dùng lại để kiểm tra chữ ký** điền thông điệp, chữ ký và khóa công khai vào RSA; người dùng bấm **Kiểm tra** để gửi yêu cầu. Không khôi phục khóa riêng hoặc trace cũ.
-- **Xóa bản ghi** cần xác nhận; không có xóa toàn bộ. Tải khi mở lịch sử và có **Làm mới lịch sử**, **Tải thêm**, thông báo lỗi và thử lại riêng từng nguồn. Sau ký/kiểm tra, mở lịch sử sẽ tải lại dữ liệu.
-- Lịch sử chữ ký thuộc cookie HttpOnly của hồ sơ trình duyệt, lưu tối đa 5 giờ và có thể bị loại sớm do hạn mức. Đổi hồ sơ/xóa cookie có thể mất quyền xem các bản ghi trước đó.
-- Nginx local chuyển `/api/rsa/history` và đường chi tiết/xóa sang `/api/history` của backend RSA/DH; `/api/history` chung giữ backend SQLite cũ. Vite dùng `BACKEND_SIGNATURE_URL` (mặc định `http://127.0.0.1:8080`) cho đường này, độc lập `BACKEND_DEV_URL`.
-
-## Trạng thái tính năng
-
-| Thuật toán     | Văn bản                                | File `.txt`           | Trạng thái                        |
-| -------------- | -------------------------------------- | --------------------- | --------------------------------- |
-| Caesar         | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
-| Vigenère       | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
-| Playfair       | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
-| Affine         | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
-| Hệ mã hàng     | Mã hóa / giải mã                       | Preview / tải kết quả | Đang sử dụng                      |
-| Hill           | Mã hóa / giải mã                       | Preview / tải kết quả | `VITE_ENABLE_HILL=true`           |
-| DES            | Text/HEX, ECB/CBC                      | Preview / tải kết quả | `VITE_ENABLE_DES=true`            |
-| RSA minh họa   | Mã hóa / giải mã số, văn bản; ký số    | Chưa hỗ trợ           | `VITE_ENABLE_RSA=true`            |
-| Diffie–Hellman | Trao đổi khóa / Caesar bằng khóa chung | Caesar text/file      | `VITE_ENABLE_DIFFIE_HELLMAN=true` |
-
-Affine dùng hai khóa nguyên `a`, `b` (được thêm từ BE revision `c55278f`). Chi tiết hành vi
-giao diện nằm trong [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md). Hệ mã hàng dùng contract BE
-`c0a1927`; quy tắc Unicode, khóa và file nằm trong [`docs/COLUMNAR_SPEC.md`](docs/COLUMNAR_SPEC.md).
-
-## Chức năng chính
-
-- Chuyển đổi giữa chín thuật toán trong cùng một workspace khi đã bật Hill, DES, RSA và Diffie–Hellman.
-- Diffie–Hellman dùng contract BE `/api/dh/*` sau cờ `VITE_ENABLE_DIFFIE_HELLMAN=true` (mặc định false, cả Docker build). Entry đã nối HTTP adapter; bật bằng `VITE_ENABLE_DIFFIE_HELLMAN=true npm run dev`. Có exchange A/B, trace trái→phải, kiểm/sinh tham số, tạo khóa, khóa chung và Caesar text/file. Xem [hướng dẫn DH](src/features/diffieHellman/README.md).
-- Chạy `npm run dev:rsa` để dùng RSA với API thật qua `BACKEND_DEV_URL`; build production bằng `VITE_ENABLE_RSA=true npm run build`.
-- `RsaGateway` là ranh giới cho sinh/nhập khóa, mã hóa/giải mã số/văn bản, ký/kiểm tra số nguyên và trace; fake gateway nằm trong thư mục test, không được App import.
-- Chạy `npm run test:e2e:rsa` để kiểm tra UI RSA với fixture test riêng trên desktop, 375 px và light/dark theme. `npm run test:e2e:rsa:integration` kiểm Backend thật trên stack SQLite integration cổng 18082; không build hoặc cập nhật BE.
-- Nghiệm thu DH: `DH_BACKEND_URL=http://127.0.0.1:18084 npm run test:integration:diffie-hellman` với BE DH và DB integration riêng, history bật. Đã pass 43/43 ca với BE thật; năm endpoint tham số/khóa không ghi history, Caesar chỉ ghi metadata. Xem [bằng chứng nghiệm thu](docs/DIFFIE_HELLMAN_BE_INTEGRATION.md).
-- Mã hóa hoặc giải mã nội dung nhập trực tiếp và file `.txt`.
-- Preview kết quả, sao chép, dán và tải file kết quả.
-- Tab **Phân tích** dùng bố cục thống nhất, giữ ô kết quả bằng kích thước ô đầu vào và cuộn bên trong.
-- Trước khi xử lý, tab **Phân tích** hiển thị ghi chú chung trên nền giống tab File .txt.
-- Bộ lọc ký tự đệm Playfair/Hill nằm ở đáy ô kết quả; bản thô và bản đã lọc nằm trong tab **Phân tích**.
-- DES hỗ trợ ECB/CBC, IV và phân tích các vòng xử lý từ Backend.
-- Giao diện responsive, hỗ trợ bàn phím, screen reader và light/dark theme có ghi nhớ.
-- Giữ Backend làm nguồn dữ liệu có thẩm quyền cho mọi kết quả runtime.
-- Xem lịch sử metadata của các request cipher khi SQLite và quyền đọc lịch sử đều được bật
-  ở Backend; không lưu input hoặc khóa trong lịch sử của trình duyệt.
-
-## Kiến trúc kết nối
-
-Khi phát triển:
-
-```text
-Browser -> Vite :5173 -> /api proxy -> FastAPI Backend :8000
-```
-
-Khi chạy bằng Docker Compose:
-
-```text
-Browser -> localhost :18081 -> Frontend/Nginx :8080 -> Backend :8000 -> SQLite /data/cipher-history.sqlite3
-```
-
-Trên bản local hiện tại, Nginx chuyển `/api/dh/*`, `/api/rsa/sign*` và
-`/api/rsa/verify*` tới backend RSA/DH riêng; các API khác dùng backend SQLite.
-Backup SQLite local chạy trong container riêng. Stack integration được dừng khi không kiểm thử.
-
-Frontend chỉ gọi các URL tương đối `/api/...`. Vì vậy code runtime không ghi cứng địa chỉ Backend và
-không cần cấu hình CORS trong mô hình triển khai same-origin.
+Hill, DES, RSA và Diffie–Hellman được bật bằng cờ cấu hình khi Backend đã hỗ trợ
+API tương ứng. Kết quả xử lý runtime lấy từ Backend; dữ liệu mẫu chỉ giúp điền
+đầu vào, không thay thế kết quả API.
 
 ## Yêu cầu môi trường
 
-- Node.js và npm.
-- Backend chính thức: [`kiendt2312/cipher_workbench-be`](https://github.com/kiendt2312/cipher_workbench-be).
-- Docker khi chạy browser E2E với Backend tích hợp hoặc chạy production stack cục bộ.
+- Node.js và npm; Dockerfile dùng Node.js 22 để build.
+- Backend tương thích với [contract API](docs/BACKEND_CONTRACT.md).
+- Docker và Docker Compose nếu chạy stack cục bộ hoặc kiểm thử tích hợp bằng container.
 
-Theo cấu hình mặc định, repo Backend nằm cùng cấp với repo này:
+Theo cấu hình mặc định, checkout Backend nằm cùng cấp với Frontend:
 
 ```text
 Cipher-workbench/
@@ -131,201 +46,134 @@ Cipher-workbench/
 └── cipher-workbench-be/
 ```
 
-Có thể đặt Backend ở vị trí khác thông qua `BACKEND_CONTEXT` khi chạy integration test hoặc Docker
-Compose.
+Có thể dùng `BACKEND_CONTEXT` để chọn checkout Backend khác cho các script integration
+có hỗ trợ biến này. Hướng dẫn Backend nằm tại
+[repo Backend](https://github.com/kiendt2312/cipher_workbench-be).
 
-## Chạy ứng dụng để phát triển
+## Chạy để phát triển
 
-### 1. Khởi động Backend
-
-Khởi động Backend thật tại `http://localhost:8000` theo hướng dẫn của repo Backend. Có thể kiểm tra
-schema đang chạy tại:
-
-- <http://localhost:8000/docs>
-- <http://localhost:8000/openapi.json>
-
-Để dùng Hệ mã hàng, checkout Backend phải chứa revision `c0a1927` hoặc mới hơn; bản Backend cũ
-chỉ có Affine sẽ trả `404` cho `/api/columnar/*`. Repo Backend sibling trên máy cần được cập nhật
-riêng trước khi chạy stack cục bộ.
-
-Để nghiệm thu lịch sử máy chủ theo contract mới nhất đã đối chiếu, dùng Backend SQLite,
-migration `alembic -c alembic_sqlite.ini upgrade head` và `HISTORY_API_ENABLED=true` **chỉ ở môi trường dev/nội bộ**. FE chỉ gọi
-`/api/history` khi `/api/health` báo đồng thời `database: "ok"` và `history: "enabled"`;
-BE cũ thiếu trường `history` sẽ không tải dữ liệu lịch sử. Không bật API lịch sử trên
-Funnel/public vì endpoint này chưa có xác thực. Nếu BE Compose chạy trên host `8080`, khởi động
-FE bằng `BACKEND_DEV_URL=http://localhost:8080 npm run dev`. BE không phục vụ UI ở `/`;
-dùng `/docs` để thử API.
-Thẻ **Lịch sử thao tác** xuất hiện khi lịch sử chung khả dụng hoặc RSA được bật; lỗi một nguồn không ngăn xem nguồn còn lại.
-
-### 2. Cài dependency và chạy Frontend
+Khởi động Backend theo hướng dẫn của repo Backend, sau đó cài dependencies Frontend:
 
 ```bash
-npm install
+npm ci
+cp .env.example .env.local
+```
+
+Chỉnh `.env.local` theo Backend đang sử dụng. Ví dụ khi một Backend ở cổng `8000`
+hỗ trợ toàn bộ tính năng:
+
+```dotenv
+BACKEND_DEV_URL=http://127.0.0.1:8000
+BACKEND_SIGNATURE_URL=http://127.0.0.1:8000
+VITE_ENABLE_HILL=true
+VITE_ENABLE_DES=true
+VITE_ENABLE_RSA=true
+VITE_ENABLE_DIFFIE_HELLMAN=true
+```
+
+Chỉ bật các thuật toán mà Backend đã hỗ trợ. `BACKEND_DEV_URL` là target cho API
+chung; `BACKEND_SIGNATURE_URL` là target riêng cho lịch sử DH và chữ ký RSA,
+mặc định `http://127.0.0.1:8080`. Khi dùng một Backend thống nhất, đặt hai biến
+về cùng địa chỉ. Khởi động lại Vite sau khi đổi cấu hình.
+
+```bash
 npm run dev
 ```
 
-Để bật đủ chín thuật toán với Backend có đủ endpoint:
+Mở <http://localhost:5173>. Frontend gửi yêu cầu tới `/api/...`; Vite chuyển tiếp
+đến Backend. Có thể kiểm tra Backend qua `/api/health`, `/docs` và `/openapi.json`.
+
+## Sử dụng
+
+1. Chọn thuật toán và thao tác cần thực hiện.
+2. Nhập dữ liệu và khóa, hoặc chọn file `.txt` với thuật toán có hỗ trợ.
+3. Gửi xử lý, xem kết quả và mở tab **Phân tích** để đối chiếu các bước.
+4. Sao chép, tải kết quả hoặc mở **Lịch sử thao tác** để xem các lần xử lý đã lưu.
+
+Với RSA, dùng phần thiết lập khóa trước khi mã hóa, giải mã hoặc ký số.
+Với Diffie–Hellman, thiết lập tham số và khóa hai bên để tính bí mật chung;
+kết quả có thể dùng cho bài thực hành Caesar.
+
+Lịch sử cần Backend bật lưu trữ và API đọc lịch sử. Lịch sử cipher thông thường
+và DH lưu metadata thao tác; lịch sử chữ ký RSA lưu dữ liệu riêng theo hồ sơ
+trình duyệt để xem chi tiết và dùng lại khóa công khai. Bộ lọc thao tác chỉ hiển thị
+các lựa chọn phù hợp với thuật toán đang chọn.
+
+## Kiến trúc
+
+```text
+Browser → Frontend → /api reverse proxy → Backend → SQLite history
+```
+
+- `src/app/` ghép các feature và cấu hình runtime.
+- Mỗi feature giữ component, hook, type và API adapter của mình.
+- Backend chịu trách nhiệm xác thực dữ liệu và trả kết quả xử lý.
+- Vite cung cấp proxy khi phát triển; Nginx cung cấp proxy khi triển khai.
+
+Cấu hình local cổng `18081` dùng Backend SQLite cho API chung và Backend RSA/DH
+riêng cho DH, chữ ký RSA và lịch sử tương ứng. `/api/dh/history` và
+`/api/rsa/history` được chuyển đến `/api/history` của Backend RSA/DH để đọc đúng
+nguồn dữ liệu. Xem cấu hình và hướng dẫn chi tiết trong tài liệu triển khai.
+
+```text
+src/
+├── app/                 # App shell và kết nối các feature
+├── features/
+│   ├── caesar/
+│   ├── vigenere/
+│   ├── playfair/
+│   ├── affine/
+│   ├── columnar/
+│   ├── hill/
+│   ├── des/
+│   ├── rsa/
+│   ├── diffieHellman/
+│   └── history/
+├── shared/              # UI, hook, service và utility dùng chung
+└── test/                # Thiết lập và helper kiểm thử
+e2e/                     # Các kịch bản Playwright
+docs/                    # Spec, contract và hướng dẫn vận hành
+scripts/                 # Script integration và deployment
+deploy/ và nginx/        # Cấu hình container và reverse proxy
+```
+
+## Kiểm thử và build
+
+| Lệnh                          | Mục đích                                       |
+| ----------------------------- | ---------------------------------------------- |
+| `npm run dev`                 | Chạy Vite dev server                           |
+| `npm run build`               | Kiểm tra TypeScript và build vào `dist/`       |
+| `npm run preview`             | Xem trước bản build                            |
+| `npm run typecheck`           | Kiểm tra TypeScript                            |
+| `npm run lint`                | Kiểm tra ESLint                                |
+| `npm run format:check`        | Kiểm tra định dạng                             |
+| `npm test`                    | Chạy unit/component test                       |
+| `npm run test:watch`          | Chạy test ở watch mode                         |
+| `npm run check`               | Format, lint, TypeScript, unit test và build   |
+| `npm run test:e2e`            | Kiểm thử luồng người dùng với Backend tích hợp |
+| `npm run test:e2e:production` | Kiểm thử stack đã triển khai                   |
+
+Chạy `npm run check` trước khi commit thay đổi mã nguồn. Khi sửa luồng người dùng
+hoặc tích hợp API, chạy thêm bộ E2E phù hợp. Hill, DES, RSA và Diffie–Hellman có
+các bộ kiểm thử riêng trong `package.json`; cấu hình và yêu cầu Backend nằm trong
+spec và tài liệu integration của từng thuật toán.
+
+E2E mặc định khởi động Backend sibling bằng Docker trên cổng riêng và dọn container
+khi kết thúc. Các bộ kiểm thử trên stack đã triển khai yêu cầu stack có sẵn:
 
 ```bash
-VITE_ENABLE_HILL=true VITE_ENABLE_DES=true VITE_ENABLE_RSA=true VITE_ENABLE_DIFFIE_HELLMAN=true npm run dev
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:18081 npm run test:e2e:production
 ```
 
-Mở <http://localhost:5173>. Vite chuyển tiếp `/api` tới `BACKEND_DEV_URL`
-từ shell hoặc file `.env.local`; mặc định là `http://127.0.0.1:8000`.
-Nếu dùng stack local đang chạy ở `18081`, đặt trong `.env.local`:
+Build cần các cờ `VITE_ENABLE_*` tương ứng với tính năng muốn triển khai.
+Cờ được đọc lúc build; thay env sau khi build không bật thêm thuật toán.
 
-```dotenv
-BACKEND_DEV_URL=http://127.0.0.1:18081
-```
+## Triển khai
 
-Restart Vite sau khi đổi file env. Stack SQLite thử riêng dùng cổng `18082` khi
-đã khởi động. `ECONNREFUSED` tại `8000` nghĩa là target proxy chưa có backend lắng nghe;
-chọn đúng cổng đang phục vụ `/api/health`.
+Stack local dùng Docker Compose, Nginx và SQLite. Frontend local mặc định mở tại
+<http://127.0.0.1:18081>; stack integration dùng cổng và dữ liệu riêng.
 
-Nếu Backend dev chạy ở địa chỉ khác, truyền target khi khởi động Vite:
-
-```bash
-BACKEND_DEV_URL=http://127.0.0.1:9000 npm run dev
-```
-
-Thẻ **Hệ mã hàng** xuất hiện trong selector ở cả dev và production. Mã hóa, giải mã, preview file
-và tải attachment đều gọi Backend qua `/api/columnar/*`. **Tạo ví dụ** chỉ điền đầu vào/khóa, không
-gửi request cho đến khi bấm Mã hóa.
-
-### 3. Sử dụng workspace
-
-1. Chọn thuật toán và chế độ mã hóa hoặc giải mã.
-2. Chọn nguồn đầu vào là văn bản hoặc file `.txt`.
-3. Nhập khóa theo yêu cầu của thuật toán rồi gửi xử lý.
-4. Xem phân tích, sao chép kết quả hoặc tải file kết quả.
-
-Với Playfair, chuẩn hóa đầu vào có thể làm mất định dạng và gộp J/I. Khi giải mã Playfair hoặc
-Hill, FE dùng thông tin `padding` do Backend trả về để hiển thị bản đã lọc. Tắt **Tự động lọc ký
-tự đệm** để giữ bản thô; mở **Xem bản thô và bản đã lọc** trong tab **Phân tích** để đối chiếu.
-Chữ thật trùng mẫu đệm có thể bị lọc nhầm, và kết quả không khôi phục nguyên văn đầu vào.
-
-Hill hỗ trợ khóa ma trận cấp 2–4 hoặc từ khóa, kiểm tra khóa và các khối kết quả; chi tiết ở
-[spec Hill](docs/HILL_SPEC.md). DES hỗ trợ Text/HEX, ECB/CBC và IV; khi dùng CBC, giữ IV cùng
-bản mã để giải mã đúng. Chi tiết ở [spec DES](docs/DES_SPEC.md).
-
-## Các lệnh thường dùng
-
-| Lệnh                           | Mục đích                                                         |
-| ------------------------------ | ---------------------------------------------------------------- |
-| `npm run dev`                  | Chạy Vite dev server tại cổng `5173`                             |
-| `npm run build`                | Type-check và tạo production build trong `dist/`                 |
-| `npm run preview`              | Preview production build bằng Vite                               |
-| `npm run typecheck`            | Kiểm tra TypeScript                                              |
-| `npm run lint`                 | Chạy ESLint                                                      |
-| `npm run format`               | Format toàn bộ repo bằng Prettier                                |
-| `npm run format:check`         | Kiểm tra format mà không sửa file                                |
-| `npm test`                     | Chạy unit/component test một lần                                 |
-| `npm run test:watch`           | Chạy Vitest ở watch mode                                         |
-| `npm run test:e2e`             | E2E mặc định với Backend thật; Hill/DES/RSA có bộ riêng          |
-| `npm run test:e2e:integration` | Chạy riêng bộ kiểm tra contract tích hợp Backend                 |
-| `npm run test:e2e:production`  | Regression 8 cipher và history trên production `127.0.0.1:18081` |
-| `npm run check`                | Format check, lint, type-check, unit test và build               |
-| `npm run check:all`            | Chạy `check` rồi chạy E2E mặc định                               |
-
-## Kiểm thử
-
-### DES — API thật và demo
-
-DES hỗ trợ Text/HEX, ECB/CBC với IV, file `.txt` UTF-8 tối đa 5 MiB, warnings và tải file
-chính thức từ Backend. Contract ghim tại BE `31438eb`, chi tiết ở [spec DES](docs/DES_SPEC.md).
-
-```bash
-VITE_ENABLE_HILL=true VITE_ENABLE_DES=true npm run dev
-BACKEND_CONTEXT=/path/to/backend-at-31438eb npm run test:e2e:des:integration
-```
-
-BE phải có DES trước khi bật cờ FE; checkout sibling cũ không tự cập nhật. SQLite cần
-baseline `sqlite_0001`. Docker/Compose nhận build arg `VITE_ENABLE_DES` (mặc định false).
-
-Demo độc lập vẫn dùng `VITE_ENABLE_DES_DEMO=true npm run dev` và `npm run test:e2e:des`.
-Demo có nhãn mô phỏng, dùng fixture cố định và không gọi API. Nếu bật cả hai cờ, API thật
-được ưu tiên; không dùng demo làm fallback khi API lỗi. Integration chạy desktop/375 px trên
-Vite cổng 4178; bộ demo dùng 4176/4177.
-
-### Kiểm tra trước khi tạo commit
-
-```bash
-npm run check
-```
-
-Lệnh này không chạy browser E2E. Khi thay đổi luồng người dùng hoặc tích hợp API, chạy thêm:
-
-```bash
-npm run test:e2e
-```
-
-`test:e2e` tự build và khởi động Backend sibling bằng Docker tại cổng riêng `18000`, sau đó chạy
-Playwright trên Desktop Chrome và Pixel 7. Cổng riêng giúp test không vô tình dùng service dev đang
-chạy tại `8000`.
-
-Để chỉ chạy scenario xác nhận contract Backend:
-
-```bash
-npm run test:e2e:integration
-```
-
-Có thể tùy chỉnh vị trí Backend và cổng integration:
-
-```bash
-BACKEND_CONTEXT=../path-to-backend BACKEND_INTEGRATION_PORT=18001 npm run test:e2e
-```
-
-Script integration sẽ dọn container Backend khi Playwright kết thúc.
-
-Regression production cần stack đang chạy với Hill/DES/RSA đã bật; không build hoặc
-khởi động lại BE. Bộ kiểm tra gồm 74 kịch bản: năm cipher cũ và history trên desktop,
-Hill/DES/RSA trên desktop và 375 px. Để yêu cầu history bật và kiểm stack integration:
-
-```bash
-PLAYWRIGHT_BASE_URL=http://127.0.0.1:18082 REQUIRE_SERVER_HISTORY=1 npm run test:e2e:production
-```
-
-## Chạy production stack cục bộ
-
-### Trạng thái triển khai — 12/10/2026
-
-Frontend chính đang chạy tại <http://127.0.0.1:18081> với image
-`cipher-workbench-frontend:signature-actions-20261012`, build từ worktree trên commit
-`6a259de`; revision label là `6a259de-signature-actions-worktree-20261012`.
-Container healthy; giao diện và `/api/health` trả HTTP 200, SQLite báo `database: "ok"`.
-Các container frontend integration/demo đã được xóa sau kiểm thử;
-cổng `18082` và `18084` đã đóng. Cấu hình vẫn được giữ để khởi động lại khi cần.
-Backend/backup integration và backend legacy đã dừng để giảm RAM;
-backend SQLite local, backend RSA/DH và backup local tiếp tục hoạt động.
-BE DH/chữ ký RSA đã cập nhật lên image `cipher-workbench-be-app:rsa-da77d54`,
-áp dụng migration `sqlite_0003` và restart policy `unless-stopped`. Cổng BE `8080`
-và volume SQLite được giữ lại. BE mới giữ lịch sử 5 giờ; 58 bản ghi cũ đã hết hạn.
-Snapshot trước cập nhật được giữ cục bộ; xem [biên bản khôi phục](docs/TAILSCALE_RSA_RECOVERY_20261011.md).
-
-Frontend cập nhật riêng sang `release-4a1b3e0` ngày 12/10, giữ nguyên backend và dữ liệu SQLite.
-**14 kiểm thử tích hợp RSA/lịch sử chữ ký** đã qua trên desktop/375 px, gồm tải lại trang,
-dùng lại không tự gửi, xóa/hủy xóa, cách ly hồ sơ và lỗi độc lập giữa các nguồn.
-Smoke test và **1 kiểm thử DH tạo khóa/tính khóa chung** cũng qua HTTPS tại
-<https://quanh-tran-inspiron-14-plus-7430.tail3c83f1.ts.net>.
-Ở mốc `release-4a1b3e0`, container frontend healthy và revision label khớp commit `4a1b3e0`.
-Sau nghiệm thu, 4 container dùng khoảng **249 MiB** RAM, riêng frontend **12,36 MiB**;
-số đo biến đổi theo tải. Image `release-7e7c851` được giữ để rollback frontend;
-nếu rollback toàn bộ cấu hình, cần khôi phục cả `deploy/nginx.18081-dh.conf` từ commit `5edefc8`.
-
-Popup chi tiết chữ ký đã được cập nhật trên cổng `18081` bằng image
-`signature-details-20261012`: kết quả nổi bật, thông điệp/chữ ký, khóa công khai và
-thông tin thao tác hiển thị bằng nhãn, không còn JSON. **16 kiểm thử tích hợp RSA/lịch sử**
-đã qua trực tiếp với backend thật tại `http://127.0.0.1:18081` trên desktop/375 px;
-smoke test API/upload/download cũng qua. Image `release-4a1b3e0` được giữ để rollback.
-
-Image `signature-actions-20261012` chỉnh hai nút dùng lại/xóa về cùng chiều cao
-44 px và cỡ chữ 14 px; desktop đặt cạnh nhau, mobile xếp dọc và rộng hết nội dung.
-Đã kiểm tra kích thước thực trên trình duyệt sáng/tối ở 1280/375 px và chạy qua
-**4 kiểm thử lịch sử chữ ký với backend thật** tại `18081`.
-
-Docker build chỉ gửi các đầu vào frontend cần thiết, dùng cache `npm ci` và
-tách stage build/runtime. Nginx bật gzip, cache asset và tái sử dụng kết nối
-upstream, kể cả tuyến DH. Cập nhật riêng frontend đang chạy bằng:
+Với stack đã được chuẩn bị và image đã build, cập nhật riêng Frontend bằng:
 
 ```bash
 ./deploy/frontend.sh local config
@@ -333,143 +181,40 @@ upstream, kể cả tuyến DH. Cập nhật riêng frontend đang chạy bằng
 ./deploy/frontend.sh local ps
 ```
 
-### Cài mới stack SQLite
+Wrapper dùng image được ghim trong cấu hình và giữ Backend hiện tại. Khi cài mới,
+chuẩn bị image, env, network và backup theo [hướng dẫn SQLite](docs/SQLITE_COMPOSE.md).
+Backend RSA/DH được quản lý riêng bằng `deploy/rsa-backend.sh`.
+Sao lưu dữ liệu trước khi migration; giữ nguyên signing key của hồ sơ lịch sử
+qua các lần khởi động. Không commit file env riêng tư hoặc snapshot SQLite.
 
-Stack hiện hành dùng project `cipher-workbench-sqlite`, volume
-`cipher-workbench-sqlite_history-data` và `.env.sqlite`. `docker-compose.yml` là
-symlink tới `docker-compose.sqlite.yml`, nên cả hai dùng cùng một cấu hình.
+Xem [hướng dẫn deployment](docs/DEPLOYMENT.md) cho HTTPS và triển khai trên máy chủ.
+Thông tin nghiệm thu, image và rollback theo từng đợt nằm trong các báo cáo ở `docs/`.
 
-Chỉ tạo `.env.sqlite` từ `.env.sqlite.example` khi cài mới; giữ env hiện tại khi
-cập nhật. Image FE/BE được pin, không tự build hoặc đổi Backend.
+## Giới hạn
 
-```bash
-./deploy/sqlite-stack.sh prepare-backups
-./deploy/sqlite-stack.sh config --quiet
-./deploy/sqlite-stack.sh up
-./deploy/sqlite-stack.sh ps
-./deploy/smoke-test.sh http://127.0.0.1:18081
-```
-
-Backup chạy mỗi giờ, giữ 7 ngày tại `backups/sqlite/local/` trên host, ngoài
-volume DB. Mỗi snapshot được restore thử và đối soát trước khi retention dọn
-snapshot hết hạn. Xem [backup SQLite](docs/SQLITE_COMPOSE.md#backup-tự-động).
-
-Khi cập nhật image FE đã ghim trong `.env.sqlite`, chỉ thay container Frontend:
-
-```bash
-./deploy/sqlite-stack.sh up --no-deps frontend
-```
-
-Xem [cấu hình SQLite](docs/SQLITE_COMPOSE.md) để chuẩn bị image và env cho máy mới.
-
-Ứng dụng bind <http://127.0.0.1:18081>; Nginx trong container dùng `8080`.
-Stack integration dùng `./deploy/sqlite-stack.sh --integration ...`, cổng `18082`
-và volume/backup riêng. `.env.deploy` chỉ dùng cho Nginx host/HTTPS, không dùng
-để khởi động Compose. VPS/HTTPS xem [deployment](docs/DEPLOYMENT.md).
-
-Cổng frontend local/integration/demo được quản lý tại `deploy/frontend-ports.env`.
-Dùng `./deploy/frontend.sh local up` để cập nhật riêng FE local và giữ routing DH/chữ ký RSA;
-dùng `integration` hoặc `demo` khi cần mở lại frontend thử nghiệm tương ứng. Xem
-[quản lý cổng frontend](docs/SQLITE_COMPOSE.md#quản-lý-cổng-frontend).
-
-### Bản local 18081 với Backend DH/chữ ký RSA riêng
-
-Bản local chuyển `/api/dh/*`, `/api/rsa/sign*`, `/api/rsa/verify*` và `/api/rsa/history*` tới container
-`cipher-workbench-be-app-1:8000`. Các API khác dùng Backend SQLite hiện hành.
-Cần network Docker `cipher-workbench-be_default` và BE mới đang chạy.
-Tailscale Serve/Funnel trên máy này chuyển HTTPS tới `127.0.0.1:18081`.
-
-```bash
-docker build --build-arg VITE_ENABLE_HILL=true --build-arg VITE_ENABLE_DES=true --build-arg VITE_ENABLE_RSA=true --build-arg VITE_ENABLE_DIFFIE_HELLMAN=true --build-arg FRONTEND_REVISION=6a259de-signature-actions-worktree-20261012 -t cipher-workbench-frontend:signature-actions-20261012 .
-./deploy/frontend.sh local up
-```
-
-Override FE dành cho máy local. BE được quản lý riêng bằng `deploy/rsa-backend.sh`,
-overlay `deploy/docker-compose.rsa-backend.yml` và file riêng tư `.env.rsa-backend`.
-File env cần `DATABASE_URL`, `HISTORY_API_ENABLED`, `HISTORY_PROFILE_SIGNING_KEY`,
-`HISTORY_COOKIE_SECURE=true` khi dùng HTTPS và cấu hình CORS/cổng phù hợp.
-Giữ cố định signing key qua các lần khởi động; không commit env hoặc snapshot SQLite.
-
-```bash
-# Build BE từ checkout chứa revision da77d54.
-docker build -t cipher-workbench-be-app:rsa-da77d54 ../cipher-workbench-be
-./deploy/rsa-backend.sh config
-# Sao lưu SQLite trước khi chạy migration.
-./deploy/rsa-backend.sh migrate
-./deploy/rsa-backend.sh up
-./deploy/rsa-backend.sh ps
-```
-
-Kiểm thử RSA trên URL đã triển khai:
-
-```bash
-PLAYWRIGHT_BASE_URL=https://your-host.ts.net npm run test:e2e:rsa:integration
-```
-
-## Cấu trúc dự án
-
-```text
-src/
-├── app/                 # App shell, composition và runtime wiring
-├── features/
-│   ├── caesar/          # Caesar workspace
-│   ├── vigenere/        # Vigenère workspace
-│   ├── playfair/        # Playfair workspace
-│   ├── affine/          # Affine workspace và API adapter
-│   ├── columnar/        # Hệ mã hàng, validation, Phân tích và API adapter
-│   ├── hill/            # Khóa ma trận, phân tích khối và API Hill
-│   ├── des/             # ECB/CBC, IV, trace DES và API adapter
-│   ├── diffieHellman/   # Trao đổi khóa, thực hành DH và Caesar bằng khóa chung
-│   └── rsa/             # Sinh/nhập khóa, mã hóa/giải mã số và văn bản, ký/kiểm tra và trace RSA
-├── shared/              # UI, hook, service và utility dùng chung
-└── test/                # Thiết lập và helper dùng trong test
-e2e/                     # Playwright scenarios
-docs/                    # Spec, Backend contract và tài liệu deploy
-scripts/                 # Script phục vụ integration/deployment
-deploy/ và nginx/        # Cấu hình reverse proxy và hạ tầng container
-```
-
-Mỗi cipher giữ component, hook, type, utility và service boundary trong feature riêng. `src/app/`
-chịu trách nhiệm ghép các feature đã sẵn sàng vào ứng dụng.
-
-## Quy tắc tích hợp Backend
-
-Các điểm quan trọng khi sửa luồng API:
-
-- Contract chính thức được ghim tại [`docs/BACKEND_CONTRACT.md`](docs/BACKEND_CONTRACT.md).
-- Năm cipher cổ điển dùng success response có `success`, `result`; Playfair giải mã thêm
-  `padding`. Hill/DES/RSA có DTO riêng được mô tả trong contract; lỗi cipher có `success`, `message`.
-- FE phải kiểm tra cả HTTP status và response body, đồng thời giữ nguyên thông báo lỗi hợp lệ từ
-  Backend.
-- Giới hạn file là đúng `5 MiB`.
-- Với các endpoint file multipart, preview dùng `response_mode=content`; download dùng
-  `response_mode=file`. Hill đọc file UTF-8 rồi gửi nội dung qua text API.
-- Affine text gửi `a` và `b` dưới dạng JSON integer token; Affine file gửi hai field multipart
-  `a`/`b` nguyên trạng và giới hạn mỗi khóa tối đa 32 ký tự sau trim.
-- Hệ mã hàng gửi nguyên `text` và khóa string, không chuẩn hóa hoặc thêm padding; file dùng đúng
-  `file,key,action,response_mode`. Phân tích chỉ là minh họa, không tạo result.
-- Không thay kết quả lỗi API bằng kết quả cipher tính cục bộ.
-
-Khi tài liệu FE khác completed OpenSpec hoặc consumer guide đã ghim của Backend, tài liệu Backend
-được ưu tiên và tài liệu FE phải được cập nhật.
+- RSA và Diffie–Hellman trong ứng dụng phục vụ học tập. Chữ ký RSA hiện dùng
+  số nguyên, chưa hỗ trợ ký văn bản/file, băm hoặc padding chữ ký.
+- File đầu vào tối đa `5 MiB`; khả năng xử lý tùy thuật toán.
+- Playfair có chuẩn hóa ký tự; lọc ký tự đệm Playfair/Hill có thể không khôi phục
+  nguyên văn. Có thể đối chiếu bản thô trong phần phân tích.
+- Lịch sử cipher dùng chung trong instance; lịch sử chữ ký RSA thuộc cookie hồ sơ
+  trình duyệt, lưu tối đa 5 giờ và có thể bị loại sớm theo hạn mức. Chưa có tài khoản.
+- Chưa hỗ trợ brute-force, tự động tìm khóa hoặc alphabet tùy chỉnh.
 
 ## Tài liệu liên quan
 
-| Tài liệu                                                           | Nội dung                                   |
-| ------------------------------------------------------------------ | ------------------------------------------ |
-| [`docs/BACKEND_CONTRACT.md`](docs/BACKEND_CONTRACT.md)             | Contract và revision Backend có thẩm quyền |
-| [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md)                     | Spec nền tảng của Caesar Week 1            |
-| [`docs/PLAYFAIR_VIGENERE_SPEC.md`](docs/PLAYFAIR_VIGENERE_SPEC.md) | Phạm vi mở rộng Playfair và Vigenère       |
-| [`docs/AFFINE_SPEC.md`](docs/AFFINE_SPEC.md)                       | Spec FE của Affine                         |
-| [`docs/HILL_SPEC.md`](docs/HILL_SPEC.md)                           | Khóa ma trận và tích hợp Hill              |
-| [`docs/DES_SPEC.md`](docs/DES_SPEC.md)                             | ECB/CBC, IV và tích hợp DES                |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)                         | Hướng dẫn production deployment            |
-| [`docs/RSA_SPEC.md`](docs/RSA_SPEC.md)                             | Sinh/nhập khóa, API và giao diện RSA       |
-| [`docs/SQLITE_COMPOSE.md`](docs/SQLITE_COMPOSE.md)                 | Runtime SQLite, image pin và backup        |
-| [`docs/FE_RELEASE_20261008.md`](docs/FE_RELEASE_20261008.md)       | Bản FE đã kiểm thử và rollback             |
-| [`AGENTS.md`](AGENTS.md)                                           | Quy ước làm việc dành cho coding agent     |
-
-## Giới hạn hiện tại
-
-- Lịch sử cipher dùng chung toàn instance; lịch sử ký/kiểm tra RSA xem lại riêng theo cookie hồ sơ trình duyệt, lưu tối đa 5 giờ. Chưa có tài khoản.
-- Chưa hỗ trợ brute-force, tự động tìm khóa hoặc alphabet tùy chỉnh.
+| Tài liệu                                               | Nội dung                                         |
+| ------------------------------------------------------ | ------------------------------------------------ |
+| [Backend contract](docs/BACKEND_CONTRACT.md)           | API và quy tắc tích hợp                          |
+| [Spec nền tảng](docs/PROJECT_SPEC.md)                  | Phạm vi và luồng sử dụng cơ bản                  |
+| [Playfair và Vigenère](docs/PLAYFAIR_VIGENERE_SPEC.md) | Quy tắc và phạm vi hỗ trợ                        |
+| [Affine](docs/AFFINE_SPEC.md)                          | Khóa và tích hợp Affine                          |
+| [Hệ mã hàng](docs/COLUMNAR_SPEC.md)                    | Khóa, Unicode và file                            |
+| [Hill](docs/HILL_SPEC.md)                              | Khóa ma trận và xử lý khối                       |
+| [DES](docs/DES_SPEC.md)                                | ECB/CBC, IV và trace                             |
+| [RSA](docs/RSA_SPEC.md)                                | Khóa, mã hóa và chữ ký                           |
+| [Diffie–Hellman](src/features/diffieHellman/README.md) | Tham số, trao đổi khóa và Caesar bằng khóa chung |
+| [Tích hợp DH](docs/DIFFIE_HELLMAN_BE_INTEGRATION.md)   | Contract và bằng chứng kiểm thử Backend thật     |
+| [SQLite và backup](docs/SQLITE_COMPOSE.md)             | Stack, dữ liệu và vận hành                       |
+| [Deployment](docs/DEPLOYMENT.md)                       | Triển khai production                            |
+| [AGENTS.md](AGENTS.md)                                 | Quy ước dành cho coding agent                    |
