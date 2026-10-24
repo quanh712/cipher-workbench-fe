@@ -5,19 +5,17 @@ import {
   canShowServerHistory,
   getHealthStatus,
   getHistory,
-  getDhHistory,
+  deleteHistoryItem,
+  deleteAllHistory,
   type HistoryItem,
   HistoryApiError,
   dhHistoryOperations,
   type HistoryOperation,
 } from "../services/historyApi";
 
-import {
-  getSignatureHistory,
-  type SignatureHistoryItem,
-  type VerificationDraft,
-} from "../services/signatureHistoryApi";
+import { type VerificationDraft } from "../services/signatureHistoryApi";
 import { SignatureHistoryDialog } from "./SignatureHistoryDialog";
+import { HistoryDetailDialog } from "./HistoryDetailDialog";
 
 function errorMessage(error: unknown): string {
   return error instanceof HistoryApiError
@@ -52,56 +50,33 @@ function operationsFor(cipher: CipherAlgorithm | "", includeDh: boolean) {
   });
 }
 
-type Row = (HistoryItem | SignatureHistoryItem) & { origin: "common" | "private" | "dh" };
-type Stream = { items: Row[]; cursor: string | null; error: string | null; loading: boolean };
-const emptyStream: Stream = { items: [], cursor: null, error: null, loading: true };
+type HistoryState = {
+  items: HistoryItem[];
+  cursor: string | null;
+  error: string | null;
+  loading: boolean;
+};
+const emptyHistory: HistoryState = { items: [], cursor: null, error: null, loading: true };
 
 export function HistoryWorkspace({
   onReuse,
 }: { onReuse?: (draft: VerificationDraft) => void } = {}) {
   const [cipher, setCipher] = useState<CipherAlgorithm | "">("");
   const [operation, setOperation] = useState<Operation>("");
-  const [streams, setStreams] = useState<Record<string, Stream>>({
-    common: emptyStream,
-    dh: emptyStream,
-    sign: emptyStream,
-    verify: emptyStream,
-  });
+  const [history, setHistory] = useState<HistoryState>(emptyHistory);
   const [retry, setRetry] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<HistoryItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<number | "all" | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const controllers = useRef<AbortController[]>([]);
   const cipherAlgorithms = getCipherAlgorithms();
   const includeDh = cipherAlgorithms.some(({ value }) => value === "diffie-hellman");
   const operations = operationsFor(cipher, includeDh);
-  const dhOperation = operation in dhHistoryOperations;
-  const dhEnabled =
-    cipherAlgorithms.some(({ value }) => value === "diffie-hellman") &&
-    (!cipher || cipher === "diffie-hellman") &&
-    operation !== "sign" &&
-    operation !== "verify";
-  const commonEnabled =
-    cipher !== "diffie-hellman" && !dhOperation && operation !== "sign" && operation !== "verify";
-  const signatureEnabled =
-    (!cipher || cipher === "rsa") &&
-    (operation === "" || operation === "sign" || operation === "verify");
-  const keys = [
-    ...(commonEnabled ? ["common"] : []),
-    ...(dhEnabled ? ["dh"] : []),
-    ...(signatureEnabled
-      ? operation === "sign"
-        ? ["sign"]
-        : operation === "verify"
-          ? ["verify"]
-          : ["sign", "verify"]
-      : []),
-  ];
-  async function load(key: string, cursor?: string, signal?: AbortSignal) {
-    setStreams((current) => ({
-      ...current,
-      [key]: { ...current[key], loading: true, error: null },
-    }));
+  async function load(cursor?: string, signal?: AbortSignal) {
+    setHistory((current) => ({ ...current, loading: true, error: null }));
     try {
-      if (key === "common" && !cursor) {
+      if (!cursor) {
         const health = await getHealthStatus(signal);
         if (!canShowServerHistory(health))
           throw new Error(
@@ -110,57 +85,41 @@ export function HistoryWorkspace({
               : "Lịch sử chưa được bật trên máy chủ.",
           );
       }
-      const page =
-        key === "common" || key === "dh"
-          ? await (key === "dh" ? getDhHistory : getHistory)(
-              {
-                cipher: key === "dh" ? "diffie-hellman" : cipher || undefined,
-                operation:
-                  operation && operation !== "sign" && operation !== "verify"
-                    ? operation
-                    : undefined,
-                ...(cursor ? { cursor } : {}),
-              },
-              signal,
-            )
-          : await getSignatureHistory(key as "sign" | "verify", cursor, signal);
+      const page = await getHistory(
+        {
+          cipher: cipher || undefined,
+          operation: operation || undefined,
+          ...(cursor ? { cursor } : {}),
+        },
+        signal,
+      );
       if (signal?.aborted) return;
-      setStreams((current) => {
-        const previous = cursor ? current[key].items : [];
+      setHistory((current) => {
+        const previous = cursor ? current.items : [];
         const ids = new Set(previous.map((item) => item.id));
-        const incoming = page.items
-          .filter((item) => !ids.has(item.id))
-          .map((item) => ({
-            ...item,
-            origin:
-              key === "common"
-                ? ("common" as const)
-                : key === "dh"
-                  ? ("dh" as const)
-                  : ("private" as const),
-          }));
         return {
-          ...current,
-          [key]: {
-            items: [...previous, ...incoming],
-            cursor: page.nextCursor,
-            error: null,
-            loading: false,
-          },
+          items: [
+            ...previous,
+            ...page.items.filter((item) => {
+              if (ids.has(item.id)) return false;
+              ids.add(item.id);
+              return true;
+            }),
+          ],
+          cursor: page.nextCursor,
+          error: null,
+          loading: false,
         };
       });
     } catch (error) {
       if (!signal?.aborted)
-        setStreams((current) => ({
+        setHistory((current) => ({
           ...current,
-          [key]: {
-            ...current[key],
-            error: error instanceof Error ? error.message : errorMessage(error),
-            loading: false,
-            ...(error instanceof HistoryApiError && error.status === 404
-              ? { items: [], cursor: null }
-              : {}),
-          },
+          error: error instanceof Error ? error.message : errorMessage(error),
+          loading: false,
+          ...(error instanceof HistoryApiError && error.status === 404
+            ? { items: [], cursor: null }
+            : {}),
         }));
     }
   }
@@ -170,42 +129,39 @@ export function HistoryWorkspace({
     controllers.current = [controller];
     queueMicrotask(() => {
       if (controller.signal.aborted) return;
-      setStreams({ common: emptyStream, dh: emptyStream, sign: emptyStream, verify: emptyStream });
-      keys.forEach((key) => void load(key, undefined, controller.signal));
+      setHistory(emptyHistory);
+      setSelected(null);
+      setPendingDelete(null);
+      setDeleteError("");
+      void load(undefined, controller.signal);
     });
     return () => controllers.current.forEach((value) => value.abort());
-    // Each filter change starts a fresh snapshot of all relevant sources.
+    // Filters start a fresh server snapshot with one shared cursor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cipher, operation, retry]);
-  const loading = keys.some((key) => streams[key].loading);
-  // Hold rows below the oldest loaded row of an unfinished stream. This avoids
-  // showing older records before newer records still waiting on another cursor.
-  const boundary = Math.max(
-    ...keys
-      .filter((key) => !streams[key].error && streams[key].cursor && streams[key].items.length)
-      .map((key) => Date.parse(streams[key].items.at(-1)!.createdAt)),
-    -Infinity,
-  );
-  const items = keys
-    .flatMap((key) =>
-      streams[key].items.filter(
-        (item) => key !== "common" || !dhEnabled || item.cipher !== "diffie-hellman",
-      ),
-    )
-    .filter((item) => Date.parse(item.createdAt) >= boundary)
-    .sort(
-      (a, b) =>
-        Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
-        b.id - a.id ||
-        a.origin.localeCompare(b.origin),
-    );
-  const hasMore = keys.some((key) => streams[key].cursor);
+  const { items, loading } = history;
   function loadMore() {
+    if (loading) return;
     const controller = new AbortController();
     controllers.current.push(controller);
-    keys
-      .filter((key) => streams[key].cursor && !streams[key].loading)
-      .forEach((key) => void load(key, streams[key].cursor!, controller.signal));
+    void load(history.cursor || undefined, controller.signal);
+  }
+  async function remove() {
+    if (pendingDelete === null) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      if (pendingDelete === "all") await deleteAllHistory();
+      else await deleteHistoryItem(pendingDelete);
+      // Restart pagination: deleting rows can change the server's current snapshot.
+      setRetry((value) => value + 1);
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : "Không thể xóa lịch sử. Vui lòng thử lại.",
+      );
+    } finally {
+      setDeleting(false);
+    }
   }
   return (
     <section className="history" aria-labelledby="history-title">
@@ -220,16 +176,61 @@ export function HistoryWorkspace({
         <button
           className="button button--secondary"
           type="button"
+          disabled={deleting}
           onClick={() => setRetry((n) => n + 1)}
         >
           Làm mới lịch sử
         </button>
       </div>
 
+      {items.length > 0 && (
+        <button
+          type="button"
+          className="button button--secondary"
+          disabled={deleting}
+          onClick={() => {
+            setDeleteError("");
+            setPendingDelete("all");
+          }}
+        >
+          Xóa toàn bộ lịch sử
+        </button>
+      )}
+      {pendingDelete !== null && (
+        <div role="group" aria-label="Xác nhận xóa">
+          <p>
+            {pendingDelete === "all"
+              ? "Xóa toàn bộ lịch sử của hồ sơ trình duyệt này, kể cả các bản ghi ngoài bộ lọc hiện tại?"
+              : "Xóa bản ghi này?"}{" "}
+            Thao tác không thể hoàn tác.
+          </p>
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={deleting}
+            onClick={() => {
+              setPendingDelete(null);
+              setDeleteError("");
+            }}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="button button--primary"
+            disabled={deleting}
+            onClick={() => void remove()}
+          >
+            {deleting ? "Đang xóa…" : "Xác nhận xóa"}
+          </button>
+          {deleteError && <p role="alert">{deleteError}</p>}
+        </div>
+      )}
       <div className="history__filters">
         <label>
           Thuật toán
           <select
+            disabled={deleting}
             value={cipher}
             onChange={(event) => {
               const nextCipher = event.target.value as CipherAlgorithm | "";
@@ -249,6 +250,7 @@ export function HistoryWorkspace({
         <label>
           Thao tác
           <select
+            disabled={deleting}
             value={operation}
             onChange={(event) => setOperation(event.target.value as Operation)}
           >
@@ -267,38 +269,22 @@ export function HistoryWorkspace({
           Đang tải lịch sử…
         </p>
       )}
-      {keys.map(
-        (key) =>
-          streams[key].error && (
-            <p key={key} className="history__message history__message--error" role="alert">
-              {key === "common"
-                ? "Lịch sử chung"
-                : key === "dh"
-                  ? "Lịch sử Diffie–Hellman"
-                  : "Lịch sử chữ ký riêng"}
-              : {streams[key].error}{" "}
-              <button
-                type="button"
-                disabled={streams[key].loading}
-                onClick={() => {
-                  const controller = new AbortController();
-                  controllers.current.push(controller);
-                  void load(key, streams[key].cursor || undefined, controller.signal);
-                }}
-              >
-                Thử lại
-              </button>
-            </p>
-          ),
+      {history.error && (
+        <p className="history__message history__message--error" role="alert">
+          {history.error}{" "}
+          <button type="button" disabled={loading} onClick={loadMore}>
+            Thử lại
+          </button>
+        </p>
       )}
-      {!loading && keys.every((key) => !streams[key].error) && items.length === 0 && (
+      {!loading && !history.error && items.length === 0 && (
         <p className="history__message">Chưa có thao tác nào khớp bộ lọc.</p>
       )}
 
       {items.length > 0 && (
         <ol className="history__list" aria-label="Các thao tác gần đây">
           {items.map((item) => (
-            <li className="history__item" key={`${item.origin}-${item.id}`}>
+            <li className="history__item" key={item.id}>
               <div className="history__item-main">
                 <span
                   className={`history__status ${item.succeeded ? "history__status--ok" : "history__status--error"}`}
@@ -327,7 +313,7 @@ export function HistoryWorkspace({
                             : "Chưa xác định"}
                 </span>
                 <span className="history__status">
-                  {item.origin === "private"
+                  {item.operation === "sign" || item.operation === "verify"
                     ? "Chữ ký riêng"
                     : item.cipher === "diffie-hellman"
                       ? "Lịch sử Diffie–Hellman"
@@ -335,23 +321,33 @@ export function HistoryWorkspace({
                 </span>
                 <time dateTime={item.createdAt}>{timeLabel(item.createdAt)}</time>
               </div>
-              {item.origin === "private" && (
-                <div className="history__item-details">
-                  {"valid" in item && item.valid !== null && (
-                    <span>{item.valid ? "Chữ ký hợp lệ" : "Chữ ký không hợp lệ"}</span>
-                  )}
-                  <button
-                    type="button"
-                    className="button button--secondary"
-                    onClick={() => setSelected(item.id)}
-                  >
-                    Xem chi tiết
-                  </button>
-                </div>
-              )}
+              <div className="history__item-details">
+                {item.valid !== null && typeof item.valid === "boolean" && (
+                  <span>{item.valid ? "Chữ ký hợp lệ" : "Chữ ký không hợp lệ"}</span>
+                )}
+                <button
+                  type="button"
+                  className="button button--secondary"
+                  disabled={deleting}
+                  onClick={() => setSelected(item)}
+                >
+                  Xem chi tiết
+                </button>
+                <button
+                  type="button"
+                  className="button button--secondary"
+                  disabled={deleting}
+                  onClick={() => {
+                    setDeleteError("");
+                    setPendingDelete(item.id);
+                  }}
+                >
+                  Xóa bản ghi
+                </button>
+              </div>
               <div className="history__item-details">
                 <span>
-                  {item.origin === "private"
+                  {item.operation === "sign" || item.operation === "verify"
                     ? "Chữ ký RSA"
                     : item.cipher === "diffie-hellman" &&
                         item.operation &&
@@ -382,25 +378,32 @@ export function HistoryWorkspace({
         </ol>
       )}
 
-      {hasMore && (
+      {history.cursor && (
         <button
           className="button button--secondary history__more"
           type="button"
-          disabled={loading}
+          disabled={loading || deleting}
           onClick={() => void loadMore()}
         >
           {loading ? "Đang tải…" : "Tải thêm"}
         </button>
       )}
-      {selected !== null && (
-        <SignatureHistoryDialog
-          key={selected}
-          id={selected}
-          onClose={() => setSelected(null)}
-          onDeleted={() => setRetry((n) => n + 1)}
-          onReuse={onReuse}
-        />
-      )}
+      {selected !== null &&
+        (selected.operation === "sign" || selected.operation === "verify" ? (
+          <SignatureHistoryDialog
+            key={selected.id}
+            id={selected.id}
+            onClose={() => setSelected(null)}
+            onDeleted={() => setRetry((n) => n + 1)}
+            onReuse={onReuse}
+          />
+        ) : (
+          <HistoryDetailDialog
+            key={selected.id}
+            id={selected.id}
+            onClose={() => setSelected(null)}
+          />
+        ))}
     </section>
   );
 }

@@ -85,13 +85,12 @@ def backup_once(source: Path, directory: Path, retention_days: int) -> dict:
             report = verify_staging(
                 snapshot,
                 expected_manifest_digest=result.backup_digest,
-                expected_schema_revision="sqlite_0001",
             )
             rehearsal = restore_sqlite_backup(
                 snapshot,
                 restored,
                 expected_manifest_digest=result.backup_digest,
-                expected_schema_revision="sqlite_0001",
+                expected_schema_revision=report.manifest.schema_revision,
                 runtime_path=source,
             )
             if not result.verified or not rehearsal.verified:

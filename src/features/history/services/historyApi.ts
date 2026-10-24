@@ -1,3 +1,4 @@
+import { readFileDownload } from "../../../shared/services/cipherApi";
 import type { CipherAlgorithm } from "../../../shared/types/cipher";
 import type { CipherMode } from "../../../shared/types/cipher";
 
@@ -9,7 +10,7 @@ export const dhHistoryOperations = {
   exchange: "Trao đổi khóa",
 } as const;
 export type DhHistoryOperation = keyof typeof dhHistoryOperations;
-export type HistoryOperation = CipherMode | DhHistoryOperation;
+export type HistoryOperation = CipherMode | DhHistoryOperation | "sign" | "verify";
 
 export interface HistoryItem {
   id: number;
@@ -23,6 +24,10 @@ export interface HistoryItem {
   httpStatus: number;
   succeeded: boolean;
   durationMs: number;
+  valid?: boolean | null;
+  processingState?: string | null;
+  contentAvailable?: boolean;
+  logicalSize?: number;
 }
 
 export interface HistoryPage {
@@ -113,7 +118,7 @@ export function getHistory(query: HistoryQuery, signal?: AbortSignal): Promise<H
 }
 
 export function getDhHistory(query: HistoryQuery, signal?: AbortSignal): Promise<HistoryPage> {
-  return readHistory("/api/dh/history", { ...query, cipher: "diffie-hellman" }, signal);
+  return getHistory({ ...query, cipher: "diffie-hellman" }, signal);
 }
 
 async function readHistory(
@@ -155,4 +160,66 @@ async function readHistory(
       cipher: String(item.cipher) === "dh" ? "diffie-hellman" : item.cipher,
     })),
   };
+}
+
+export interface HistoryDetail extends HistoryItem {
+  payload: Record<string, unknown>;
+}
+
+async function requestHistory(path: string, signal?: AbortSignal, method = "GET") {
+  const response = await fetch(`/api/history${path}`, {
+    signal,
+    method,
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  const body = await readBody(response);
+  if (!response.ok) return readError(body, response.status);
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("success" in body) ||
+    body.success !== true ||
+    !("result" in body)
+  )
+    throw new HistoryApiError(SYSTEM_ERROR, response.status);
+  return body.result;
+}
+
+export async function getHistoryDetail(id: number, signal?: AbortSignal): Promise<HistoryDetail> {
+  const value = await requestHistory(`/${id}`, signal);
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("id" in value) ||
+    value.id !== id ||
+    !("payload" in value) ||
+    !value.payload ||
+    typeof value.payload !== "object" ||
+    Array.isArray(value.payload)
+  )
+    throw new HistoryApiError(SYSTEM_ERROR, 200);
+  const detail = value as HistoryDetail;
+  return { ...detail, cipher: String(detail.cipher) === "dh" ? "diffie-hellman" : detail.cipher };
+}
+
+export async function deleteHistoryItem(id: number, signal?: AbortSignal): Promise<void> {
+  await requestHistory(`/${id}`, signal, "DELETE");
+}
+
+export async function deleteAllHistory(signal?: AbortSignal): Promise<void> {
+  await requestHistory("", signal, "DELETE");
+}
+
+export async function getHistoryContent(
+  id: number,
+  signal?: AbortSignal,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(`/api/history/${id}/content`, {
+    signal,
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!response.ok) return readError(await readBody(response), response.status);
+  return readFileDownload(response);
 }

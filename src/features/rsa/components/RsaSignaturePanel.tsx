@@ -1,5 +1,7 @@
 import { Notification } from "../../../shared/components/Notification";
 import { useRef } from "react";
+import { StandardRsaSignaturePanel } from "./StandardRsaSignaturePanel";
+import "./rsa-signatures.css";
 import type { useRsaSignature } from "../hooks/useRsaSignature";
 
 type SignatureController = ReturnType<typeof useRsaSignature>;
@@ -38,6 +40,30 @@ function ClipboardActions({
 }
 
 export function RsaSignaturePanel({ signature }: { signature: SignatureController }) {
+  return (
+    <>
+      <label className="rsa-signature-scheme">
+        <span>Loại chữ ký</span>
+        <select
+          value={signature.scheme}
+          onChange={(event) => {
+            signature.setScheme(event.target.value as "raw" | "standard");
+          }}
+        >
+          <option value="raw">Số nguyên (học tập)</option>
+          <option value="standard">Văn bản / tệp · RSA-PSS</option>
+        </select>
+      </label>
+      {signature.scheme === "standard" ? (
+        <StandardRsaSignaturePanel key={signature.resetVersion} active={signature.active} />
+      ) : (
+        <RawRsaSignaturePanel signature={signature} />
+      )}
+    </>
+  );
+}
+
+function RawRsaSignaturePanel({ signature }: { signature: SignatureController }) {
   const modeRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const signing = signature.mode === "sign";
   const result = signature.result;

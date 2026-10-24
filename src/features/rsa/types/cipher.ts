@@ -38,10 +38,25 @@ export type RsaFieldErrors = Partial<Record<RsaField, string>>;
 
 export type RsaMode = "encrypt" | "decrypt";
 export type RsaInputType = "number" | "text";
-export type RsaTransformRequest = { n: string; inputType: RsaInputType } & (
+export type RsaTextMode = "char" | "block";
+export type RsaKeyBits = 16 | 32 | 64 | 128;
+export type RsaTransformRequest = {
+  n: string;
+  inputType: RsaInputType;
+  mode?: RsaTextMode;
+  traceBlockIndex?: number;
+  originalUtf8ByteLength?: number;
+} & (
   | { operation: "encrypt"; e: string; data: string }
   | { operation: "decrypt"; d: string; cipher: string[] }
 );
+export interface RsaFileRequest {
+  file: File;
+  e: string;
+  n: string;
+  mode: RsaTextMode;
+  traceBlockIndex?: number;
+}
 export interface RsaTransformResult {
   operation: RsaMode;
   inputType: RsaInputType;
@@ -49,4 +64,8 @@ export interface RsaTransformResult {
   blocks: string[];
   cipher: string[];
   rows: ModPowRow[];
+  mode?: RsaTextMode;
+  blockSize?: number;
+  originalUtf8ByteLength?: number;
+  traceBlockIndex?: number;
 }

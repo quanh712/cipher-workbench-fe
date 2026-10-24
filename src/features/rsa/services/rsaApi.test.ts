@@ -215,3 +215,121 @@ describe("RSA raw signature adapter", () => {
     await expect(rsaApi.signature(rawRequest, signal())).rejects.toThrow("Sai khóa <Backend>");
   });
 });
+
+describe("RSA random keys, UTF-8 blocks and files", () => {
+  it("uses numeric bits and maps server-generated primes", async () => {
+    const fetch = response({ ...key, p: "17", q: "11" });
+    expect(await rsaApi.generateRandomKey(32, signal())).toMatchObject({
+      p: "17",
+      q: "11",
+      n: "187",
+    });
+    expect(fetch.mock.calls[0][0]).toBe("/api/rsa/keys/random");
+    expect(payload(fetch)).toEqual({ bits: 32 });
+  });
+
+  it("keeps byte length in a portable block ciphertext and supports another trace block", async () => {
+    const fetch = response({
+      success: true,
+      inputType: "text",
+      mode: "block",
+      blocks: ["65", "66"],
+      cipher: ["10", "20"],
+      blockSize: 1,
+      originalUtf8ByteLength: 2,
+      trace: { ...trace("encrypt"), blockIndex: 1 },
+    });
+    const result = await rsaApi.transform(
+      {
+        operation: "encrypt",
+        inputType: "text",
+        e: "17",
+        n: "3233",
+        mode: "block",
+        data: "AB",
+        traceBlockIndex: 1,
+      },
+      signal(),
+    );
+    expect(JSON.parse(result.output)).toEqual({
+      mode: "block",
+      cipher: ["10", "20"],
+      originalUtf8ByteLength: 2,
+    });
+    expect(result.traceBlockIndex).toBe(1);
+    expect(payload(fetch)).toEqual({
+      inputType: "text",
+      e: "17",
+      n: "3233",
+      mode: "block",
+      data: "AB",
+      traceBlockIndex: 1,
+    });
+  });
+
+  it("sends block length as a number and preserves trailing NUL bytes on decrypt", async () => {
+    const fetch = response({
+      success: true,
+      inputType: "text",
+      mode: "block",
+      blocks: ["16640"],
+      plaintext: "A\0",
+      blockSize: 2,
+      originalUtf8ByteLength: 2,
+      trace: trace("decrypt"),
+    });
+    const result = await rsaApi.transform(
+      {
+        operation: "decrypt",
+        inputType: "text",
+        d: "23",
+        n: "100000",
+        mode: "block",
+        cipher: ["10"],
+        originalUtf8ByteLength: 2,
+      },
+      signal(),
+    );
+    expect(result.output).toBe("A\0");
+    expect(payload(fetch).originalUtf8ByteLength).toBe(2);
+  });
+
+  it("uploads original bytes without declaring a multipart Content-Type", async () => {
+    const fetch = response({
+      success: true,
+      inputType: "text",
+      mode: "block",
+      blocks: ["65"],
+      cipher: ["10"],
+      blockSize: 1,
+      originalUtf8ByteLength: 1,
+      trace: trace("encrypt"),
+    });
+    const file = new File(["A"], "unicode.txt", { type: "text/plain" });
+    await rsaApi.encryptFile({ file, e: "17", n: "3233", mode: "block" }, signal());
+    const init = fetch.mock.calls[0][1];
+    expect(init.headers).toBeUndefined();
+    expect([...init.body.keys()].sort()).toEqual(["e", "file", "mode", "n", "traceBlockIndex"]);
+    expect(init.body.get("file")).toBe(file);
+    expect(init.body.get("traceBlockIndex")).toBe("0");
+  });
+
+  it("rejects inconsistent block metadata rather than losing UTF-8 data", async () => {
+    response({
+      success: true,
+      inputType: "text",
+      mode: "block",
+      blocks: ["65"],
+      cipher: ["10"],
+      blockSize: 1,
+      originalUtf8ByteLength: 2,
+      trace: trace("encrypt"),
+    });
+    await expect(
+      rsaApi.transform(
+        { operation: "encrypt", inputType: "text", mode: "block", e: "17", n: "3233", data: "AB" },
+        signal(),
+      ),
+    ).rejects.toThrow("không hợp lệ");
+  });
+});

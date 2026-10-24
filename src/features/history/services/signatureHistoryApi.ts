@@ -38,7 +38,7 @@ function item(value: unknown): SignatureHistoryItem {
   return row as unknown as SignatureHistoryItem;
 }
 async function request(path: string, signal?: AbortSignal, method = "GET") {
-  const response = await fetch(`/api/rsa/history${path}`, {
+  const response = await fetch(`/api/history${path}`, {
     signal,
     method,
     credentials: "same-origin",

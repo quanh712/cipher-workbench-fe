@@ -51,6 +51,24 @@ export function createRsaGateway(options: { failOnce?: RsaTask } = {}): RsaGatew
     }
   }
   return {
+    async generateRandomKey(_bits, signal) {
+      check("key", signal);
+      return structuredClone(keys[1]);
+    },
+    async encryptFile(parameters, signal) {
+      check("text", signal);
+      return {
+        operation: "encrypt",
+        inputType: "text",
+        output: '["11"]',
+        blocks: ["88"],
+        cipher: ["11"],
+        rows: [{ index: 0, bit: 1, base: "88", before: "1", after: "11" }],
+        mode: parameters.mode,
+        originalUtf8ByteLength: 1,
+        blockSize: 1,
+      };
+    },
     async signature(parameters, signal) {
       signal.throwIfAborted();
       return {

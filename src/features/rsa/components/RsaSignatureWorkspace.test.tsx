@@ -110,3 +110,27 @@ describe("RSA signature workspace", () => {
     expect(screen.getByRole("button", { name: "Ký" })).toBeDisabled();
   });
 });
+
+it("switches to RSA-PSS and clears private PEM when leaving the signature tab", async () => {
+  setup();
+  fireEvent.change(screen.getByLabelText("Loại chữ ký"), { target: { value: "standard" } });
+  fireEvent.change(screen.getByLabelText("Nội dung ký / kiểm tra"), { target: { value: "abc" } });
+  fireEvent.change(screen.getByLabelText("Private key PEM"), { target: { value: "PRIVATE PEM" } });
+  let resolve!: (response: Response) => void;
+  vi.mocked(fetch).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ký nội dung" }));
+  const call = vi.mocked(fetch).mock.calls.at(-1)!;
+  const signal = call[1]!.signal!;
+  expect(call[0]).toBe("/api/rsa/sign");
+  fireEvent.click(screen.getByRole("tab", { name: "Mã hóa" }));
+  expect(signal.aborted).toBe(true);
+  resolve(new Response(JSON.stringify({ success: true })));
+  fireEvent.click(screen.getByRole("tab", { name: "Chữ ký số" }));
+  await waitFor(() => expect(screen.getByLabelText("Private key PEM")).toHaveValue(""));
+  expect(screen.queryByText("Đã ký nội dung.")).not.toBeInTheDocument();
+});

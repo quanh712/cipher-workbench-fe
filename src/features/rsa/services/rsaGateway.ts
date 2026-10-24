@@ -4,6 +4,8 @@ import type {
   RsaParameters,
   RsaTransformRequest,
   RsaTransformResult,
+  RsaKeyBits,
+  RsaFileRequest,
 } from "../types/cipher";
 
 /**
@@ -17,6 +19,8 @@ export interface RsaGateway {
   signature(parameters: RsaSignatureRequest, signal: AbortSignal): Promise<RsaSignatureResult>;
   transform(parameters: RsaTransformRequest, signal: AbortSignal): Promise<RsaTransformResult>;
   generateKey(parameters: RsaParameters, signal: AbortSignal): Promise<RsaKeyResult>;
+  generateRandomKey(bits: RsaKeyBits, signal: AbortSignal): Promise<RsaKeyResult>;
+  encryptFile(parameters: RsaFileRequest, signal: AbortSignal): Promise<RsaTransformResult>;
 }
 
 export class RsaGatewayError extends Error {
