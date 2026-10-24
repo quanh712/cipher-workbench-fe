@@ -23,7 +23,7 @@ Nginx FE container :8080
 
 FastAPI chỉ ở trong Docker network; không publish cổng `8000`.
 SQLite là file local trong volume của Backend, không mở cổng database. Compose chạy migration Alembic trước khi Backend khởi động. Lịch sử là
-metadata chung của toàn instance, không có tài khoản hay session.
+theo cookie hồ sơ trình duyệt cho mọi thuật toán; không có tài khoản.
 
 ## 2. Chuẩn bị VPS
 
@@ -50,20 +50,19 @@ Tạo thư mục triển khai và clone hai repo cạnh nhau:
 Backend revision đã đối chiếu cho contract DB/history hiện tại:
 
 ```text
-229c69d7c9af8413a780002b266bdb7651e79cb4
+9d22937682434bc8847ae53449f612716e0ef6b8
 ```
 
-`GET /api/history` không có xác thực, nên trên instance public giữ
-`HISTORY_API_ENABLED=false` (giá trị mặc định trong Compose; cấu hình public đặt flag trong `.env.sqlite`). Backend mới cũng mặc định tắt
-API đọc lịch sử; SQLite vẫn ghi metadata và tự xóa bản ghi quá 30 ngày.
-Chỉ bật API đọc trên stack dev/nội bộ được giới hạn truy cập.
+Lịch sử hiện hành dùng cookie owner, TTL cố định 5 giờ và schema `sqlite_0004`.
+`HISTORY_API_ENABLED` vẫn mặc định tắt; chỉ bật có chủ đích cho môi trường đã kiểm
+chứng. Có database thì bắt buộc `HISTORY_PROFILE_SIGNING_KEY` đúng 64 ký tự hex
+ngẫu nhiên, giữ nguyên qua restart/update. Với HTTPS đặt `HISTORY_COOKIE_SECURE=true`;
+HTTP loopback phát triển mới dùng `false`. Không thay secret của runtime hiện có.
 
-Để nghiệm thu lịch sử ở stack **nội bộ** với BE revision đã ghim, đặt
-`HISTORY_API_ENABLED=true` trong env file riêng của stack đó, recreate riêng `backend`,
-rồi chạy `PLAYWRIGHT_BASE_URL=http://127.0.0.1:18081 REQUIRE_SERVER_HISTORY=1 npm run test:e2e:integration`
-(đổi cổng nếu stack dùng cổng khác).
-Không dùng env file nội bộ này cho stack public; biến `REQUIRE_SERVER_HISTORY=1` khiến test
-thất bại nếu history chưa bật thay vì âm thầm skip.
+FE đọc chung `/api/history` cho cả RSA/DH/cipher. Mọi request cùng đi một Backend
+và giữ Cookie/Set-Cookie; không dùng các alias history theo thuật toán. Xem
+[contract hiện hành](BACKEND_CONTRACT.md). Các báo cáo rollout có ngày giữ bằng chứng
+lịch sử, không thay thế việc kiểm image/API đang chạy trước khi release.
 
 Checkout SHA đã duyệt ở từng repo. Không deploy trực tiếp một nhánh đang di chuyển
 như `main`. Trước khi build, cả hai lệnh sau phải không in ra nội dung:
@@ -79,7 +78,9 @@ Runtime chỉ dùng `.env.sqlite`, project `cipher-workbench-sqlite` và volume
 `cipher-workbench-sqlite_history-data`. `docker-compose.yml` là symlink tới
 `docker-compose.sqlite.yml`; không còn đường Compose riêng dùng `.env.deploy`.
 
-Máy mới cần load image FE/BE đã pin và tạo `.env.sqlite` từ mẫu. Stack hiện tại
+Máy mới cần build/load và kiểm chứng image FE/BE, đặt digest trong `.env.sqlite`
+từ mẫu, điền secret mới cho hồ sơ và chọn cookie secure theo origin. Mẫu không tự
+chọn image release: source FE mới chưa có image chỉ vì checkout đã được sửa. Stack hiện tại
 giữ env sẵn có. Instance public đặt `HISTORY_API_ENABLED=false` trong `.env.sqlite`.
 
 ```bash
@@ -210,6 +211,15 @@ Không tự chạy Alembic downgrade hoặc `down -v`.
 
 - Zero-downtime nhiều replica và load balancer.
 - CI/CD hoặc publish image lên registry.
-- Tài khoản, session, lịch sử riêng theo người dùng, xem lại nội dung cipher.
+- Tài khoản hoặc khôi phục hồ sơ khi mất cookie; danh tính người dùng qua cookie
+  hiện tại chỉ là hồ sơ trình duyệt ẩn danh.
 - Tự động triển khai theo `main`.
 - Thêm thuật toán khi chưa có contract Backend được chấp nhận.
+
+## Cấu hình proxy đã đối chiếu
+
+Đối chiếu tài liệu chính thức ngày 24/10/2026: [Vite server.proxy](https://vite.dev/config/server-options.html#server-proxy)
+cho phép một rule prefix `/api`; [Nginx proxy_pass](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass)
+không thêm URI giữ nguyên request path; [Compose merge](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/)
+quy định đường dẫn override tính theo base file. Luôn xem kết quả `docker compose config`
+trước khi vận hành. Không publish/restart dịch vụ chỉ để kiểm syntax.

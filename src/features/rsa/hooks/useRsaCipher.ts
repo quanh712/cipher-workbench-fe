@@ -11,6 +11,8 @@ import type {
   RsaInputType,
   RsaTransformResult,
   RsaTransformRequest,
+  RsaTextMode,
+  RsaKeyBits,
 } from "../types/cipher";
 import { decimal, validateParameters } from "../utils/validation";
 
@@ -45,8 +47,41 @@ export function parseRsaCipher(value: string, inputType: RsaInputType): string[]
   return parsed as string[];
 }
 
+export function parseRsaBlockCipher(value: string) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    /* Display the format hint below. */
+  }
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    ("mode" in parsed && parsed.mode !== "block") ||
+    !("cipher" in parsed) ||
+    !("originalUtf8ByteLength" in parsed) ||
+    !Number.isSafeInteger(parsed.originalUtf8ByteLength) ||
+    Number(parsed.originalUtf8ByteLength) < 1 ||
+    Number(parsed.originalUtf8ByteLength) > 40_000
+  )
+    throw new RsaGatewayError(
+      "Bản mã block cần JSON gồm cipher và originalUtf8ByteLength (1–40000 byte).",
+    );
+  return {
+    cipher: parseRsaCipher(JSON.stringify(parsed.cipher), "text"),
+    originalUtf8ByteLength: parsed.originalUtf8ByteLength as number,
+  };
+}
+
 export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
   const [draft, setDraft] = useState(initialDraft);
+  const [generationMode, setGenerationModeState] = useState<"manual" | "random">("manual");
+  const [keyBits, setKeyBitsState] = useState<RsaKeyBits>(32);
+  const [textMode, setTextModeState] = useState<RsaTextMode>("char");
+  const [textSource, setTextSourceState] = useState<"text" | "file">("text");
+  const [file, setFileState] = useState<File | null>(null);
+  const [traceIndex, setTraceIndexState] = useState("");
   const [resetVersion, setResetVersion] = useState(0);
   const [key, setKey] = useState<RsaKeyResult | null>(null);
   const [keySource, setKeySourceState] = useState<"generate" | "manual">("generate");
@@ -121,7 +156,10 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
   );
 
   useEffect(() => {
-    if (!active) clearResults();
+    if (!active) {
+      clearResults();
+      setFileState(null);
+    }
   }, [active, clearResults]);
   useEffect(
     () => () => {
@@ -140,11 +178,23 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
   }
   function choosePreset(parameters: RsaParameters) {
     clearResults();
+    setGenerationModeState("manual");
     setDraft((previous) => ({ ...previous, ...parameters }));
   }
   async function generateKey() {
     if (!gateway || !activeRef.current || controllers.current.key) return;
     clearResults();
+    if (generationMode === "random") {
+      await runTask(
+        "key",
+        (signal) => gateway.generateRandomKey(keyBits, signal),
+        (result) => {
+          setKey(result);
+          setDraft((previous) => ({ ...previous, p: result.p, q: result.q, e: result.e }));
+        },
+      );
+      return;
+    }
     const errors = validateParameters(draft);
     setFieldErrors(errors);
     if (Object.keys(errors).length) {
@@ -172,6 +222,7 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
   }
   function setMode(task: RsaInputType, mode: RsaMode) {
     clearTask(task);
+    if (task === "text") setFileState(null);
     setModes((previous) => ({ ...previous, [task]: mode }));
   }
   function setInput(task: RsaInputType, value: string) {
@@ -199,10 +250,37 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
         throw new RsaGatewayError(
           `Nhập n ≥ 2 và ${exponentField} ≥ 1 dưới dạng số thập phân (tối đa 128 chữ số).`,
         );
+      const traceBlockIndex = task === "text" ? Number(traceIndex) : 0;
+      if (task === "text" && (!/^([0-9]{1,5})?$/.test(traceIndex) || traceBlockIndex > 39_999))
+        throw new RsaGatewayError("Chỉ số khối trace phải từ 0 đến 39999.");
+      if (task === "text" && mode === "encrypt" && textSource === "file") {
+        if (!file) throw new RsaGatewayError("Vui lòng chọn file .txt.");
+        if (!/\.txt$/i.test(file.name)) throw new RsaGatewayError("Chỉ chấp nhận file .txt.");
+        if (!file.size || file.size > 1_000_000)
+          throw new RsaGatewayError("File RSA cần từ 1 đến 1.000.000 byte, tối đa 10.000 ký tự.");
+        void runTask(
+          task,
+          (signal) =>
+            gateway.encryptFile(
+              {
+                file,
+                n,
+                e: exponent,
+                mode: textMode,
+                traceBlockIndex,
+              },
+              signal,
+            ),
+          (result) => setResults((previous) => ({ ...previous, [task]: result })),
+        );
+        return;
+      }
       const input = inputs[task][mode];
       let request: RsaTransformRequest;
       if (mode === "encrypt") {
         if (!input.length) throw new RsaGatewayError("Nhập bản rõ trước khi xử lý.");
+        if (task === "text" && Array.from(input).length > 10_000)
+          throw new RsaGatewayError("Văn bản RSA tối đa 10.000 ký tự Unicode.");
         const data = task === "number" ? decimal(input) : input;
         if (data === null || (task === "number" && data.length > 128))
           throw new RsaGatewayError("P phải là số nguyên không âm, tối đa 128 chữ số.");
@@ -213,8 +291,12 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
           inputType: task,
           n,
           d: exponent,
-          cipher: parseRsaCipher(input, task),
+          ...(task === "text" && textMode === "block"
+            ? parseRsaBlockCipher(input)
+            : { cipher: parseRsaCipher(input, task) }),
         };
+      if (task === "text" && textMode === "block") request.mode = "block";
+      if (traceBlockIndex) request.traceBlockIndex = traceBlockIndex;
       void runTask(
         task,
         (signal) => gateway.transform(request, signal),
@@ -232,6 +314,12 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
     setManualKeyState(emptyManualKey);
     setKeySourceState("generate");
     setInputs(initialInputs);
+    setGenerationModeState("manual");
+    setKeyBitsState(32);
+    setTextModeState("char");
+    setTextSourceState("text");
+    setFileState(null);
+    setTraceIndexState("");
     setModes({ number: "encrypt", text: "encrypt" });
   }
   function loadExample() {
@@ -245,6 +333,37 @@ export function useRsaCipher(gateway: RsaGateway | null, active: boolean) {
   return {
     gateway,
     active,
+    generationMode,
+    keyBits,
+    textMode,
+    textSource,
+    file,
+    traceIndex,
+    setGenerationMode: (value: "manual" | "random") => {
+      clearResults();
+      setGenerationModeState(value);
+    },
+    setKeyBits: (value: RsaKeyBits) => {
+      clearResults();
+      setKeyBitsState(value);
+    },
+    setTextMode: (value: RsaTextMode) => {
+      clearTask("text");
+      setTextModeState(value);
+    },
+    setTextSource: (value: "text" | "file") => {
+      clearTask("text");
+      setTextSourceState(value);
+      setFileState(null);
+    },
+    setFile: (value: File | null) => {
+      clearTask("text");
+      setFileState(value);
+    },
+    setTraceIndex: (value: string) => {
+      clearTask("text");
+      setTraceIndexState(value);
+    },
     resetVersion,
     draft,
     key,

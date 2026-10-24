@@ -4,6 +4,10 @@ import {
   getHealthStatus,
   getHistory,
   getDhHistory,
+  getHistoryDetail,
+  getHistoryContent,
+  deleteHistoryItem,
+  deleteAllHistory,
   HistoryApiError,
 } from "./historyApi";
 
@@ -109,13 +113,101 @@ describe("history API", () => {
   });
 });
 
-it("reads DH metadata from its own backend alias", async () => {
+it("reads DH metadata from the canonical endpoint", async () => {
   const fetch = vi
     .spyOn(globalThis, "fetch")
     .mockResolvedValue(json({ success: true, result: { items: [], nextCursor: null } }));
   await getDhHistory({ operation: "exchange" });
   const url = new URL(String(fetch.mock.calls[0][0]), "http://localhost");
-  expect(url.pathname).toBe("/api/dh/history");
+  expect(url.pathname).toBe("/api/history");
   expect(url.searchParams.get("cipher")).toBe("dh");
   expect(url.searchParams.get("operation")).toBe("exchange");
+});
+
+it("reads detail from the canonical owner-scoped endpoint and maps DH", async () => {
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(json({ success: true, result: { id: 7, cipher: "dh", payload: {} } }));
+  const controller = new AbortController();
+  await expect(getHistoryDetail(7, controller.signal)).resolves.toEqual({
+    id: 7,
+    cipher: "diffie-hellman",
+    payload: {},
+  });
+  expect(fetch).toHaveBeenCalledWith(
+    "/api/history/7",
+    expect.objectContaining({
+      signal: controller.signal,
+      credentials: "same-origin",
+      cache: "no-store",
+    }),
+  );
+});
+
+it.each([null, { id: 7, payload: [] }, { id: 8, payload: {} }])(
+  "rejects malformed or mismatched detail %s",
+  async (result) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(json({ success: true, result }));
+    await expect(getHistoryDetail(7)).rejects.toBeInstanceOf(HistoryApiError);
+  },
+);
+
+it("deletes one or all records through the canonical endpoint with browser credentials", async () => {
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async () => json({ success: true, result: { deleted: true } }));
+  await deleteHistoryItem(7);
+  await deleteAllHistory();
+  expect(fetch).toHaveBeenNthCalledWith(
+    1,
+    "/api/history/7",
+    expect.objectContaining({ method: "DELETE", credentials: "same-origin", cache: "no-store" }),
+  );
+  expect(fetch).toHaveBeenNthCalledWith(
+    2,
+    "/api/history",
+    expect.objectContaining({ method: "DELETE", credentials: "same-origin", cache: "no-store" }),
+  );
+});
+
+it("downloads the original content bytes from the canonical endpoint", async () => {
+  const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response("hello\r\n", {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="rsa-history-7.txt"',
+      },
+    }),
+  );
+  const controller = new AbortController();
+  const file = await getHistoryContent(7, controller.signal);
+  expect(await file.blob.text()).toBe("hello\r\n");
+  expect(file.filename).toBe("rsa-history-7.txt");
+  expect(fetch).toHaveBeenCalledWith(
+    "/api/history/7/content",
+    expect.objectContaining({
+      signal: controller.signal,
+      credentials: "same-origin",
+      cache: "no-store",
+    }),
+  );
+});
+
+it.each([getHistoryDetail, getHistoryContent, deleteHistoryItem])(
+  "keeps missing/expired record errors for %s",
+  async (request) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      json({ success: false, message: "Không tìm thấy bản ghi lịch sử." }, 404),
+    );
+    await expect(request(7)).rejects.toEqual(
+      new HistoryApiError("Không tìm thấy bản ghi lịch sử.", 404),
+    );
+  },
+);
+
+it("rejects a JSON response instead of saving it as content", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    json({ success: false, message: "Nội dung không khả dụng." }),
+  );
+  await expect(getHistoryContent(7)).rejects.toThrow("Nội dung không khả dụng.");
 });

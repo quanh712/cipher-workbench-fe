@@ -239,7 +239,7 @@ test("private signature history survives reload, reuses without submitting, dele
     const isolated = await other.newPage();
     await isolated.goto("/");
     expect(
-      await isolated.evaluate(async (id) => (await fetch(`/api/rsa/history/${id}`)).status, id),
+      await isolated.evaluate(async (id) => (await fetch(`/api/history/${id}`)).status, id),
     ).toBe(404);
   } finally {
     await other.close();
@@ -254,15 +254,15 @@ test("private signature history survives reload, reuses without submitting, dele
   await expect(dialog).toContainText(`Chi tiết chữ ký #${id}`);
   await dialog.getByRole("button", { name: "Xóa bản ghi" }).click();
   await dialog.getByRole("button", { name: "Hủy", exact: true }).click();
-  expect(
-    await page.evaluate(async (id) => (await fetch(`/api/rsa/history/${id}`)).status, id),
-  ).toBe(200);
+  expect(await page.evaluate(async (id) => (await fetch(`/api/history/${id}`)).status, id)).toBe(
+    200,
+  );
   await dialog.getByRole("button", { name: "Xóa bản ghi" }).click();
   await dialog.getByRole("button", { name: "Xác nhận xóa" }).click();
   await expect(dialog).not.toBeVisible();
-  expect(
-    await page.evaluate(async (id) => (await fetch(`/api/rsa/history/${id}`)).status, id),
-  ).toBe(404);
+  expect(await page.evaluate(async (id) => (await fetch(`/api/history/${id}`)).status, id)).toBe(
+    404,
+  );
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath("signature-history.png"), fullPage: true });
 });
@@ -329,29 +329,35 @@ test("verification history retains valid and invalid outcomes after reload", asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("history source failures keep the other source visible and permit retry", async ({ page }) => {
+test("unified history failures show one error and retry without duplicate signatures", async ({
+  page,
+}) => {
+  const historyPaths: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith("/history")) historyPaths.push(path);
+  });
   await page.getByRole("tab", { name: "Chữ ký số" }).click();
   await page.getByRole("button", { name: "Tạo ví dụ" }).click();
   await page.getByRole("button", { name: "Ký", exact: true }).click();
   await expect(page.getByText("Đã ký", { exact: true })).toBeVisible();
   await page.route("**/api/health", (route) => route.abort(), { times: 1 });
   await page.getByRole("button", { name: "Lịch sử thao tác", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Lịch sử chung");
-  await expect(page.getByRole("button", { name: "Xem chi tiết" })).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await expect(page.locator(".history__item")).toHaveCount(0);
+  expect(historyPaths).toEqual([]);
   await page.getByRole("button", { name: "Thử lại", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(
-    page.locator(".history__item").filter({ hasText: "Lịch sử chung" }).first(),
-  ).toBeVisible();
-  await page.route("**/api/rsa/history?**", (route) => route.abort());
+  await expect(page.locator(".history__item")).toHaveCount(1);
+  await expect(page.locator(".history__item")).toContainText("Chữ ký riêng");
+  await page.route("**/api/history?**", (route) => route.abort(), { times: 1 });
   await page.getByRole("button", { name: "Làm mới lịch sử" }).click();
-  await expect(page.getByRole("alert")).toHaveCount(2);
-  await expect(
-    page.locator(".history__item").filter({ hasText: "Lịch sử chung" }).first(),
-  ).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await expect(page.locator(".history__item")).toHaveCount(0);
   await expect(page.getByText("Chưa có thao tác nào khớp bộ lọc.")).toHaveCount(0);
-  await page.unroute("**/api/rsa/history?**");
-  await page.getByRole("button", { name: "Làm mới lịch sử" }).click();
+  await page.getByRole("button", { name: "Thử lại", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator(".history__item")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Xem chi tiết" })).toBeVisible();
+  expect(historyPaths).toEqual(["/api/history", "/api/history", "/api/history"]);
 });

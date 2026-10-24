@@ -1,0 +1,53 @@
+.rsa-signature-scheme {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-width: 100%;
+}
+.rsa-standard-signature,
+.rsa-standard-signature .rsa__section-body,
+.rsa-standard-signature__result,
+.rsa-standard-signature .rsa__field {
+  min-width: 0;
+}
+.rsa-standard-signature .rsa__field {
+  width: 100%;
+}
+.rsa-standard-signature__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.rsa-standard-signature textarea,
+.rsa-standard-signature input,
+.rsa-standard-signature select,
+.rsa-signature-scheme select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.rsa-standard-signature textarea {
+  resize: vertical;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rsa-standard-signature dd,
+.rsa-standard-signature p {
+  overflow-wrap: anywhere;
+}
+.rsa-standard-signature__result {
+  display: grid;
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .rsa-standard-signature__options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rsa-standard-signature .panel__header {
+    flex-wrap: wrap;
+  }
+  .rsa-standard-signature .button-group {
+    flex-wrap: wrap;
+  }
+}

@@ -5,6 +5,11 @@ base_url=${1:-http://127.0.0.1:18081}
 validation_dir=$(mktemp -d)
 trap 'rm -rf "$validation_dir"' EXIT
 
+# Preserve the browser profile cookie across transforms and history reads.
+curl() {
+  command curl --cookie "$validation_dir/cookies" --cookie-jar "$validation_dir/cookies" "$@"
+}
+
 curl --fail --show-error --silent "$base_url/" > /dev/null
 curl --fail --show-error --silent "$base_url/openapi.json" > /dev/null
 
