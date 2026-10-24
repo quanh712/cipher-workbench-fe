@@ -1,5 +1,8 @@
 # Cipher Workbench — Scope Frontend RSA minh họa
 
+> Phạm vi thiết kế lịch sử. Luồng hiện hành đã có random keygen, char/block/file,
+> chữ ký PEM PSS/SHA-256 và history thống nhất; xem [RSA_SPEC.md](RSA_SPEC.md).
+
 ## 1. Nguồn và mục tiêu
 
 Nguồn yêu cầu: file `rsa-giai-thich.html` do người dùng cung cấp. Đây là prototype giáo dục chạy phép tính RSA trực tiếp trong trình duyệt, không phải contract API hay thiết kế cho mã hóa dữ liệu thật.

@@ -61,6 +61,7 @@ export function useRsaSignature(
   enabled = true,
   verification?: VerificationDraft,
 ) {
+  const [scheme, setSchemeState] = useState<"raw" | "standard">("raw");
   const [state, setState] = useState(() => ({
     ...emptyState(cipher, enabled),
     ...(verification
@@ -258,6 +259,13 @@ export function useRsaSignature(
   }
 
   return {
+    scheme,
+    setScheme: (value: "raw" | "standard") => {
+      clearResult();
+      setSchemeState(value);
+    },
+    active: cipher.active && enabled,
+    resetVersion: cipher.resetVersion,
     mode: state.mode,
     setMode,
     message: state.message,

@@ -9,24 +9,27 @@ Backend thật qua API cùng origin.
 - Thực hành chín thuật toán trong cùng một workspace.
 - Nhập văn bản hoặc file `.txt`, xem trước, sao chép và tải kết quả.
 - Xem phân tích và các bước tính theo khả năng của từng thuật toán.
-- Sinh hoặc nhập khóa RSA, mã hóa/giải mã số và văn bản, ký/kiểm tra chữ ký số nguyên.
+- Sinh hoặc nhập khóa RSA; sinh ngẫu nhiên 16/32/64/128 bit; xử lý số, văn bản
+  theo ký tự/khối UTF-8 và mã hóa file `.txt`. Ký/kiểm tra số nguyên hoặc văn bản/file
+  bằng khóa PEM, RSA-PSS và SHA-256.
 - Kiểm tra hoặc sinh tham số Diffie–Hellman, tạo cặp khóa, tính bí mật chung,
   trao đổi khóa A/B và thực hành Caesar bằng khóa chung.
 - Xem lịch sử thao tác, lọc theo thuật toán và thao tác tương ứng, tải thêm và làm mới.
-  Lịch sử chữ ký RSA hỗ trợ xem chi tiết, dùng lại để kiểm tra và xóa bản ghi.
+  Lịch sử thuộc hồ sơ trình duyệt, hỗ trợ xem chi tiết, xóa từng bản ghi/xóa toàn bộ
+  và tải nội dung khi Backend cung cấp. Chữ ký số nguyên có thể dùng lại để kiểm tra.
 - Giao diện responsive, hỗ trợ bàn phím, screen reader và giao diện sáng/tối.
 
-| Thuật toán     | Khả năng chính                                                | File `.txt` |
-| -------------- | ------------------------------------------------------------- | ----------- |
-| Caesar         | Mã hóa / giải mã                                              | Có          |
-| Vigenère       | Mã hóa / giải mã                                              | Có          |
-| Playfair       | Mã hóa / giải mã, đối chiếu ký tự đệm                         | Có          |
-| Affine         | Mã hóa / giải mã với hai khóa `a`, `b`                        | Có          |
-| Hệ mã hàng     | Mã hóa / giải mã bằng khóa hoán vị                            | Có          |
-| Hill           | Khóa ma trận hoặc từ khóa, mã hóa / giải mã                   | Có          |
-| DES            | Text/HEX, ECB/CBC, IV và phân tích vòng xử lý                 | Có          |
-| RSA            | Sinh/nhập khóa, mã hóa / giải mã số và văn bản, ký / kiểm tra | Chưa hỗ trợ |
-| Diffie–Hellman | Trao đổi khóa, tính bí mật chung, Caesar bằng khóa chung      | Qua Caesar  |
+| Thuật toán     | Khả năng chính                                            | File `.txt`           |
+| -------------- | --------------------------------------------------------- | --------------------- |
+| Caesar         | Mã hóa / giải mã                                          | Có                    |
+| Vigenère       | Mã hóa / giải mã                                          | Có                    |
+| Playfair       | Mã hóa / giải mã, đối chiếu ký tự đệm                     | Có                    |
+| Affine         | Mã hóa / giải mã với hai khóa `a`, `b`                    | Có                    |
+| Hệ mã hàng     | Mã hóa / giải mã bằng khóa hoán vị                        | Có                    |
+| Hill           | Khóa ma trận hoặc từ khóa, mã hóa / giải mã               | Có                    |
+| DES            | Text/HEX, ECB/CBC, IV và phân tích vòng xử lý             | Có                    |
+| RSA            | Sinh/nhập khóa, số, text char/block, chữ ký số nguyên/PEM | Mã hóa, ký / kiểm tra |
+| Diffie–Hellman | Trao đổi khóa, tính bí mật chung, Caesar bằng khóa chung  | Qua Caesar            |
 
 Hill, DES, RSA và Diffie–Hellman được bật bằng cờ cấu hình khi Backend đã hỗ trợ
 API tương ứng. Kết quả xử lý runtime lấy từ Backend; dữ liệu mẫu chỉ giúp điền
@@ -64,17 +67,18 @@ hỗ trợ toàn bộ tính năng:
 
 ```dotenv
 BACKEND_DEV_URL=http://127.0.0.1:8000
-BACKEND_SIGNATURE_URL=http://127.0.0.1:8000
 VITE_ENABLE_HILL=true
 VITE_ENABLE_DES=true
 VITE_ENABLE_RSA=true
 VITE_ENABLE_DIFFIE_HELLMAN=true
 ```
 
-Chỉ bật các thuật toán mà Backend đã hỗ trợ. `BACKEND_DEV_URL` là target cho API
-chung; `BACKEND_SIGNATURE_URL` là target riêng cho lịch sử DH và chữ ký RSA,
-mặc định `http://127.0.0.1:8080`. Khi dùng một Backend thống nhất, đặt hai biến
-về cùng địa chỉ. Khởi động lại Vite sau khi đổi cấu hình.
+Chỉ bật các thuật toán mà Backend đã hỗ trợ. `BACKEND_DEV_URL` là target duy nhất
+cho mọi `/api` route, gồm `/api/history`; mặc định `http://127.0.0.1:8000`.
+`BACKEND_SIGNATURE_URL` và các alias history riêng không còn được dùng.
+Khởi động lại Vite sau khi đổi cấu hình. Với HTTP local, Backend cần
+`HISTORY_COOKIE_SECURE=false`; khi dùng database, giữ nguyên secret
+`HISTORY_PROFILE_SIGNING_KEY` qua các lần restart. Xem [cấu hình Backend](docs/BACKEND_CONTRACT.md).
 
 ```bash
 npm run dev
@@ -94,10 +98,10 @@ Với RSA, dùng phần thiết lập khóa trước khi mã hóa, giải mã ho
 Với Diffie–Hellman, thiết lập tham số và khóa hai bên để tính bí mật chung;
 kết quả có thể dùng cho bài thực hành Caesar.
 
-Lịch sử cần Backend bật lưu trữ và API đọc lịch sử. Lịch sử cipher thông thường
-và DH lưu metadata thao tác; lịch sử chữ ký RSA lưu dữ liệu riêng theo hồ sơ
-trình duyệt để xem chi tiết và dùng lại khóa công khai. Bộ lọc thao tác chỉ hiển thị
-các lựa chọn phù hợp với thuật toán đang chọn.
+Lịch sử cần Backend bật lưu trữ và API lịch sử. Tất cả thuật toán đọc chung
+`/api/history`, theo cookie hồ sơ trình duyệt; không gộp thêm các nguồn RSA/DH.
+Bộ lọc thao tác chỉ hiển thị lựa chọn phù hợp với thuật toán đang chọn. Bản ghi
+có thời hạn tối đa 5 giờ và có thể bị loại sớm theo hạn mức. Đọc không gia hạn.
 
 ## Kiến trúc
 
@@ -110,10 +114,10 @@ Browser → Frontend → /api reverse proxy → Backend → SQLite history
 - Backend chịu trách nhiệm xác thực dữ liệu và trả kết quả xử lý.
 - Vite cung cấp proxy khi phát triển; Nginx cung cấp proxy khi triển khai.
 
-Cấu hình local cổng `18081` dùng Backend SQLite cho API chung và Backend RSA/DH
-riêng cho DH, chữ ký RSA và lịch sử tương ứng. `/api/dh/history` và
-`/api/rsa/history` được chuyển đến `/api/history` của Backend RSA/DH để đọc đúng
-nguồn dữ liệu. Xem cấu hình và hướng dẫn chi tiết trong tài liệu triển khai.
+Cấu hình local cổng `18081` chuyển mọi API tới cùng Backend trên network hiện hành
+`cipher-workbench-be_default`. File override `18081-dh` giữ tên để tương thích wrapper;
+không còn chia Backend theo thuật toán. Stack SQLite standalone dùng `backend:8000`
+cho mọi API. Các lần triển khai chia Backend trước đây được giữ trong báo cáo lịch sử.
 
 ```text
 src/
@@ -183,7 +187,9 @@ Với stack đã được chuẩn bị và image đã build, cập nhật riêng
 
 Wrapper dùng image được ghim trong cấu hình và giữ Backend hiện tại. Khi cài mới,
 chuẩn bị image, env, network và backup theo [hướng dẫn SQLite](docs/SQLITE_COMPOSE.md).
-Backend RSA/DH được quản lý riêng bằng `deploy/rsa-backend.sh`.
+Backend trên network dùng chung được quản lý bằng `deploy/rsa-backend.sh`
+(tên script lịch sử; phục vụ mọi API). Chưa có image release mới chỉ từ việc sửa source;
+phải build, kiểm chứng và cập nhật `FRONTEND_IMAGE` trước khi chạy wrapper.
 Sao lưu dữ liệu trước khi migration; giữ nguyên signing key của hồ sơ lịch sử
 qua các lần khởi động. Không commit file env riêng tư hoặc snapshot SQLite.
 
@@ -192,13 +198,14 @@ Thông tin nghiệm thu, image và rollback theo từng đợt nằm trong các 
 
 ## Giới hạn
 
-- RSA và Diffie–Hellman trong ứng dụng phục vụ học tập. Chữ ký RSA hiện dùng
-  số nguyên, chưa hỗ trợ ký văn bản/file, băm hoặc padding chữ ký.
-- File đầu vào tối đa `5 MiB`; khả năng xử lý tùy thuật toán.
+- RSA số nhỏ/không padding và Diffie–Hellman trong ứng dụng phục vụ học tập.
+  Khóa PEM cho chữ ký PSS là luồng riêng với khóa số học dùng cho minh họa.
+- File đầu vào tối đa `5 MiB` với đa số thuật toán và chữ ký RSA; riêng mã hóa
+  RSA nhận tối đa `1.000.000` byte UTF-8, đồng thời tối đa `10.000` code point.
 - Playfair có chuẩn hóa ký tự; lọc ký tự đệm Playfair/Hill có thể không khôi phục
   nguyên văn. Có thể đối chiếu bản thô trong phần phân tích.
-- Lịch sử cipher dùng chung trong instance; lịch sử chữ ký RSA thuộc cookie hồ sơ
-  trình duyệt, lưu tối đa 5 giờ và có thể bị loại sớm theo hạn mức. Chưa có tài khoản.
+- Toàn bộ lịch sử thuộc cookie hồ sơ trình duyệt, lưu tối đa 5 giờ và có thể bị
+  loại sớm theo hạn mức. Chưa có tài khoản; mất cookie thì không đọc lại hồ sơ cũ.
 - Chưa hỗ trợ brute-force, tự động tìm khóa hoặc alphabet tùy chỉnh.
 
 ## Tài liệu liên quan

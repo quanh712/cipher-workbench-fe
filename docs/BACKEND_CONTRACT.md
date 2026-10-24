@@ -3,41 +3,14 @@
 Frontend tích hợp theo contract chính thức của repo
 [`kiendt2312/cipher_workbench-be`](https://github.com/kiendt2312/cipher_workbench-be).
 
-## Phiên bản được ghim
+## Contract hiện hành
 
-- Contract SQLite runtime hiện hành: BE được pin tại
-  `229c69d7c9af8413a780002b266bdb7651e79cb4`, đối chiếu ngày 07/10/2026 với
-  [consumer guide](../../cipher-workbench-be/repo_docs/frontend-integration.md),
-  [health route](../../cipher-workbench-be/app/api/routes_health.py),
-  [history route](../../cipher-workbench-be/app/api/routes_history.py) và
-  [config](../../cipher-workbench-be/app/config.py). Runtime history dùng SQLite local
-  trên backend; các mốc PostgreSQL dưới đây là lịch sử. Mốc source này không chứng
-  minh image trong stack FE đang chạy đã được cập nhật. Checkout BE sibling hiện có thể mới
-  hơn pin runtime; regression production luôn kiểm image đang chạy, không tự rebuild BE.
-- Contract DES: [`31438eb`](https://github.com/kiendt2312/cipher_workbench-be/blob/31438eb49c94cdef570b3ca5afd2c2fff9e73501/repo_docs/frontend-integration.md),
-  nhánh `docs/des-fe-guide`, mục 4.7, 8, 9.2; OpenSpec DES hiện hành và implementation
-  cùng revision. Xem [DES_SPEC.md](DES_SPEC.md). Bật bằng `VITE_ENABLE_DES=true` sau khi
-  build/deploy BE tương thích; PostgreSQL legacy từng cần migration `0003`, còn
-  SQLite dùng baseline `sqlite_0001` đã chứa DES. DES demo là cờ riêng,
-  không fallback cho API thật.
-
-- Contract Hill: [`4505ef7`](https://github.com/kiendt2312/cipher_workbench-be/blob/4505ef776d51d6657f26552531a9809e436318b9/repo_docs/frontend-integration.md),
-  mục A.7, 4.6, 9.1 và các OpenSpec trong `openspec/changes/add-hill-cipher/specs/`.
-  Xem [HILL_SPEC.md](HILL_SPEC.md) cho payload, response, Unicode và giới hạn 5 MiB.
-- Mốc lịch sử cho health và lịch sử: BE [`main` tại `c314fa8`](https://github.com/kiendt2312/cipher_workbench-be/blob/c314fa87bb87ad42ea10cd4fd96889ca176bfe26/repo_docs/frontend-integration.md),
-  mục A và 16–17. `GET /api/health` trả cả `database` lẫn `history`; chỉ đọc lịch sử
-  máy chủ nếu `database: "ok"` **và** `history: "enabled"`.
-- Nhánh [`feature/add-postgres-persistence` tại `9b75d576`](https://github.com/kiendt2312/cipher_workbench-be/blob/9b75d576f201f9df3c219fdc4f8f70834bd807ff/repo_docs/frontend-integration.md)
-  là mốc triển khai PostgreSQL ban đầu, **chưa có** cờ `history` trong health.
-- Consumer guide và Backend implementation: [`fb459dd`](https://github.com/kiendt2312/cipher_workbench-be/blob/fb459ddcf35c622250b836f75fb14702b2eb0cf4/repo_docs/frontend-integration.md)
-  (`fb459ddcf35c622250b836f75fb14702b2eb0cf4`, cập nhật Playfair ngày 28/09/2026).
-- Nguồn có thẩm quyền hiện hành: [OpenSpec trong checkout Backend](../../cipher-workbench-be/openspec/specs).
-  `openspec/changes/archive/` chỉ giữ lịch sử quyết định. Các revision Hill/DES
-  ở trên là mốc bổ sung cipher; schema SQLite hiện có cả tám cipher, gồm RSA.
-
-Nếu tài liệu FE khác OpenSpec Backend, OpenSpec Backend được ưu tiên và tài liệu FE phải sửa.
-Checkout BE được Compose build sử dụng phải đúng revision đã ghim; đổi nhãn image hoặc
-`BACKEND_REVISION` không tự cập nhật code trong container.
+Đối chiếu source BE `9d22937682434bc8847ae53449f612716e0ef6b8` ngày 24/10/2026.
+Authority là [consumer guide Backend](../../cipher-workbench-be/repo_docs/frontend-integration.md),
+[OpenSpec Backend](../../cipher-workbench-be/openspec/specs), các route/schema tại cùng revision.
+Schema SQLite hiện hành là `sqlite_0004`. Source revision không chứng minh image đang
+chạy đã được cập nhật; phải kiểm riêng image và runtime trước khi release.
+Các báo cáo có ngày trong `docs/` giữ bằng chứng rollout cũ, không phải contract hiện hành.
 
 ## Runtime boundary
 
@@ -67,68 +40,60 @@ Checkout BE được Compose build sử dụng phải đúng revision đã ghim;
 
 ## RSA
 
-FE nối API RSA của BE `229c69d` qua `src/features/rsa/services/rsaApi.ts`, bật bằng `VITE_ENABLE_RSA=true`. Chữ ký số dùng `/api/rsa/sign/raw` (`m,d,e,n`) và `/api/rsa/verify/raw` (`m,signature,e,n`), nhận envelope `result/history`, trace và `valid` từ BE; gửi credentials cho cookie profile lịch sử. Sinh khóa dùng `/api/rsa/keys`; mỗi tác vụ số/văn bản chọn mã hóa hoặc giải mã riêng qua `/api/rsa/encrypt` hoặc `/api/rsa/decrypt`, dùng khóa sinh hoặc khóa nhập tay tương ứng. Bản mã hiển thị và nhập giải mã dùng mảng JSON chuỗi số. Không tự chạy khi mở workspace hoặc chọn ví dụ. Văn bản dùng `mode=char`. Tất cả operand là chuỗi thập phân; trace lấy từ BE. `P ≥ n` hoặc ký tự có code point ≥ n bị BE từ chối; FE giữ nguyên message và không tính fallback. Xem [RSA_SPEC.md](RSA_SPEC.md) cho mapping và lệnh integration test.
+Bật bằng `VITE_ENABLE_RSA=true` sau khi kiểm chứng Backend tương thích.
+Xem [RSA_SPEC.md](RSA_SPEC.md) và [contract RSA BE](../../cipher-workbench-be/repo_docs/rsa-frontend-contract.md).
 
-## Lịch sử server trên SQLite
+- `POST /api/rsa/keys`: `{p,q,e}`; `POST /api/rsa/keys/random`: `{bits}`,
+  với `bits` là JSON integer `16|32|64|128`. Giữ số lớn dưới dạng chuỗi decimal.
+- `POST /api/rsa/encrypt` và `/api/rsa/decrypt`: số hoặc text `char|block`.
+  Block decrypt phải giữ nguyên `cipher`, `mode`, `originalUtf8ByteLength` của package.
+  `traceBlockIndex` chọn khối phân tích; không tính kết quả hoặc trace ở FE.
+- Mã hóa file gửi multipart tới `/api/rsa/encrypt` gồm `file,e,n,mode` và
+  `traceBlockIndex` nếu chọn. Không có `/api/rsa/file`; decrypt luôn gửi JSON.
+  File `.txt` UTF-8 tối đa 1.000.000 raw byte, text tối đa 10.000 code point.
+- Chữ ký số nguyên: `/api/rsa/sign/raw`, `/api/rsa/verify/raw`.
+  Chữ ký chuẩn: `/api/rsa/sign`, `/api/rsa/verify`, RSA-PSS/SHA-256, PEM và
+  chữ ký base64. Text dùng JSON với `source:"text"`; file dùng multipart.
+  `valid:false` là kết quả kiểm tra hợp lệ về giao thức, không phải lỗi dịch vụ.
 
-- BE tự ghi metadata cho các POST route cipher được recorder hỗ trợ vào SQLite
-  khi có `DATABASE_URL`, kể cả lỗi;
-  ghi thất bại không thay đổi response cipher. FE không gọi API ghi lịch sử.
-- Hill analyze/random, RSA keygen và DES trace không ghi history. RSA encrypt/decrypt
-  dùng history chung và hỗ trợ filter `cipher=rsa`; không có API history riêng cho RSA.
-- `GET /api/history` trả `items` và `nextCursor`, lọc bằng `cipher`/`operation`, phân trang
-  bằng cursor opaque. `GET /api/health` báo DB `ok`, `disabled` hoặc `unavailable`, cùng
-  cờ lịch sử `enabled`/`disabled`. Cờ lịch sử mặc định tắt; khi tắt `/api/history` trả 404
-  trước cả bước kiểm tra query. Nếu cấu hình đổi giữa phiên, FE xử lý 404 và bỏ dữ liệu cũ.
-- Health giữ envelope `{"success":true,"result":{"app":"ok","database":"ok","history":"enabled"}}`.
-  `database=ok/disabled` trả HTTP 200; `unavailable` trả HTTP 503, vẫn có
-  `success:true`. `history` không quyết định status HTTP. Health là read probe,
-  không bảo đảm lần ghi history kế tiếp thành công.
-- History giữ envelope `{"success":true,"result":{"items":[],"nextCursor":null}}`.
-  Item có `id`, `createdAt` (UTC), `cipher`, `operation`, `source`, `responseMode`,
-  `inputLength`, `outputLength`, `httpStatus`, `succeeded`, `durationMs`.
-  `operation`, `responseMode`, `inputLength`, `outputLength` có thể là `null`.
-- Query: `limit=1..100` (mặc định `20`), `cipher` trong
-  `caesar|vigenere|playfair|affine|columnar|hill|des|rsa`, `operation=encrypt|decrypt`.
-  Thứ tự `createdAt DESC, id DESC`; gửi nguyên cursor opaque từ `nextCursor`,
-  bỏ cursor khi đổi filter. Trang rỗng và `nextCursor:null` là kết quả hợp lệ.
-- History lỗi trả `{"success":false,"message":"..."}`: 404 khi flag tắt,
-  422 khi limit/cursor/filter sai, 503 khi không có database hoặc đọc database lỗi.
-  Khi flag bật nhưng DB không được cấu hình, health trả `database:disabled` và
-  history trả 503 với query hợp lệ. FE giữ nguyên message và xử lý trạng thái lỗi
-  riêng với kết quả danh sách rỗng.
-- Không lưu input, result, key, file hoặc tên file. Lịch sử chung toàn instance, không có auth,
-  detail hay delete; retention mặc định 30 ngày, cấu hình `HISTORY_RETENTION_DAYS`
-  từ 1–3650 ngày, purge định kỳ có thể lệch tối đa 6 giờ. Không bật API đọc lịch sử trên
-  môi trường public. FE gọi file preview và download hai lần nên có hai bản ghi.
-- Với file UTF-8 có BOM, `inputLength` và `outputLength` của metadata đều tính cả BOM ở cả
-  preview và download; FE hiển thị số byte BE trả, không tự tính lại. BE `c314fa8` sửa cách
-  ghi metadata này, không đổi 15 route cipher hay schema Alembic `0001`.
-- Lịch sử trên trình duyệt (nếu bổ sung sau) khác lịch sử server: nó chứa cả input, key và
-  result; phải có công tắc lưu/xóa, giới hạn 50 mục và cảnh báo riêng tư. FE hiện chưa lưu loại này.
-- [POSTGRES_FE_ROADMAP.md](POSTGRES_FE_ROADMAP.md) và
-  [POSTGRES_BE_BRANCH_FINDINGS.md](POSTGRES_BE_BRANCH_FINDINGS.md) ghi scope và
-  findings của PostgreSQL trước đây; không dùng làm hướng dẫn SQLite runtime.
+## Lịch sử chung theo hồ sơ trình duyệt
 
-## Cấu hình backend SQLite cho lần tích hợp sau
+- Mọi request xử lý và lịch sử phải giữ cookie `cw_history_profile`. FE dùng
+  same-origin và credentials; proxy không xóa Cookie hoặc Set-Cookie.
+- Chỉ có một nguồn `GET /api/history`; không có `/api/rsa/history` hay
+  `/api/dh/history`. Không gộp nhiều lần cùng endpoint để tránh lặp bản ghi.
+- List trả `{success:true,result:{items,nextCursor}}`; `limit=1..100` (mặc định 20),
+  filter `cipher` gồm chín thuật toán, `operation` gồm encrypt/decrypt, sign/verify
+  và năm thao tác DH standalone. Giữ nguyên cursor opaque, bỏ cursor khi đổi filter.
+- Item có metadata cùng `valid`, `processingState`, `contentAvailable`, `logicalSize`.
+  `GET /api/history/{id}` trả thêm `payload`; khóa riêng và trace không được lưu.
+  `GET /api/history/{id}/content` chỉ tải khi `contentAvailable=true`.
+- `DELETE /api/history/{id}` xóa một bản ghi; `DELETE /api/history` xóa tất cả
+  của hồ sơ hiện tại, không chỉ những mục đang lọc trên UI. UI yêu cầu xác nhận.
+- Cipher/DH metadata và chữ ký RSA dùng cùng owner, thứ tự `createdAt DESC,id DESC`.
+  Chữ ký kiểm tra sai vẫn có `succeeded:true`, `valid:false` khi request thành công.
+- TTL cố định 5 giờ từ lúc tạo, đọc không gia hạn; hạn mức 50 MiB/hồ sơ,
+  500 MiB/toàn hệ thống có thể loại bản ghi sớm. Không có tài khoản.
+- Health giữ envelope `{success:true,result:{app,database,history}}`.
+  History flag tắt trả 404; DB không sẵn sàng trả 503; query sai trả 422.
+  Bản ghi thiếu, hết hạn hoặc thuộc hồ sơ khác trả 404 khi xem/xóa/tải.
 
-- `DATABASE_URL=sqlite+aiosqlite:////data/cipher-history.sqlite3`: absolute local
-  file path, parent directory tồn tại và ghi được. URL PostgreSQL không còn hợp lệ
-  với runtime source mới; URL trống tắt storage, cipher vẫn hoạt động.
-- Mount cùng persistent volume `/data` cho migrate và backend, quyền UID/GID
-  `10001:10001`; root filesystem vẫn có thể `read_only: true`. FE không mount volume.
-- Chạy `alembic -c alembic_sqlite.ini upgrade head` trước một app process. App
-  không tự tạo database/schema. Không chạy/stamp PostgreSQL `0001`–`0004` lên SQLite.
-- `HISTORY_API_ENABLED` mặc định tắt và chỉ kiểm soát API đọc; storage được cấu hình
-  vẫn ghi metadata khi flag tắt. Không bật API trên shared/public khi chưa có auth.
-- Phạm vi cleanup ngày 08/10/2026 chỉ nằm ở FE. Backend source và image
-  giữ nguyên; runtime history đang dùng SQLite. Legacy transfer tooling phía BE
-  vẫn thuộc quyền quản lý của BE, FE không sử dụng `LEGACY_DATABASE_URL`.
-- Cả Compose mặc định và Compose SQLite đều chạy migration SQLite, mount `/data`
-  cho migrate/backend; frontend tiếp tục chỉ gọi HTTP `/api`.
-- Xem [checklist cấu hình chung](../../sqlite-integration-config-checklist.md).
-  Compose SQLite standalone và hướng dẫn rehearsal ở [SQLITE_COMPOSE.md](SQLITE_COMPOSE.md).
-  PostgreSQL local/verify đã được retire sau backup và restore reconciliation.
+## Cấu hình Backend SQLite
+
+- `DATABASE_URL=sqlite+aiosqlite:////data/cipher-history.sqlite3`: local absolute path,
+  migrate/backend cùng persistent volume `/data`, UID/GID `10001:10001`.
+- Chạy `alembic -c alembic_sqlite.ini upgrade head` trước app process; head hiện tại
+  `sqlite_0004`. Không chạy/stamp migration PostgreSQL lên SQLite.
+- Có database thì bắt buộc `HISTORY_PROFILE_SIGNING_KEY`: đúng 64 ký tự hex ngẫu nhiên.
+  Giữ nguyên secret qua restart/update; thay key làm cookie cũ mất hiệu lực.
+- `HISTORY_COOKIE_SECURE=true` cho HTTPS; chỉ dùng `false` khi phát triển HTTP local.
+  Không đổi secret hay cookie settings của stack đang chạy chỉ để cập nhật FE.
+- `HISTORY_API_ENABLED` mặc định tắt; bật có chủ đích khi triển khai UI lịch sử.
+  API tắt không tắt ghi metadata khi storage hoạt động. `HISTORY_RETENTION_DAYS`
+  thuộc runtime cũ; không dùng để thay TTL 5 giờ của private history hiện hành.
+- Same-origin không cần CORS. Nếu gọi cross-origin, dùng exact `CORS_ALLOW_ORIGINS`
+  và credentials theo Backend; ưu tiên proxy same-origin hiện có.
+- Xem [SQLite operation](SQLITE_COMPOSE.md), [deployment](DEPLOYMENT.md).
 
 ## Handoff lịch sử cho bên Backend: đồng bộ runtime Columnar (24/09/2026)
 

@@ -266,3 +266,99 @@ it("validates ciphertext without converting large integers to numbers", () => {
   for (const value of ["[]", "[11]", '["-1"]', '["1.5"]', "{}", '"11"', '["1","2"]'])
     expect(() => parseRsaCipher(value, "number")).toThrow();
 });
+
+describe("RSA extended operations", () => {
+  it("generates random keys only after explicit submit and aborts on bit changes", async () => {
+    const { gateway } = setup(false);
+    const random = vi.spyOn(gateway, "generateRandomKey");
+    fireEvent.change(screen.getByRole("combobox", { name: "Phương pháp sinh khóa" }), {
+      target: { value: "random" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Độ dài khóa RSA" }), {
+      target: { value: "128" },
+    });
+    expect(random).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Tạo khóa" }));
+    await waitFor(() => expect(random).toHaveBeenCalledWith(128, expect.any(AbortSignal)));
+    expect(await screen.findByText("{17, 3233}", { exact: true })).toBeVisible();
+    fireEvent.change(screen.getByRole("combobox", { name: "Độ dài khóa RSA" }), {
+      target: { value: "64" },
+    });
+    expect(screen.queryByText("{17, 3233}", { exact: true })).not.toBeInTheDocument();
+  });
+
+  it("passes block ciphertext byte metadata and clears old results when the mode changes", async () => {
+    const { gateway, text } = setup();
+    manual();
+    fireEvent.change(screen.getByRole("textbox", { name: "d · khóa riêng" }), {
+      target: { value: "23" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Cách đóng khối văn bản" }), {
+      target: { value: "block" },
+    });
+    fireEvent.click(text.getByRole("radio", { name: /Giải mã/ }));
+    fireEvent.change(text.getByRole("textbox", { name: "Bản mã (JSON)" }), {
+      target: { value: '{"cipher":["11"],"originalUtf8ByteLength":2}' },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Chỉ số khối trace (từ 0)" }), {
+      target: { value: "0" },
+    });
+    fireEvent.click(text.getByRole("button", { name: "Giải mã" }));
+    await waitFor(() =>
+      expect(gateway.transform).toHaveBeenCalledWith(
+        {
+          operation: "decrypt",
+          inputType: "text",
+          mode: "block",
+          n: "187",
+          d: "23",
+          cipher: ["11"],
+          originalUtf8ByteLength: 2,
+        },
+        expect.any(AbortSignal),
+      ),
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Cách đóng khối văn bản" }), {
+      target: { value: "char" },
+    });
+    expect(text.getByRole("textbox", { name: "Kết quả bản rõ" })).toHaveValue("");
+  });
+
+  it("uploads a file with the public key and applies the RSA-specific byte bound", async () => {
+    const { gateway, text } = setup(false);
+    const upload = vi.spyOn(gateway, "encryptFile");
+    manual();
+    fireEvent.change(screen.getByRole("textbox", { name: "e · khóa công khai" }), {
+      target: { value: "7" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Nguồn văn bản RSA" }), {
+      target: { value: "file" },
+    });
+    const input = screen.getByLabelText("File văn bản RSA (.txt)");
+    fireEvent.change(input, {
+      target: { files: [new File(["A".repeat(1_000_001)], "large.txt")] },
+    });
+    fireEvent.click(text.getByRole("button", { name: "Mã hóa" }));
+    expect(await text.findByRole("alert")).toHaveTextContent("1.000.000 byte");
+    expect(upload).not.toHaveBeenCalled();
+    const file = new File(["A"], "message.txt");
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(text.getByRole("button", { name: "Mã hóa" }));
+    await waitFor(() =>
+      expect(upload).toHaveBeenCalledWith(
+        { file, n: "187", e: "7", mode: "char", traceBlockIndex: 0 },
+        expect.any(AbortSignal),
+      ),
+    );
+  });
+});
+
+it("clears a selected upload when switching transform mode", () => {
+  const { result } = renderHook(() => useRsaCipher(createRsaGateway(), true));
+  act(() => result.current.setTextSource("file"));
+  act(() => result.current.setFile(new File(["A"], "old.txt")));
+  expect(result.current.file?.name).toBe("old.txt");
+  act(() => result.current.setMode("text", "decrypt"));
+  act(() => result.current.setMode("text", "encrypt"));
+  expect(result.current.file).toBeNull();
+});

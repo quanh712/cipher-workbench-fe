@@ -7,6 +7,8 @@ import {
   type VerificationDraft,
 } from "../services/signatureHistoryApi";
 
+import { HistoryContentButton } from "./HistoryContentButton";
+
 function fields(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -207,6 +209,7 @@ export function SignatureHistoryDialog({
       {detail && (
         <>
           <SignatureDetails detail={detail} />
+          {detail.contentAvailable && <HistoryContentButton id={id} />}
           {!draft && <p>Bản ghi này không hỗ trợ điền vào chế độ kiểm tra số nguyên.</p>}
           <div className="history__dialog-actions">
             {draft && onReuse && (

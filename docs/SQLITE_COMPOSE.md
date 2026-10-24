@@ -9,6 +9,29 @@ env, kể cả khi chạy từ thư mục khác hoặc shell có `COMPOSE_PROJEC
 | Local       | `cipher-workbench-sqlite`             | `.env.sqlite`             | `cipher-workbench-sqlite_history-data`             | 18081 | `backups/sqlite/local/`       |
 | Integration | `cipher-workbench-sqlite-integration` | `.env.sqlite.integration` | `cipher-workbench-sqlite-integration_history-data` | 18082 | `backups/sqlite/integration/` |
 
+## Contract sau đồng bộ source 24/10/2026
+
+Cấu hình source hiện tại cần Backend `9d22937` tương thích và schema `sqlite_0004`.
+Sample `.env.sqlite.example` để trống FE/BE image: build/load, kiểm chứng rồi điền
+pin trước khi cài mới. Giữ nguyên secret `HISTORY_PROFILE_SIGNING_KEY` của runtime;
+cài mới cần 64 hex ngẫu nhiên. HTTPS dùng `HISTORY_COOKIE_SECURE=true`, HTTP loopback
+local dùng `false`. Private history mọi thuật toán có TTL 5 giờ; biến retention-days
+cũ không điều khiển TTL này. Xem [Backend contract](BACKEND_CONTRACT.md).
+
+`deploy/frontend.sh local` giữ overlay tên `18081-dh`, nhưng hiện chuyển **mọi** API,
+OpenAPI và history tới `cipher-workbench-be-app-1:8000` trên network
+`cipher-workbench-be_default`. `FRONTEND_IMAGE` lấy từ env; không tự chọn tag cũ.
+`deploy/rsa-backend.sh` giữ tên lịch sử nhưng Backend này phục vụ toàn bộ thuật toán.
+Stack standalone/integration dùng `backend:8000` thống nhất với volume riêng.
+Không chuyển traffic giữa hai database theo thuật toán nữa; database/backup SQLite
+cũ vẫn được giữ, không tự migrate/gộp/xóa dữ liệu khi cập nhật FE.
+
+Các phần ghi ngày/revision/image dưới đây là **lịch sử vận hành**, không mô tả
+runtime đã được cập nhật bằng source mới. Không copy các image cũ để dùng các chức
+năng mới. Đợt chỉnh source này không restart, deploy hoặc đổi secret của dịch vụ.
+
+## Lịch sử rollout và runbook
+
 Frontend không mount DB; migrate/backend dùng cùng volume `/data`. Backend giữ
 image `c3332dd77a66c98e6dacb28666332501b6946f6414a36283347d95dd232677ae`,
 source `229c69d7c9af8413a780002b266bdb7651e79cb4`. FE đã cập nhật riêng ngày 08/10/2026 để nối API và đồng bộ giao diện RSA; image local `21fd5f2e9ebcc2056d9abb64957b484779831cfbc7f5aab7bd11ab3975e23dd5` bật Hill/DES/RSA. Image này build từ archive Git của commit `175219d5626414329645a8b40049c04c36ff0136`, label revision khớp commit đó; không lấy các file chưa commit trong workspace.
@@ -112,7 +135,7 @@ Chỉ copy `.env.sqlite.example` khi env chưa tồn tại. Máy khác cần loa
 
 Tương đương: `docker compose -p cipher-workbench-sqlite --env-file .env.sqlite up -d --no-build`.
 Không dùng `.env.deploy` để chạy Compose. `DATABASE_URL` là SQLite local dưới
-`/data`; baseline `sqlite_0001`, một Backend process.
+`/data`; chạy migration tới `sqlite_0004`, một Backend process.
 
 Stack thử chọn tường minh bằng `--integration`:
 
@@ -157,7 +180,7 @@ Backup vẫn chạy khi Docker restart; lịch chỉ chạy khi Docker Desktop/E
 
 Chọn một thư mục `snapshot-*` đã có `evidence.json` verified. Giữ nguyên snapshot;
 restore vào file mới bằng `app.history.continuity restore`, dùng `manifest_digest`
-trong evidence và `--schema-revision sqlite_0001`. Verify trên file riêng trước
+trong evidence và `--schema-revision` đúng revision của snapshot (hiện hành `sqlite_0004`). Verify trên file riêng trước
 khi dừng Backend và thay runtime. Xem [runbook BE](../../cipher-workbench-be/docs/sqlite-history-runbook.md).
 Không chạy destructive downgrade hoặc `down -v` trên volume có dữ liệu.
 

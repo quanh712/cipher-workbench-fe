@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("filters DH history, paginates and retries a server error", async ({ page }) => {
   let failNextPage = true;
+  let historyRequests = 0;
   const row = {
     id: 1,
     createdAt: "2026-10-13T00:00:00Z",
@@ -21,7 +22,8 @@ test("filters DH history, paginates and retries a server error", async ({ page }
       await route.fulfill({
         json: { success: true, result: { database: "ok", history: "enabled" } },
       });
-    } else if (url.pathname === "/api/dh/history") {
+    } else if (url.pathname === "/api/history") {
+      historyRequests += 1;
       expect(url.searchParams.get("cipher")).not.toBe("diffie-hellman");
       const filtered =
         url.searchParams.get("cipher") === "dh" && url.searchParams.get("operation") === "exchange";
@@ -53,21 +55,20 @@ test("filters DH history, paginates and retries a server error", async ({ page }
           },
         });
       }
-    } else if (url.pathname === "/api/history") {
-      await route.fulfill({ json: { success: true, result: { items: [], nextCursor: null } } });
     } else {
-      expect(url.pathname).toBe("/api/rsa/history");
-      await route.fulfill({ json: { success: true, result: { items: [], nextCursor: null } } });
+      throw new Error(`Unexpected history endpoint: ${url.pathname}`);
     }
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Lịch sử thao tác" }).click();
+  await expect(page.getByText("Chưa có thao tác nào khớp bộ lọc.")).toBeVisible();
+  expect(historyRequests).toBe(1);
   await page
     .getByRole("combobox", { name: "Thuật toán", exact: true })
     .selectOption("diffie-hellman");
   await page.getByRole("combobox", { name: "Thao tác", exact: true }).selectOption("exchange");
   const list = page.getByRole("list", { name: "Các thao tác gần đây" });
-  await expect(list.getByText("Diffie–Hellman")).toBeVisible();
+  await expect(list.getByText("Diffie–Hellman", { exact: true })).toBeVisible();
   await expect(list.getByText("Trao đổi khóa")).toBeVisible();
   await expect(list.getByText("Thông tin thao tác")).toBeVisible();
   await expect(list.getByText(/Đầu vào:|Đầu ra:/)).toHaveCount(0);

@@ -3,13 +3,22 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { HistoryWorkspace } from "./HistoryWorkspace";
-import { getHealthStatus, getHistory, getDhHistory, HistoryApiError } from "../services/historyApi";
+import {
+  getHealthStatus,
+  getHistory,
+  getDhHistory,
+  deleteHistoryItem,
+  deleteAllHistory,
+  HistoryApiError,
+} from "../services/historyApi";
 
 vi.mock("../services/historyApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../services/historyApi")>()),
   getHealthStatus: vi.fn(),
   getHistory: vi.fn(),
   getDhHistory: vi.fn(),
+  deleteHistoryItem: vi.fn(),
+  deleteAllHistory: vi.fn(),
 }));
 
 vi.mock("../services/signatureHistoryApi", async (original) => ({
@@ -212,179 +221,6 @@ it.each([
   expect(screen.queryByRole("button", { name: "Tải thêm" })).not.toBeInTheDocument();
 });
 
-it("merges private signatures with common rows using separate identities and independent failures", async () => {
-  historyMock.mockResolvedValue({ items: [historyItem], nextCursor: null });
-  vi.mocked(getSignatureHistory).mockImplementation(async (operation) => {
-    if (operation === "verify") throw new HistoryApiError("Nguồn kiểm tra tạm lỗi", 503);
-    return {
-      items: [
-        {
-          ...historyItem,
-          cipher: "rsa",
-          operation: "sign",
-          createdAt: "2026-10-12T00:00:00Z",
-          valid: null,
-          processingState: "completed",
-        },
-      ],
-      nextCursor: null,
-    };
-  });
-  const user = userEvent.setup();
-  render(<HistoryWorkspace />);
-  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
-  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(2));
-  expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("Chữ ký riêng");
-  expect(await screen.findByRole("alert")).toHaveTextContent("Nguồn kiểm tra tạm lỗi");
-  await user.selectOptions(screen.getByLabelText("Thao tác"), "encrypt");
-  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(1));
-  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-});
-
-it("holds older rows until every unfinished source crosses their timestamp", async () => {
-  historyMock.mockResolvedValueOnce({
-    items: [{ ...historyItem, createdAt: "2026-10-10T00:00:00Z" }],
-    nextCursor: null,
-  });
-  vi.mocked(getSignatureHistory).mockImplementation(async (_operation, cursor) => ({
-    items: [
-      {
-        ...historyItem,
-        cipher: "rsa",
-        operation: _operation,
-        id: (cursor ? 3 : 2) + (_operation === "verify" ? 10 : 0),
-        createdAt: cursor ? "2026-10-09T00:00:00Z" : "2026-10-12T00:00:00Z",
-        valid: null,
-        processingState: "completed",
-      },
-    ],
-    nextCursor: cursor ? null : "next",
-  }));
-  const user = userEvent.setup();
-  render(<HistoryWorkspace />);
-  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
-  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(2));
-  expect(within(list).queryByText("Caesar")).not.toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Tải thêm" }));
-  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(5));
-  expect(within(list).getAllByRole("listitem")[2]).toHaveTextContent("Lịch sử chung");
-});
-
-afterEach(() => vi.unstubAllEnvs());
-
-it.each([
-  ["validate_params", "Kiểm tra tham số"],
-  ["generate_params", "Sinh tham số"],
-  ["generate_keypair", "Sinh cặp khóa"],
-  ["derive_shared_secret", "Tính bí mật chung"],
-  ["exchange", "Trao đổi khóa"],
-] as const)("filters and displays DH %s with metadata only", async (operation, label) => {
-  vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
-  dhHistoryMock.mockResolvedValue({ items: [], nextCursor: null });
-  const user = userEvent.setup();
-  render(<HistoryWorkspace />);
-  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
-  await user.selectOptions(screen.getByLabelText("Thuật toán"), "diffie-hellman");
-  await waitFor(() =>
-    expect(dhHistoryMock).toHaveBeenLastCalledWith(
-      { cipher: "diffie-hellman", operation: undefined },
-      expect.any(AbortSignal),
-    ),
-  );
-  vi.mocked(getSignatureHistory).mockClear();
-  dhHistoryMock
-    .mockResolvedValueOnce({
-      items: [
-        {
-          ...historyItem,
-          cipher: "diffie-hellman",
-          operation,
-          inputLength: null,
-          outputLength: null,
-        },
-      ],
-      nextCursor: "dh-next",
-    })
-    .mockResolvedValueOnce({
-      items: [
-        {
-          ...historyItem,
-          id: 2,
-          cipher: "diffie-hellman",
-          operation,
-          inputLength: null,
-          outputLength: null,
-          succeeded: false,
-          httpStatus: 422,
-        },
-      ],
-      nextCursor: null,
-    });
-  await user.selectOptions(screen.getByLabelText("Thao tác"), operation);
-  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
-  expect(within(list).getByText("Diffie–Hellman")).toBeVisible();
-  expect(within(list).getByText(label)).toBeVisible();
-  expect(within(list).getByText("Thông tin thao tác")).toBeVisible();
-  expect(within(list).queryByText(/Đầu vào:|Đầu ra:|Văn bản/)).not.toBeInTheDocument();
-  expect(within(list).queryByRole("button", { name: "Xem chi tiết" })).not.toBeInTheDocument();
-  expect(dhHistoryMock).toHaveBeenLastCalledWith(
-    { cipher: "diffie-hellman", operation },
-    expect.any(AbortSignal),
-  );
-  await user.click(screen.getByRole("button", { name: "Tải thêm" }));
-  expect(await within(list).findByText("Lỗi 422")).toBeVisible();
-  expect(dhHistoryMock).toHaveBeenLastCalledWith(
-    { cipher: "diffie-hellman", operation, cursor: "dh-next" },
-    expect.any(AbortSignal),
-  );
-  expect(vi.mocked(getSignatureHistory)).not.toHaveBeenCalled();
-});
-
-it("does not load RSA signature streams for a DH operation without a cipher filter", async () => {
-  vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
-  dhHistoryMock.mockResolvedValue({ items: [], nextCursor: null });
-  const user = userEvent.setup();
-  render(<HistoryWorkspace />);
-  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
-  vi.mocked(getSignatureHistory).mockClear();
-  await user.selectOptions(screen.getByLabelText("Thao tác"), "exchange");
-  await waitFor(() =>
-    expect(dhHistoryMock).toHaveBeenLastCalledWith(
-      { cipher: "diffie-hellman", operation: "exchange" },
-      expect.any(AbortSignal),
-    ),
-  );
-  expect(vi.mocked(getSignatureHistory)).not.toHaveBeenCalled();
-});
-
-it("merges DH with common history using independent ids and preserves common rows on DH failure", async () => {
-  vi.stubEnv("VITE_ENABLE_DIFFIE_HELLMAN", "true");
-  historyMock.mockResolvedValue({ items: [historyItem], nextCursor: null });
-  dhHistoryMock
-    .mockResolvedValueOnce({
-      items: [
-        {
-          ...historyItem,
-          cipher: "diffie-hellman",
-          operation: "exchange",
-          inputLength: null,
-          outputLength: null,
-        },
-      ],
-      nextCursor: null,
-    })
-    .mockRejectedValueOnce(new HistoryApiError("BE DH chưa hỗ trợ thao tác mới.", 422));
-  const user = userEvent.setup();
-  render(<HistoryWorkspace />);
-  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
-  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(2));
-  await user.click(screen.getByRole("button", { name: "Làm mới lịch sử" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Lịch sử Diffie–Hellman: BE DH chưa hỗ trợ thao tác mới.",
-  );
-  expect(within(screen.getByRole("list")).getByText("Caesar")).toBeVisible();
-});
-
 it.each([
   ["caesar", ["", "encrypt", "decrypt"]],
   ["vigenere", ["", "encrypt", "decrypt"]],
@@ -444,7 +280,7 @@ it("resets incompatible operations on cipher changes and retains compatible ones
   await user.selectOptions(algorithm, "diffie-hellman");
   expect(operation).toHaveValue("");
   await waitFor(() =>
-    expect(dhHistoryMock).toHaveBeenLastCalledWith(
+    expect(historyMock).toHaveBeenLastCalledWith(
       { cipher: "diffie-hellman", operation: undefined },
       expect.any(AbortSignal),
     ),
@@ -455,4 +291,97 @@ it("resets incompatible operations on cipher changes and retains compatible ones
   await user.selectOptions(algorithm, "");
   expect(within(operation).getByRole("option", { name: "Trao đổi khóa" })).toBeVisible();
   expect(within(operation).getByRole("option", { name: /^Ký$/ })).toBeVisible();
+});
+
+afterEach(() => vi.unstubAllEnvs());
+
+it("reads signatures and DH once from the unified source without extra streams", async () => {
+  historyMock.mockResolvedValue({
+    items: [
+      historyItem,
+      { ...historyItem, id: 2, cipher: "rsa", operation: "sign", valid: null },
+      { ...historyItem, id: 3, cipher: "diffie-hellman", operation: "exchange" },
+    ],
+    nextCursor: null,
+  });
+  render(<HistoryWorkspace />);
+  const list = await screen.findByRole("list", { name: "Các thao tác gần đây" });
+  expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+  expect(within(list).getAllByText("Chữ ký riêng")).toHaveLength(1);
+  expect(historyMock).toHaveBeenCalledTimes(1);
+  expect(dhHistoryMock).not.toHaveBeenCalled();
+  expect(vi.mocked(getSignatureHistory)).not.toHaveBeenCalled();
+});
+
+it("filters signatures through the shared source", async () => {
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
+  await user.selectOptions(screen.getByLabelText("Thao tác"), "verify");
+  await waitFor(() =>
+    expect(historyMock).toHaveBeenLastCalledWith(
+      { cipher: undefined, operation: "verify" },
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(vi.mocked(getSignatureHistory)).not.toHaveBeenCalled();
+});
+
+it("deduplicates a repeated id while keeping server cursor order", async () => {
+  historyMock
+    .mockResolvedValueOnce({ items: [historyItem], nextCursor: "next" })
+    .mockResolvedValueOnce({
+      items: [historyItem, { ...historyItem, id: 2, cipher: "rsa", operation: "sign" }],
+      nextCursor: null,
+    });
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await user.click(await screen.findByRole("button", { name: "Tải thêm" }));
+  const rows = within(screen.getByRole("list")).getAllByRole("listitem");
+  expect(rows).toHaveLength(2);
+  expect(rows[0]).toHaveTextContent("Caesar");
+  expect(rows[1]).toHaveTextContent("RSA");
+});
+
+it("confirms item deletion and refreshes history only after success", async () => {
+  historyMock
+    .mockResolvedValueOnce({ items: [historyItem], nextCursor: null })
+    .mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(deleteHistoryItem).mockResolvedValue();
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await user.click(await screen.findByRole("button", { name: "Xóa bản ghi" }));
+  expect(deleteHistoryItem).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Xác nhận xóa" }));
+  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
+  expect(deleteHistoryItem).toHaveBeenCalledWith(1);
+});
+
+it("explains bulk deletion covers records outside filters and preserves rows on failure", async () => {
+  historyMock.mockResolvedValue({ items: [historyItem], nextCursor: null });
+  vi.mocked(deleteAllHistory)
+    .mockRejectedValueOnce(new HistoryApiError("Không thể xóa lúc này.", 503))
+    .mockResolvedValue();
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await user.click(await screen.findByRole("button", { name: "Xóa toàn bộ lịch sử" }));
+  expect(screen.getByText(/kể cả các bản ghi ngoài bộ lọc/)).toBeVisible();
+  expect(deleteAllHistory).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Xác nhận xóa" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Không thể xóa lúc này.");
+  expect(screen.getByRole("list")).toBeVisible();
+  historyMock.mockResolvedValue({ items: [], nextCursor: null });
+  await user.click(screen.getByRole("button", { name: "Xác nhận xóa" }));
+  await screen.findByText("Chưa có thao tác nào khớp bộ lọc.");
+  expect(deleteAllHistory).toHaveBeenCalledTimes(2);
+});
+
+it("cancels deletion without making a request", async () => {
+  historyMock.mockResolvedValue({ items: [historyItem], nextCursor: null });
+  const user = userEvent.setup();
+  render(<HistoryWorkspace />);
+  await user.click(await screen.findByRole("button", { name: "Xóa bản ghi" }));
+  await user.click(screen.getByRole("button", { name: "Hủy" }));
+  expect(screen.queryByRole("group", { name: "Xác nhận xóa" })).not.toBeInTheDocument();
+  expect(deleteHistoryItem).not.toHaveBeenCalled();
 });

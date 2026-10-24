@@ -6,9 +6,13 @@ import { CipherModeSelector } from "../../../shared/components/CipherModeSelecto
 import { saveBlob } from "../../../shared/utils/download";
 import { useRsaSignature } from "../hooks/useRsaSignature";
 import { RsaSignaturePanel } from "./RsaSignaturePanel";
-import { parseRsaCipher, type RsaCipherController } from "../hooks/useRsaCipher";
+import {
+  parseRsaBlockCipher,
+  parseRsaCipher,
+  type RsaCipherController,
+} from "../hooks/useRsaCipher";
 import { decimal } from "../utils/validation";
-import type { EuclidRow, ModPowRow, RsaInputType, RsaTask } from "../types/cipher";
+import type { EuclidRow, ModPowRow, RsaInputType, RsaTask, RsaKeyBits } from "../types/cipher";
 import "./rsa.css";
 
 function TaskMessage({ cipher, task }: { cipher: RsaCipherController; task: RsaTask }) {
@@ -97,6 +101,8 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
   const input = cipher.inputs[task][mode];
   const result = cipher.results[task];
   const busy = cipher.statuses[task] === "loading";
+  const blockMode = task === "text" && cipher.textMode === "block";
+  const fileInput = task === "text" && encrypt && cipher.textSource === "file";
   const characters = Array.from(encrypt ? input : (result?.output ?? ""));
   const inputLabel = encrypt
     ? task === "number"
@@ -113,7 +119,8 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
       }
     } else if (!encrypt) {
       try {
-        parseRsaCipher(input, task);
+        if (blockMode) parseRsaBlockCipher(input);
+        else parseRsaCipher(input, task);
       } catch (error) {
         inputError = (error as Error).message;
       }
@@ -146,7 +153,11 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
     <section className="rsa__section panel" aria-labelledby={`rsa-${task}-title`}>
       <div className="panel__header">
         <h2 id={`rsa-${task}-title`}>
-          {task === "number" ? "Mã hóa và giải mã một khối số" : "Văn bản: mỗi ký tự là một khối"}
+          {task === "number"
+            ? "Mã hóa và giải mã một khối số"
+            : blockMode
+              ? "Văn bản: đóng khối byte UTF-8"
+              : "Văn bản: mỗi ký tự là một khối"}
         </h2>
       </div>
       <form
@@ -170,64 +181,133 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
           <span>
             {task === "number"
               ? "Mỗi số phải thỏa 0 ≤ P < n."
-              : "Chế độ char: mỗi Unicode code point là một khối và phải nhỏ hơn n."}
+              : blockMode
+                ? "Chế độ block: đóng gói byte UTF-8; giữ độ dài gốc trong JSON để giải mã."
+                : "Chế độ char: mỗi Unicode code point là một khối và phải nhỏ hơn n."}
           </span>
         </p>
-        <div className="panel rsa__transform-panel">
-          <label className="rsa__field rsa__field--text">
-            <span>{inputLabel}</span>
-            <textarea
-              value={input}
-              aria-invalid={Boolean(inputError)}
-              rows={task === "number" ? 2 : 4}
-              spellCheck={false}
-              placeholder={encrypt ? undefined : '["11","76"]'}
+        {task === "text" && (
+          <div className="rsa__fields">
+            <label className="rsa__field">
+              <span>Cách đóng khối văn bản</span>
+              <select
+                value={cipher.textMode}
+                onChange={(event) => {
+                  setNotice(null);
+                  cipher.setTextMode(event.target.value as "char" | "block");
+                }}
+              >
+                <option value="char">char · từng ký tự</option>
+                <option value="block">block · byte UTF-8</option>
+              </select>
+            </label>
+            {encrypt && (
+              <label className="rsa__field">
+                <span>Nguồn văn bản RSA</span>
+                <select
+                  value={cipher.textSource}
+                  onChange={(event) => {
+                    setNotice(null);
+                    cipher.setTextSource(event.target.value as "text" | "file");
+                  }}
+                >
+                  <option value="text">Nhập văn bản</option>
+                  <option value="file">File .txt</option>
+                </select>
+              </label>
+            )}
+            <label className="rsa__field">
+              <span>Chỉ số khối trace (từ 0)</span>
+              <input
+                inputMode="numeric"
+                placeholder="0"
+                value={cipher.traceIndex}
+                onChange={(event) => {
+                  setNotice(null);
+                  cipher.setTraceIndex(event.target.value);
+                }}
+              />
+            </label>
+          </div>
+        )}
+        {fileInput ? (
+          <label className="rsa__field">
+            <span>File văn bản RSA (.txt)</span>
+            <input
+              key={cipher.resetVersion}
+              type="file"
+              aria-label="File văn bản RSA (.txt)"
+              accept=".txt,text/plain"
               onChange={(event) => {
                 setNotice(null);
-                cipher.setInput(task, event.target.value);
+                cipher.setFile(event.target.files?.[0] ?? null);
               }}
             />
+            <small>Tối đa 1.000.000 byte và 10.000 ký tự Unicode; UTF-8.</small>
           </label>
-          <div className="button-group" role="group" aria-label="Thao tác đầu vào">
-            <button
-              className="button button--secondary"
-              type="button"
-              disabled={busy}
-              onClick={() => void paste()}
+        ) : (
+          <div className="panel rsa__transform-panel">
+            <label className="rsa__field rsa__field--text">
+              <span>{inputLabel}</span>
+              <textarea
+                value={input}
+                aria-invalid={Boolean(inputError)}
+                rows={task === "number" ? 2 : 4}
+                spellCheck={false}
+                placeholder={
+                  encrypt
+                    ? undefined
+                    : blockMode
+                      ? '{"cipher":["11"],"originalUtf8ByteLength":1}'
+                      : '["11","76"]'
+                }
+                onChange={(event) => {
+                  setNotice(null);
+                  cipher.setInput(task, event.target.value);
+                }}
+              />
+            </label>
+            <div className="button-group" role="group" aria-label="Thao tác đầu vào">
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => void paste()}
+              >
+                Dán
+              </button>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={!input}
+                onClick={() => void copy(input)}
+              >
+                Sao chép
+              </button>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => {
+                  setNotice(null);
+                  cipher.setInput(task, "");
+                }}
+              >
+                Xóa
+              </button>
+            </div>
+            <div
+              className={`status ${inputError ? "status--error" : input ? "status--success" : ""}`}
+              role="status"
+              aria-live="polite"
             >
-              Dán
-            </button>
-            <button
-              className="button button--secondary"
-              type="button"
-              disabled={!input}
-              onClick={() => void copy(input)}
-            >
-              Sao chép
-            </button>
-            <button
-              className="button button--secondary"
-              type="button"
-              onClick={() => {
-                setNotice(null);
-                cipher.setInput(task, "");
-              }}
-            >
-              Xóa
-            </button>
+              {inputError
+                ? `! ${inputError}`
+                : input
+                  ? "✓ Đầu vào hợp lệ ở mức sơ bộ."
+                  : "Chưa có dữ liệu"}
+            </div>
           </div>
-          <div
-            className={`status ${inputError ? "status--error" : input ? "status--success" : ""}`}
-            role="status"
-            aria-live="polite"
-          >
-            {inputError
-              ? `! ${inputError}`
-              : input
-                ? "✓ Đầu vào hợp lệ ở mức sơ bộ."
-                : "Chưa có dữ liệu"}
-          </div>
-        </div>
+        )}
         <button className="button button--primary" type="submit" disabled={!ready || busy}>
           {busy ? "Đang xử lý…" : encrypt ? "Mã hóa" : "Giải mã"}
         </button>
@@ -293,12 +373,18 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
           </div>
         </div>
         {notice && <Notification notice={notice} onClose={() => setNotice(null)} />}
+        {result?.originalUtf8ByteLength !== undefined && (
+          <p className="rsa__help">
+            Độ dài UTF-8 gốc: {result.originalUtf8ByteLength} byte · {result.blockSize} byte/khối.
+            {blockMode && " Bản mã JSON kèm độ dài gốc; sao chép toàn bộ để giải mã."}
+          </p>
+        )}
         {result && (
           <>
             <details className="rsa__details rsa__trace">
               <summary>
                 {encrypt ? "Bảng tính C = Pᵉ mod n" : "Bảng tính P = Cᵈ mod n"}
-                {task === "text" ? " · khối đầu tiên" : ""}
+                {task === "text" ? ` · khối ${(result.traceBlockIndex ?? 0) + 1}` : ""}
               </summary>
               <ModPowTable
                 rows={result.rows}
@@ -307,14 +393,16 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
             </details>
             {task === "text" && (
               <details className="rsa__details rsa__trace">
-                <summary>Xem từng khối ký tự</summary>
+                <summary>{blockMode ? "Xem từng khối byte" : "Xem từng khối ký tự"}</summary>
                 <div className="rsa__table-wrap">
                   <table className="rsa__table">
-                    <caption>Kết quả từng khối ký tự</caption>
+                    <caption>
+                      {blockMode ? "Kết quả từng khối byte" : "Kết quả từng khối ký tự"}
+                    </caption>
                     <thead>
                       <tr>
                         <th scope="col">Khối</th>
-                        <th scope="col">Ký tự</th>
+                        {!blockMode && !fileInput && <th scope="col">Ký tự</th>}
                         <th scope="col">P (mã)</th>
                         <th scope="col">C</th>
                       </tr>
@@ -323,7 +411,9 @@ function TransformPanel({ cipher, task }: { cipher: RsaCipherController; task: R
                       {result.blocks.map((block, index) => (
                         <tr key={index}>
                           <td>{index + 1}</td>
-                          <td>{characters[index] === " " ? "␣" : characters[index]}</td>
+                          {!blockMode && !fileInput && (
+                            <td>{characters[index] === " " ? "␣" : characters[index]}</td>
+                          )}
                           <td>{block}</td>
                           <td>{result.cipher[index]}</td>
                         </tr>
@@ -360,7 +450,9 @@ export function RsaWorkspace({
           <h2>RSA từng bước</h2>
           <p>
             {signatureTab
-              ? "Dùng khóa riêng để ký một số và khóa công khai để kiểm tra chữ ký."
+              ? signature.scheme === "standard"
+                ? "Ký văn bản hoặc file UTF-8 và kiểm tra bằng RSA-PSS, SHA-256."
+                : "Dùng khóa riêng để ký một số và khóa công khai để kiểm tra chữ ký."
               : "Sinh khóa hoặc nhập khóa có sẵn, rồi chọn mã hóa hay giải mã cho số và văn bản."}
           </p>
         </div>
@@ -400,6 +492,7 @@ export function RsaWorkspace({
           <button
             className="button button--secondary"
             type="button"
+            hidden={signatureTab && signature.scheme === "standard"}
             onClick={() => {
               if (signatureTab)
                 signature.loadScenario(signature.mode === "sign" ? "sign-success" : "verify-valid");
@@ -423,7 +516,7 @@ export function RsaWorkspace({
           </button>
         </div>
       </div>
-      <details className="rsa__details">
+      <details className="rsa__details" hidden={signatureTab && signature.scheme === "standard"}>
         <summary>
           {signatureTab ? "Luồng chữ ký RSA · Alice và Bob" : "Luồng mã hóa RSA · Alice và Bob"}
         </summary>
@@ -471,10 +564,16 @@ export function RsaWorkspace({
       </details>
       <p className="rsa__help">
         {signatureTab
-          ? "RSA học thuật: ký và kiểm tra bằng lũy thừa modulo n."
+          ? signature.scheme === "standard"
+            ? "RSA-PSS dùng SHA-256 và khóa PEM; giữ khóa riêng ở vùng nhập tạm thời."
+            : "RSA học thuật: ký và kiểm tra bằng lũy thừa modulo n."
           : "RSA biến đổi từng khối số bằng lũy thừa modulo n."}
       </p>
-      <section className="rsa__section panel" aria-labelledby="rsa-key-title">
+      <section
+        className="rsa__section panel"
+        aria-labelledby="rsa-key-title"
+        hidden={signatureTab && signature.scheme === "standard"}
+      >
         <div className="panel__header">
           <h2 id="rsa-key-title">Khóa RSA</h2>
         </div>
@@ -505,43 +604,80 @@ export function RsaWorkspace({
                 Chọn hai số nguyên tố khác nhau. n = p·q, φ(n) = (p−1)(q−1), d là nghịch đảo của e
                 modulo φ(n).
               </p>
-              <div className="rsa__presets" role="group" aria-label="Bộ tham số mẫu RSA">
-                {[
-                  { label: "Giáo trình · 17, 11, 7", p: "17", q: "11", e: "7" },
-                  { label: "61, 53, 17", p: "61", q: "53", e: "17" },
-                  { label: "Tiếng Việt · 101, 113, 3533", p: "101", q: "113", e: "3533" },
-                ].map((preset) => (
-                  <button
-                    className="button button--secondary"
-                    type="button"
-                    key={preset.label}
-                    onClick={() => cipher.choosePreset(preset)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
               <div className="rsa__fields">
-                {(["p", "q", "e"] as const).map((field) => (
-                  <label className="rsa__field" key={field}>
-                    <span>{field === "e" ? "e · số mũ công khai" : `${field} · số nguyên tố`}</span>
-                    <input
-                      value={draft[field]}
-                      inputMode="numeric"
-                      autoComplete="off"
-                      spellCheck={false}
-                      aria-invalid={Boolean(fieldErrors[field])}
-                      aria-describedby={fieldErrors[field] ? `rsa-${field}-error` : undefined}
-                      onChange={(event) => cipher.setParameter(field, event.target.value)}
-                    />
-                    {fieldErrors[field] && (
-                      <small id={`rsa-${field}-error`} role="alert">
-                        {fieldErrors[field]}
-                      </small>
-                    )}
+                <label className="rsa__field">
+                  <span>Phương pháp sinh khóa</span>
+                  <select
+                    value={cipher.generationMode}
+                    onChange={(event) =>
+                      cipher.setGenerationMode(event.target.value as "manual" | "random")
+                    }
+                  >
+                    <option value="manual">Từ p, q, e</option>
+                    <option value="random">Ngẫu nhiên</option>
+                  </select>
+                </label>
+                {cipher.generationMode === "random" && (
+                  <label className="rsa__field">
+                    <span>Độ dài khóa RSA</span>
+                    <select
+                      value={cipher.keyBits}
+                      onChange={(event) =>
+                        cipher.setKeyBits(Number(event.target.value) as RsaKeyBits)
+                      }
+                    >
+                      {[16, 32, 64, 128].map((bits) => (
+                        <option key={bits} value={bits}>
+                          {bits} bit
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                ))}
+                )}
               </div>
+              {cipher.generationMode === "manual" && (
+                <>
+                  <div className="rsa__presets" role="group" aria-label="Bộ tham số mẫu RSA">
+                    {[
+                      { label: "Giáo trình · 17, 11, 7", p: "17", q: "11", e: "7" },
+                      { label: "61, 53, 17", p: "61", q: "53", e: "17" },
+                      { label: "Tiếng Việt · 101, 113, 3533", p: "101", q: "113", e: "3533" },
+                    ].map((preset) => (
+                      <button
+                        className="button button--secondary"
+                        type="button"
+                        key={preset.label}
+                        onClick={() => cipher.choosePreset(preset)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="rsa__fields">
+                    {(["p", "q", "e"] as const).map((field) => (
+                      <label className="rsa__field" key={field}>
+                        <span>
+                          {field === "e" ? "e · số mũ công khai" : `${field} · số nguyên tố`}
+                        </span>
+                        <input
+                          value={draft[field]}
+                          inputMode="numeric"
+                          autoComplete="off"
+                          spellCheck={false}
+                          aria-invalid={Boolean(fieldErrors[field])}
+                          aria-describedby={fieldErrors[field] ? `rsa-${field}-error` : undefined}
+                          onChange={(event) => cipher.setParameter(field, event.target.value)}
+                        />
+                        {fieldErrors[field] && (
+                          <small id={`rsa-${field}-error`} role="alert">
+                            {fieldErrors[field]}
+                          </small>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
               <button
                 className="button button--primary"
                 type="submit"
@@ -553,6 +689,12 @@ export function RsaWorkspace({
               {key && (
                 <>
                   <dl className="rsa__facts">
+                    <div>
+                      <dt>p, q</dt>
+                      <dd>
+                        {key.p}, {key.q}
+                      </dd>
+                    </div>
                     <div>
                       <dt>n = p·q</dt>
                       <dd>{key.n}</dd>

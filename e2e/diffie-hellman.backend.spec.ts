@@ -448,6 +448,19 @@ test("history records safe metadata for every DH operation", async ({ request })
   const forbidden =
     /^(q|alpha|privateKey.*|publicKey.*|sharedKey.*|otherPublicKey|shift|data|result|file|filename|content|steps|trace|warning)$/i;
   for (const row of added) for (const key of Object.keys(row)) expect(key).not.toMatch(forbidden);
+  for (const row of added) {
+    expect(row).toMatchObject({ contentAvailable: false, valid: null });
+    const detailResponse = await request.get(`/api/history/${row.id}`);
+    expect(detailResponse.status()).toBe(200);
+    const detail = (await detailResponse.json()).result;
+    expect(detail).toMatchObject({
+      id: row.id,
+      cipher: "dh",
+      operation: row.operation,
+      payload: {},
+    });
+    expect(JSON.stringify(detail.payload)).toBe("{}");
+  }
 });
 
 test("Caesar SHIFT_ZERO is a successful warning", async ({ request }) => {

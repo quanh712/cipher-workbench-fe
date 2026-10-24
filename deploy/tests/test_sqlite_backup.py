@@ -16,7 +16,8 @@ spec.loader.exec_module(backup)
 
 class BackupTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory()
+        # Match BE local-filesystem validation; /tmp may be tmpfs.
+        self.temporary = tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[2])
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.now = datetime.now(UTC)
@@ -86,6 +87,21 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(status["rows"], 0)
         self.assertTrue(backup.healthy(self.root / "backups", 3600))
         self.assertFalse(list((self.root / "backups").glob(".pending-*")))
+
+    def test_current_private_history_schema_is_backed_up_and_restored(self):
+        import app
+        from alembic import command
+        from alembic.config import Config
+        backend_root = Path(app.__file__).resolve().parent.parent
+        source = self.root / "current.sqlite3"
+        config = Config(str(backend_root / "alembic_sqlite.ini"))
+        config.set_main_option("script_location", str(backend_root / "alembic_sqlite"))
+        with patch.dict("os.environ", {"DATABASE_URL": f"sqlite+aiosqlite:///{source}"}):
+            command.upgrade(config, "head")
+        status = backup.backup_once(source, self.root / "backups", 7)
+        self.assertTrue(status["restore_verified"])
+        self.assertEqual(status["schema_revision"], "sqlite_0004")
+        self.assertTrue(backup.healthy(self.root / "backups", 3600))
 
     def test_restore_failure_preserves_previous_backup_and_skips_retention(self):
         source = self.source()
