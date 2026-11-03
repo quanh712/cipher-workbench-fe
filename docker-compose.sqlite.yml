@@ -42,6 +42,12 @@ services:
       DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////data/cipher-history.sqlite3}
       HISTORY_API_ENABLED: ${HISTORY_API_ENABLED:-false}
       HISTORY_RETENTION_DAYS: ${HISTORY_RETENTION_DAYS:-30}
+      HISTORY_COOKIE_SECURE: ${HISTORY_COOKIE_SECURE:-true}
+      # Required by the profile middleware since BE db72e47; must be the same
+      # 64-hex key as HISTORY_PROFILE_SIGNING_KEY in .env.rsa-backend, or the
+      # two backends ping-pong the cw_history_profile cookie and history
+      # ownership splits across random owner IDs.
+      HISTORY_PROFILE_SIGNING_KEY: ${HISTORY_PROFILE_SIGNING_KEY:?Set a 64-hex key shared with .env.rsa-backend}
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
     volumes:
       - history-data:/data
