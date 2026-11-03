@@ -4,6 +4,10 @@ Tài liệu này triển khai React và FastAPI cùng origin trên một VPS. Do
 chỉ bind ứng dụng vào loopback; Nginx cài trên VPS là cổng Internet duy nhất và
 quản lý HTTPS.
 
+Không có VPS và muốn mở public nhanh từ máy đang chạy stack local qua
+Tailscale (funnel cổng 18085, PROXY protocol giữ IP thật để `limit_req` còn
+tác dụng), xem [PUBLIC_ACCESS.md](PUBLIC_ACCESS.md).
+
 ## 1. Topology
 
 ```text
