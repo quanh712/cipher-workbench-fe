@@ -4,6 +4,14 @@
 ký số và xem các bước xử lý. Frontend dùng React, TypeScript và Vite, kết nối
 Backend thật qua API cùng origin.
 
+## Demo công khai
+
+Mở [Cipher Workbench trên Render](https://cipher-workbench.onrender.com/).
+Trong lần kiểm tra gần nhất được ghi nhận, trang chủ và
+[API health](https://cipher-workbench.onrender.com/api/health) đều trả HTTP 200.
+Health báo `database: disabled` và `history: disabled`, nên lịch sử thao tác
+không khả dụng trên demo tại thời điểm đó.
+
 ## Tính năng
 
 - Thực hành chín thuật toán trong cùng một workspace.

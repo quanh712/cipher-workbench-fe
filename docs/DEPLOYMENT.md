@@ -4,9 +4,15 @@ Tài liệu này triển khai React và FastAPI cùng origin trên một VPS. Do
 chỉ bind ứng dụng vào loopback; Nginx cài trên VPS là cổng Internet duy nhất và
 quản lý HTTPS.
 
-Không có VPS và muốn mở public nhanh từ máy đang chạy stack local qua
-Tailscale (funnel cổng 18085, PROXY protocol giữ IP thật để `limit_req` còn
-tác dụng), xem [PUBLIC_ACCESS.md](PUBLIC_ACCESS.md).
+## Demo công khai
+
+[Cipher Workbench trên Render](https://cipher-workbench.onrender.com/) là demo
+công khai. Trong lần kiểm tra đã ghi nhận, trang chủ và
+[`/api/health`](https://cipher-workbench.onrender.com/api/health) đều trả HTTP 200.
+Health báo `database: disabled` và `history: disabled` tại thời điểm kiểm tra.
+
+Các bước bên dưới dành cho stack SQLite tự quản lý trên VPS. Xem
+[hướng dẫn vận hành SQLite](SQLITE_COMPOSE.md) để chạy stack cục bộ.
 
 ## 1. Topology
 
