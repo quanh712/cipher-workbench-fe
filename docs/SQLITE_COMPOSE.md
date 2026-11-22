@@ -32,6 +32,39 @@ riêng frontend bằng `--no-deps`, không bật lại các container đã dừn
 Image trước `cipher-workbench-frontend:local-rsa-20261011` vẫn được giữ để rollback:
 đổi image trong override về tag cũ rồi chạy `./deploy/frontend.sh local up`.
 
+## Khôi phục backend RSA/DH ngày 11/10/2026
+
+Yêu cầu RSA ban đầu trả 502 khi backend `cipher-workbench-be-app-1` đã dừng.
+Docker báo `OOMKilled=true` và restart policy `no`. Sau khi khởi động lại,
+`/api/rsa/sign/raw` trả 404 vì image cũ chưa hỗ trợ chữ ký. Đợt khôi phục dùng
+FE `cipher-workbench-frontend:local-rsa-20261011` và BE
+`cipher-workbench-be-app:rsa-da77d54`, đặt restart policy `unless-stopped`,
+giới hạn 512 MiB RAM và 1 CPU cho BE. Nginx chuyển các route ký và kiểm tra
+chữ ký RSA sang cùng backend với DH.
+
+Migration `sqlite_0002 → sqlite_0003` thêm bảng lịch sử riêng cho chữ ký RSA.
+Chính sách lưu 5 giờ của BE lúc đó đã xóa 58 bản ghi metadata cũ quá hạn khi
+khởi động. Snapshot trước migration được lưu tại
+`backups/rsa-update-20261011/pre-rsa.sqlite3` (Git bỏ qua, quyền 0600).
+Nghiệm thu ký số xác nhận kết quả `65 → 588`, kiểm tra hợp lệ với `m=65`,
+không hợp lệ với `m=66` và lưu lịch sử theo hồ sơ trình duyệt. Bộ kiểm thử
+tích hợp RSA đạt 10/10 trên desktop và màn hình 375 px.
+
+Backend RSA/DH dùng `.env.rsa-backend` riêng. Giữ file ở quyền 0600. Khi hai
+backend dùng chung cookie hồ sơ lịch sử, đặt cùng một
+`HISTORY_PROFILE_SIGNING_KEY` gồm 64 ký tự hex trong `.env.sqlite` và
+`.env.rsa-backend`. Giữ nguyên khóa qua các lần khởi động để cookie vẫn hợp lệ.
+Wrapper
+`./deploy/rsa-backend.sh` hỗ trợ các lệnh `config`, `ps`, `up` và
+`migrate`. Chuẩn bị backup và kiểm tra khả năng phục hồi trước khi chạy migration.
+
+Ngày 13/10/2026, FE chuyển sang
+`cipher-workbench-frontend:history-operation-filters-20261013` và BE RSA/DH
+sang `cipher-workbench-be-app:dh-history-9d22937`. Xem
+[tích hợp DH](DIFFIE_HELLMAN_BE_INTEGRATION.md) để tra migration
+`sqlite_0003 → sqlite_0004`, đối soát SQLite và nghiệm thu DH/RSA qua cổng local
+`18081`.
+
 ## RAM khi vận hành local
 
 Đo bằng `docker stats --no-stream` ngày 12/10/2026: tổng RAM của các container
@@ -46,9 +79,9 @@ Các container đã dừng:
 - `cipher-workbench-sqlite-integration-backup-1`: backup của DB kiểm thử đã dừng ghi.
 
 Giữ frontend local, hai backend mà cấu hình proxy hiện tại sử dụng và backup
-SQLite local. Không giảm memory limit của backend: giới hạn 512 MiB là trần,
-không phải RAM được cấp phát sẵn; backend RSA/DH đã từng bị OOM theo
-[recovery record](TAILSCALE_RSA_RECOVERY_20261011.md).
+SQLite local. Giữ giới hạn 512 MiB cho backend RSA/DH vì container từng bị
+dừng do hết bộ nhớ trong sự cố ngày 11/10/2026. Đây là mức RAM tối đa
+container được phép sử dụng.
 
 Các container dừng có restart policy `unless-stopped`, nên không tự bật lại
 sau restart Docker. Khi cần dùng integration, bật lại các container hiện có:
